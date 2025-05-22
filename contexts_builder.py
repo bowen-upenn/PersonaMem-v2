@@ -3,7 +3,7 @@ import tiktoken
 import json
 from uuid import uuid4
 
-from data_manager import load_json, save_json
+import utils
 
 MAX_TOKENS = 1024
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
@@ -20,8 +20,8 @@ def build_context(interactions_file: str, irrelevant_file: str):
     Returns a dict {context_id: messages} and saves to JSON.
     """
     # load data
-    interactions = load_json(interactions_file)  # list of personas with conversation data
-    irrelevant = load_json(irrelevant_file)
+    interactions = utils.load_json(interactions_file)  # list of personas with conversation data
+    irrelevant = utils.load_json(irrelevant_file)
 
     # flatten irrelevant messages
     flat = []
@@ -62,5 +62,5 @@ def build_context(interactions_file: str, irrelevant_file: str):
 
     # save to JSON with unique ID
     context_id = str(uuid4())
-    save_json({context_id: final_messages}, f'context_{context_id}.json')
+    utils.save_json({context_id: final_messages}, f'context_{context_id}.json')
     return {context_id: final_messages}

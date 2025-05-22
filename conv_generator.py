@@ -4,7 +4,6 @@ import openai
 import re
 from uuid import uuid4
 
-from data_manager import save_json
 from json_repair import repair_json
 import prompts
 import utils
@@ -90,12 +89,12 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
             final_json['anti_stereotypical_preferences'] = aligned_anti
 
         print('conversations', conversations)
-    #     # 6) attach to the parsed output and save
-    #     final_json["conversations"] = conversations
-    #     persona_id = str(uuid4())
-    #     output_dict[persona_id] = final_json
-    #
-    # # Save the full dictionary with persona_id as keys
-    # print('output_dict', output_dict)
-    # save_json(output_dict, output_path)
+        # 6) attach to the parsed output and save
+        final_json["conversations"] = conversations
+        persona_id = str(uuid4())
+        output_dict[persona_id] = final_json
+
+    # Save the full dictionary with persona_id as keys
+    print('output_dict', output_dict)
+    utils.save_json(output_dict, output_path)
     return output_dict
