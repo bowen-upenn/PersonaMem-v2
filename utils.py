@@ -18,10 +18,11 @@ def extract_json_from_response(response_text):
     decoder = json.JSONDecoder()
     start_idx = response_text.find('{')
     if start_idx == -1:
-        raise ValueError("No JSON object found in the response.")
+        return None
 
     try:
         obj, _ = decoder.raw_decode(response_text[start_idx:])
         return obj
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to decode JSON: {e}")
+        return None
+

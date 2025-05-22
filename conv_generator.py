@@ -10,7 +10,7 @@ import prompts
 import utils
 
 
-def generate_interactions_from_persona(llm, all_personas, output_path, num_persona=1, verbose=False):
+def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, verbose=False):
     """
     Load one random persona from the JSONL file, then sequentially query the Assistant API with three prompts:
       1) Add name and demographic info in JSON for [PERSONA]
@@ -52,31 +52,26 @@ def generate_interactions_from_persona(llm, all_personas, output_path, num_perso
             print("Failed to parse JSON:", e)
             continue
 
-        # # collect conversations for stereotypical_preferences
-        # conversations = []
-        # for pref in final_json.get("stereotypical_preferences", []):
-        #     prompt = prompts.generate_conversation(pref)
-        #     conv_json = llm.query_llm(prompt, use_assistant=False, verbose=verbose)
-        #     # parse the returned JSON array
-        #     conv_json = repair_json(conv_json)
-        #     conversation = json.loads(conv_json)
-        #     conversations.append({
-        #         "preference": pref,
-        #         "conversation": conversation
-        #     })
-        #
-        # # same for anti_stereotypical_preferences
-        # for pref in final_json.get("anti_stereotypical_preferences", []):
-        #     prompt = prompts.generate_conversation(pref)
-        #     conv_json = llm.query_llm(prompt, use_assistant=False, verbose=verbose)
-        #     # parse the returned JSON array
-        #     conv_json = repair_json(conv_json)
-        #     conversation = json.loads(conv_json)
-        #     conversations.append({
-        #         "preference": pref,
-        #         "conversation": conversation
-        #     })
-    #
+        # collect conversations for stereotypical_preferences
+        conversations = {}
+        for type in implicit_types:
+            conversations[type] = []
+
+            for pref in final_json.get("stereotypical_preferences", []):
+                prompt = prompts.generate_emails(persona_str, pref)
+                conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                conv_turns = utils.extract_json_from_response(conv_turns)
+                if conv_turns:
+                    conversations[type].append({'stereotypical_pref': pref, 'conversations': conv_turns})
+
+            for pref in final_json.get("anti_stereotypical_preferences", []):
+                prompt = prompts.generate_emails(persona_str, pref)
+                conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                conv_turns = utils.extract_json_from_response(conv_turns)
+                if conv_turns:
+                    conversations[type].append({'anti_stereotypical_pref': pref, 'conversations': conv_turns})
+
+        print('conversations', conversations)
     #     # 6) attach to the parsed output and save
     #     final_json["conversations"] = conversations
     #     persona_id = str(uuid4())

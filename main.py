@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--conv_output_path', type=str, default='data/interactions.jsonl', help='Set the path to the output directory')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
     parser.add_argument('--num_persona', type=int, default=1, help='Number of personas to generate')
+    parser.add_argument('--data_types', type=str, default="email", nargs="+", help='Conversation types for the user to implicitly express their preferences')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     cmd_args = parser.parse_args()
 
@@ -32,6 +33,7 @@ def main():
     args['data']['conv_output_path'] = cmd_args.conv_output_path if cmd_args.conv_output_path is not None else args['data']['conv_output_path']
     args['data']['result_path'] = cmd_args.result_path if cmd_args.result_path is not None else args['data']['result_path']
     args['inference']['num_persona'] = cmd_args.num_persona if cmd_args.num_persona is not None else args['inference']['num_persona']
+    args['data']['data_types'] = cmd_args.data_types if cmd_args.data_types is not None else args['data']['data_types']
     args['inference']['verbose'] = cmd_args.verbose if cmd_args.verbose is not None else args['inference']['verbose']
     print(args)
 
@@ -40,7 +42,8 @@ def main():
         all_personas = file.readlines()
 
     llm = QueryLLM(args)
-    generate_interactions_from_persona(llm, all_personas, args['data']['conv_output_path'], args['inference']['num_persona'], args['inference']['verbose'])
+    generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],
+                                       num_persona=args['inference']['num_persona'], verbose=args['inference']['verbose'])
 
     # Build single long context
     contexts = build_context(args['data']['conv_output_path'], args['data']['irrelevant_context_path'])

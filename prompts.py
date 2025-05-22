@@ -42,7 +42,7 @@ def generate_conversation(preference):
     Curate a realistic, natural three‐turn conversation (user → assistant → user) in which the user **implicitly** expresses this preference. 
     Make it require reasoning efforts to infer the preference from this multiturn conversation.
 
-    Return the conversation as a list of dictionaries using the OpenAI dict format, with keys:
+    Return the conversation as a list of dictionaries using the OpenAI dict format in **JSON**, with keys:
     - "role": either "user" or "assistant"
     - "content": the actual utterance
 
@@ -55,5 +55,31 @@ def generate_conversation(preference):
     ]
     
     Do **not** include any explanation — just return the list in valid JSON format.
+    """
+    return prompt
+
+
+def generate_emails(persona, preference):
+    prompt = f"""
+    Given this user persona and preference:
+
+        Persona: "{persona}".
+    
+        Preference: "{preference}".
+    
+    Think about if the user can implicitly mention this preference when they ask ChatGPT to help improve their email writing, and in the original email, the user somehow includes this information. 
+    Please write such email, the user query to the model to refine this email (must be appended at the end of the original email as a single user turn), and the refined email. 
+    The user request to refine the email should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+    
+    Think step by step, and after that, return the conversation after special tokens '###Output' using a list of dictionaries using the OpenAI dict format in **JSON**, with keys:
+    - "role": either "user" or "assistant"
+    - "content": the actual utterance
+
+    The format should be:
+
+    [
+      {{"role": "user", "content": "..." }},
+      {{"role": "assistant", "content": "..." }},
+    ]
     """
     return prompt
