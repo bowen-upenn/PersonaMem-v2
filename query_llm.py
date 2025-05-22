@@ -12,59 +12,40 @@ class QueryLLM:
             self.api_key = api_key_file.read().strip()
 
         self.client = OpenAI(api_key=self.api_key)
-        self.assistant = self.client.beta.assistants.create(
-            name="Persona Generator",
-            instructions="You are a helpful assistant.",
-            tools=[{"type": "code_interpreter"}],
-            model=self.args['models']['llm_model'],
-        )
-        self.thread = None
+        self.history = []
 
-
-    def create_a_thread(self):
-        self.thread = self.client.beta.threads.create()
-
-
-    @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 30 seconds
-    def query_llm(self, prompt, use_assistant=False, verbose=False):
-        if use_assistant:
-            message = self.client.beta.threads.messages.create(
-                thread_id=self.thread.id,
-                role="user",
-                content=prompt,
-            )
-
-            run = self.client.beta.threads.runs.create_and_poll(
-                thread_id=self.thread.id,
-                assistant_id=self.assistant.id
-            )
-
-            if run.status == 'completed':
-                response = self.client.beta.threads.messages.list(
-                    thread_id=self.thread.id,
-                )
-                try:
-                    response = response.data[0].content[0].text.value
-                except Exception as e:
-                    print(utils.Colors.WARNING + f'Error getting response: {e}' + utils.Colors.ENDC)
-                    response = None
-
-                if verbose:
-                    print(f'{utils.Colors.OKGREEN}Model Response:{utils.Colors.ENDC} {response}')
-            else:
-                response = None
-                print(run.status)
-
+    @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
+    def query_llm(self, prompt, use_history=False, verbose=False):
+        """
+        Send a message to the LLM. If use_history is True,
+        `prompt` should be a list of message dicts [{'role': ..., 'content': ...}, ...].
+        Otherwise, `prompt` is a single string.
+        """
+        # Prepare messages for the API call
+        if use_history:
+            self.history.extend([{"role": "user", "content": prompt}])
+            messages = self.history
         else:
-            response = self.client.chat.completions.create(
-                model=self.args['models']['llm_model'],
-                messages=prompt,
-                max_tokens=self.args['llm']['max_tokens'],
-            )
-            try:
-                response = response.choices[0].message.content
-            except Exception as e:
-                print(utils.Colors.WARNING + f'Error getting response: {e}' + utils.Colors.ENDC)
-                response = None
+            messages = [{"role": "user", "content": prompt}]
 
-        return response
+        # Call the Chat Completions API
+        response = self.client.chat.completions.create(
+            model=self.args['models']['llm_model'],
+            messages=messages,
+            max_tokens=self.args['models']['max_tokens'],
+        )
+
+        # Extract content
+        try:
+            content = response.choices[0].message.content
+        except Exception as e:
+            print(utils.Colors.WARNING + f'Error getting response: {e}' + utils.Colors.ENDC)
+            content = None
+
+        if use_history:
+            self.history.append({"role": "assistant", "content": content})
+
+        if verbose:
+            print(f'{utils.Colors.OKGREEN}Model Response:{utils.Colors.ENDC} {content}')
+
+        return content

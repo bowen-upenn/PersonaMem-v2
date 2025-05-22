@@ -40,8 +40,6 @@ def main():
         all_personas = file.readlines()
 
     llm = QueryLLM(args)
-    llm.create_a_thread()
-
     generate_interactions_from_persona(llm, all_personas, args['data']['conv_output_path'], args['inference']['num_persona'], args['inference']['verbose'])
 
     # Build single long context
