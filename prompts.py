@@ -83,3 +83,27 @@ def generate_emails(persona, preference):
     ]
     """
     return prompt
+
+
+def guess_persona(preference, anti=False):
+    label = "anti-" if anti else ""
+    prompt = f"""
+    You see this {label}stereotypical preference:
+
+        "{preference}"
+
+    What single, concise user persona label would most likely go with that {label}stereotypical preference?  
+    """
+    return prompt
+
+
+def check_alignment_with_population_mean(persona):
+    prompt = f"""
+    Given this actual user persona:
+
+        "{persona}"
+
+    Do you think your previous guess is roughly aligned with or fit this actual user persona? 
+    Answer yes or no in the end after special tokens ####Final Answer.
+    """
+    return prompt

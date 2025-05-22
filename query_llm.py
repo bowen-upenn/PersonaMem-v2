@@ -14,6 +14,11 @@ class QueryLLM:
         self.client = OpenAI(api_key=self.api_key)
         self.history = []
 
+
+    def reset_history(self):
+        self.history = []
+
+
     @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
     def query_llm(self, prompt, use_history=False, verbose=False):
         """

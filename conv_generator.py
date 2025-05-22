@@ -29,6 +29,7 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
 
         # 1) demographic info
         prompt = prompts.expand_persona(persona_str)
+        llm.reset_history()
         demo_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
 
         # 2) stereotypical preferences
@@ -57,19 +58,36 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
         for type in implicit_types:
             conversations[type] = []
 
-            for pref in final_json.get("stereotypical_preferences", []):
-                prompt = prompts.generate_emails(persona_str, pref)
-                conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-                conv_turns = utils.extract_json_from_response(conv_turns)
-                if conv_turns:
-                    conversations[type].append({'stereotypical_pref': pref, 'conversations': conv_turns})
+            for pref_key, pref_list in [
+                ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
+                ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", []))
+            ]:
+                for pref in pref_list:
+                    # 1) Guess which persona fits the preference
+                    prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
+                    llm.reset_history()
+                    guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
 
-            for pref in final_json.get("anti_stereotypical_preferences", []):
-                prompt = prompts.generate_emails(persona_str, pref)
-                conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-                conv_turns = utils.extract_json_from_response(conv_turns)
-                if conv_turns:
-                    conversations[type].append({'anti_stereotypical_pref': pref, 'conversations': conv_turns})
+                    # 2) Check alignment of guessed persona with actual persona
+                    prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
+                    resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
+                    # Extract the final answer after '####Final Answer'
+                    alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
+
+                    if alignment == 'yes':
+                        # Only generate email conversations for aligned preferences
+                        email_prompt = prompts.generate_emails(persona_str, pref)
+                        conv_turns = llm.query_llm(email_prompt, use_history=False, verbose=verbose)
+                        conv_turns = utils.extract_json_from_response(conv_turns)
+                        if conv_turns:
+                            conversations[type].append({pref_key: pref, 'conversations': conv_turns})
+
+            # Update final_json to only include aligned preferences
+            aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]
+            aligned_anti = [c['anti_stereotypical_pref'] for convs in conversations.values() for c in convs if 'anti_stereotypical_pref' in c]
+
+            final_json['stereotypical_preferences'] = aligned_stereo
+            final_json['anti_stereotypical_preferences'] = aligned_anti
 
         print('conversations', conversations)
     #     # 6) attach to the parsed output and save

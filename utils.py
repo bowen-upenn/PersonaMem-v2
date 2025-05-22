@@ -26,3 +26,25 @@ def extract_json_from_response(response_text):
     except json.JSONDecodeError as e:
         return None
 
+
+def extract_after_token(text: str, token: str) -> str:
+    """
+    Extracts and returns the portion of `text` that follows the first occurrence of `token`.
+    If the token is not found, returns an empty string.
+
+    Args:
+        text: The input string to search within.
+        token: The delimiter token after which the content should be returned.
+
+    Returns:
+        The substring of `text` after `token`, stripped of leading/trailing whitespace,
+        or an empty string if `token` is not present.
+    """
+    try:
+        # Find the starting index of the token
+        start = text.index(token) + len(token)
+        # Return everything after the token, stripped of whitespace
+        return text[start:].strip()
+    except ValueError:
+        # Token not found
+        return ""
