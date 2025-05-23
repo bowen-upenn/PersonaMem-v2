@@ -4,7 +4,7 @@
 
     pip install -r requirements.txt
 
-## ⚙️ Usage
+### ⚙️ Usage
 
 Run ```main.py``` with customizable parameters to generate personalized data:
 
