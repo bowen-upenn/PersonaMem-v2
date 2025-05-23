@@ -62,5 +62,5 @@ def build_context(interactions_file: str, irrelevant_file: str):
 
     # save to JSON with unique ID
     context_id = str(uuid4())
-    utils.save_json({context_id: final_messages}, f'context_{context_id}.json')
+    utils.save_json({context_id: final_messages}, f'data/contexts/context_{context_id}.json')
     return {context_id: final_messages}

@@ -27,8 +27,9 @@ def generate_anti_stereotypical_preferences():
 
 def verify_conflicts():
     prompt = f"""
-    Verify if there are any conflicts between stereotypical_preferences and anti_stereotypical_preferences. 
-    If so, replace conflict ones. Show the full JSON file in the end.
+    Verify if there are (1) any conflicts between stereotypical_preferences and anti_stereotypical_preferences. 
+    (2) any redundant or repetitive preferences within each one of the two lists.
+    If so, replace conflict ones and remove redundant ones. Show the full JSON file in the end.
     """
     return prompt
 

@@ -5,7 +5,7 @@ import os
 
 from contexts_builder import build_context
 from qa_generator import generate_qas
-from data_manager import save_json, save_csv
+from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
 from query_llm import QueryLLM
 
@@ -40,6 +40,12 @@ def main():
     # Build persona and preferences
     with open(args['data']['persona_path'], 'r') as file:
         all_personas = file.readlines()
+
+    # Ensure data_types is always a list
+    if isinstance(args['data']['data_types'], str):
+        print("data_types is a string, converting to list")
+        args['data']['data_types'] = [args['data']['data_types']]
+    print(f"data_types: {args['data']['data_types']}")
 
     llm = QueryLLM(args)
     generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],

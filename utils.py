@@ -1,6 +1,8 @@
 import json
 import csv
 import os
+import re
+
 
 class Colors:
     HEADER = '\033[95m'  # Purple
@@ -30,21 +32,21 @@ def save_csv(rows: list, filename: str):
         writer.writerows(rows)
 
 
-def extract_json_from_response(response_text):
+def extract_json_from_response(response_str):
     """
-    Extracts the first JSON object found in a string and returns it as a Python dict.
-    Raises ValueError if no valid JSON is found.
+    Extracts JSON array or object from a response string enclosed in triple backticks with 'json',
+    and parses it into a Python dictionary or list.
     """
-    decoder = json.JSONDecoder()
-    start_idx = response_text.find('{')
-    if start_idx == -1:
-        return None
+    # Match content inside ```json ... ```
+    match = re.search(r"```json\s*(.*?)\s*```", response_str, re.DOTALL)
+    if not match:
+        raise ValueError("No JSON content found in response.")
 
+    json_str = match.group(1).strip()
     try:
-        obj, _ = decoder.raw_decode(response_text[start_idx:])
-        return obj
+        return json.loads(json_str)
     except json.JSONDecodeError as e:
-        return None
+        raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
 
 
 def extract_after_token(text: str, token: str) -> str:

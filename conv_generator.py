@@ -97,4 +97,5 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
     # Save the full dictionary with persona_id as keys
     print('output_dict', output_dict)
     utils.save_json(output_dict, output_path)
+    print(f"Saved to {output_path}")
     return output_dict

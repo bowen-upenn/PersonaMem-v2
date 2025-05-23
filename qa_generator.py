@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from data_manager import load_json
+from utils import load_json
 
 
 def generate_qas(interactions_file: str, context_id: str):
