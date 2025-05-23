@@ -2,6 +2,7 @@ import yaml
 import argparse
 import sys
 import os
+import json
 
 from contexts_builder import build_context
 from qa_generator import generate_qas
@@ -25,6 +26,8 @@ def main():
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
     parser.add_argument('--num_persona', type=int, default=1, help='Number of personas to generate')
     parser.add_argument('--data_types', type=str, default="email", nargs="+", help='Conversation types for the user to implicitly express their preferences')
+    parser.add_argument('--context_length', type=int, default=32000, help='Length of the total context to be generated, including irrelevant tokens')
+    parser.add_argument('--self_verify', dest='self_verify', action='store_true', help='Set self_verify to True')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     cmd_args = parser.parse_args()
 
@@ -34,7 +37,9 @@ def main():
     args['data']['result_path'] = cmd_args.result_path if cmd_args.result_path is not None else args['data']['result_path']
     args['inference']['num_persona'] = cmd_args.num_persona if cmd_args.num_persona is not None else args['inference']['num_persona']
     args['data']['data_types'] = cmd_args.data_types if cmd_args.data_types is not None else args['data']['data_types']
+    args['data']['context_length'] = cmd_args.context_length if cmd_args.context_length is not None else args['data']['context_length']
     args['inference']['verbose'] = cmd_args.verbose if cmd_args.verbose is not None else args['inference']['verbose']
+    args['data']['self_verify'] = cmd_args.self_verify if cmd_args.self_verify is not None else args['data']['self_verify']
     print(args)
 
     # Build persona and preferences
@@ -48,20 +53,21 @@ def main():
     print(f"data_types: {args['data']['data_types']}")
 
     llm = QueryLLM(args)
-    generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],
-                                       num_persona=args['inference']['num_persona'], verbose=args['inference']['verbose'])
+
+    # find if the conv_output_path already exists
+    if not os.path.exists(args['data']['conv_output_path']):
+        output_dict = generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],
+                                                         num_persona=args['inference']['num_persona'], self_verify=args['data']['self_verify'], verbose=args['inference']['verbose'])
+    else:
+        print(f"File {args['data']['conv_output_path']} already exists. Loading existing interactions.")
+        with open(args['data']['conv_output_path'], 'r') as file:
+            output_dict = json.load(file)
 
     # Build single long context
-    contexts = build_context(args['data']['conv_output_path'], args['data']['irrelevant_context_path'])
-    context_id = list(contexts.keys())[0]
+    build_context(output_dict, args['data']['irrelevant_context_path'], args['data']['context_length'])
 
     # # Generate all Q&A rows
     # qas = generate_qas('interactions.json', context_id)
-
-    # Save outputs
-    save_json(contexts, os.path.join(args['data']['result_path'], 'contexts.json'))
-    # save_csv(qas, os.path.join(args['data']['result_path'], 'qas.csv'))
-    print("Outputs saved to contexts.json and qas.csv")
 
 if __name__ == '__main__':
     main()

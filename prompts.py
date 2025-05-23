@@ -10,7 +10,7 @@ def generate_stereotypical_preferences():
     Given this demographic information, propose 10 **overly** stereotypical preferences of this person, on-purposely. 
     Those stereotypical preferences should match the generic population mean of this person's demographic information, 
     but not necessary the current individual. Focus on demographic-related biases. 
-    Add them to the JSON file under the key "stereotypical_preferences" whose value is a list of strings.
+    Add them to the JSON file under the key "stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the full JSON in the end.
     """
     return prompt
 
@@ -20,7 +20,7 @@ def generate_anti_stereotypical_preferences():
     Please continue to propose **overly** anti-stereotypical preferences of the same person, i.e., personal preference of this individual 
     that is the opposite of the generic population mean of their demographic groups. Focus on demographic biases and find their opposites. 
     **Must avoid conflicts with previous stereotypical preferences of the same person.** 
-    Add them to the JSON file under the key "anti_stereotypical_preferences" whose value is a list of strings. Show the full JSON file.
+    Add them to the JSON file under the key "anti_stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the **full** JSON in the end.
     """
     return prompt
 

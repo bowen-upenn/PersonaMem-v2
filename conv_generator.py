@@ -9,7 +9,7 @@ import prompts
 import utils
 
 
-def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, verbose=False):
+def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, self_verify=True, verbose=False):
     """
     Load one random persona from the JSONL file, then sequentially query the Assistant API with three prompts:
       1) Add name and demographic info in JSON for [PERSONA]
@@ -62,16 +62,19 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                 ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", []))
             ]:
                 for pref in pref_list:
-                    # 1) Guess which persona fits the preference
-                    prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
-                    llm.reset_history()
-                    guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
+                    if self_verify:
+                        # 1) Guess which persona fits the preference
+                        prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
+                        llm.reset_history()
+                        guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
 
-                    # 2) Check alignment of guessed persona with actual persona
-                    prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
-                    resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
-                    # Extract the final answer after '####Final Answer'
-                    alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
+                        # 2) Check alignment of guessed persona with actual persona
+                        prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
+                        resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
+                        # Extract the final answer after '####Final Answer'
+                        alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
+                    else:
+                        alignment = 'yes'
 
                     if alignment == 'yes':
                         # Only generate email conversations for aligned preferences
