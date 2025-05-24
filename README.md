@@ -16,6 +16,8 @@ Run ```main.py``` with customizable parameters to generate personalized data:
       --result_path results/ \
       --num_persona 1 \
       --data_types email \
+      --context_length 32000 \
+      --self_verify \
       --verbose
 
 📌 Command-line Arguments:
@@ -25,4 +27,6 @@ Run ```main.py``` with customizable parameters to generate personalized data:
 -  ```--result_path```: Path to store final outputs.
 -  ```--num_persona```: Number of personas to generate.
 -  ```--data_types```: Conversation types (e.g., email, etc.) for implicit preference detection. We only support ```email``` currently.
+-  ```--context_length```: Length of the context in tokens, including irrelevant ones.
+-  ```--self_verify```: Enable self-verification to assess whether each user preference aligns with the model's inferred average preference for the current demographic group.
 -  ```--verbose```: Enable detailed logging.
