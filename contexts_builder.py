@@ -54,8 +54,14 @@ def build_context(interactions, irrelevant_file, context_len):
             random.shuffle(conv_curr_type)
 
             for conv in conv_curr_type:
-                messages.append(conv.get("conversation", []))
+                messages.append(conv.get("conversations", []))
+
+        # shuffle the messages as a list of lists
+        random.shuffle(messages)
+
+        # flatten the messages as a single list
+        messages = [msg for sublist in messages for msg in sublist]
 
         # save to JSON with unique ID
-        utils.save_json({uuid: messages}, f'data/contexts/context_{uuid}.json')
+        utils.save_json(messages, f'data/contexts/context_{uuid}.json')
         print(f"Saved context for {uuid} with {len(messages)} messages.")
