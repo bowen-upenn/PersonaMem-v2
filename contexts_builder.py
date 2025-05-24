@@ -46,6 +46,8 @@ def build_context(interactions, irrelevant_file, context_len):
             messages.append(conv)
             idx += 1
 
+        num_irrelevant_tokens = total
+
         # interleave all conversations from interactions
         data_types = interaction_curr_persona.keys()
         for data_type in data_types:
@@ -54,7 +56,11 @@ def build_context(interactions, irrelevant_file, context_len):
             random.shuffle(conv_curr_type)
 
             for conv in conv_curr_type:
-                messages.append(conv.get("conversations", []))
+                conv = conv.get("conversations", [])
+                messages.append(conv)
+                total += count_tokens(conv)
+
+        print(f"Total tokens in {uuid}: {total}. Number of irrelevant tokens: {num_irrelevant_tokens}.")
 
         # shuffle the messages as a list of lists
         random.shuffle(messages)

@@ -48,9 +48,7 @@ def main():
 
     # Ensure data_types is always a list
     if isinstance(args['data']['data_types'], str):
-        print("data_types is a string, converting to list")
         args['data']['data_types'] = [args['data']['data_types']]
-    print(f"data_types: {args['data']['data_types']}")
 
     llm = QueryLLM(args)
 
