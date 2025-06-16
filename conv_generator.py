@@ -4,12 +4,11 @@ import openai
 import re
 from uuid import uuid4
 
-from json_repair import repair_json
 import prompts
 import utils
 
 
-def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, self_verify=True, verbose=False):
+def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, verbose=False):
     """
     Load one random persona from the JSONL file, then sequentially query the Assistant API with three prompts:
       1) Add name and demographic info in JSON for [PERSONA]
@@ -29,60 +28,71 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
         # 1) demographic info
         prompt = prompts.expand_persona(persona_str)
         llm.reset_history()
-        demo_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        persona_str = llm.query_llm(prompt, use_history=True, verbose=verbose)
 
         # 2) stereotypical preferences
         prompt = prompts.generate_stereotypical_preferences()
-        stereotypical_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        llm.query_llm(prompt, use_history=True, verbose=verbose)
 
         # 3) anti-stereotypical preferences
         prompt = prompts.generate_anti_stereotypical_preferences()
-        anti_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        llm.query_llm(prompt, use_history=True, verbose=verbose)
 
         # 4) verify conflicts
         prompt = prompts.verify_conflicts()
+        llm.query_llm(prompt, use_history=True, verbose=verbose)
+
+        # 5) additional therapy-related personal history
+        prompt = prompts.generate_therapy_related_history()
         final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
 
-        # 5) curate conversations
+        # 6) curate conversations
         # parse JSON part from the response
         try:
             final_json = utils.extract_json_from_response(final_json)
-            print("Parsed JSON:", final_json)
+            # print("Parsed JSON:", final_json)
         except json.JSONDecodeError as e:
             print("Failed to parse JSON:", e)
             continue
 
-        # collect conversations for stereotypical_preferences
         conversations = {}
         for type in implicit_types:
             conversations[type] = []
 
-            for pref_key, pref_list in [
-                ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
-                ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", []))
-            ]:
-                for pref in pref_list:
-                    if self_verify:
-                        # 1) Guess which persona fits the preference
-                        prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
-                        llm.reset_history()
-                        guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
+        for pref_key, pref_list in [
+            ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
+            ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
+            ("therapy_background", final_json.get("therapy_background", [])),
+        ]:
+            for pref in pref_list:
+                llm.reset_history()
+                # We verify if a preference is actually aligned with the model's believed stereotypes or anti-stereotypes
+                if self_verify or pref_key != "therapy_background":
+                    # 1) Guess which persona fits the preference
+                    prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
+                    guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
 
-                        # 2) Check alignment of guessed persona with actual persona
-                        prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
-                        resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
-                        # Extract the final answer after '####Final Answer'
-                        alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
-                    else:
-                        alignment = 'yes'
+                    # 2) Check alignment of guessed persona with actual persona
+                    prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
+                    resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
+                    # Extract the final answer after '####Final Answer'
+                    alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
+                else:
+                    alignment = 'yes'
 
-                    if alignment == 'yes':
-                        # Only generate email conversations for aligned preferences
-                        email_prompt = prompts.generate_emails(persona_str, pref)
-                        conv_turns = llm.query_llm(email_prompt, use_history=False, verbose=verbose)
-                        conv_turns = utils.extract_json_from_response(conv_turns)
-                        if conv_turns:
-                            conversations[type].append({pref_key: pref, 'conversations': conv_turns})
+                # Only generate email conversations for aligned preferences
+                if alignment == 'yes':
+                    # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
+                    # is_others_pref = random.random() < 0.3
+                    is_others_pref = False
+                    # Find one random type from implicit_types for each pref
+                    type = random.choice(implicit_types)
+                    prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
+                    conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                    conv_turns = utils.extract_json_from_response(conv_turns)
+                    if conv_turns:
+                        who = 'others' if is_others_pref else 'self'
+                        conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns})
 
             # Update final_json to only include aligned preferences
             aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]
@@ -98,7 +108,6 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
         output_dict[persona_id] = final_json
 
     # Save the full dictionary with persona_id as keys
-    print('output_dict', output_dict)
-    utils.save_json(output_dict, output_path)
+    utils.save_json(output_dict, output_path, clean=clean)
     print(f"Saved to {output_path}")
     return output_dict

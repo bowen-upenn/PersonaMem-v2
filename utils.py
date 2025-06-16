@@ -2,6 +2,7 @@ import json
 import csv
 import os
 import re
+from json_repair import repair_json
 
 
 class Colors:
@@ -13,14 +14,39 @@ class Colors:
     ENDC = '\033[0m'     # Reset color
 
 
-def load_json(filename: str):
+def load_json(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def save_json(data, filename: str):
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save_json(data, filename, clean=False):
+    """
+    Save dictionary to a JSON file.
+    If clean=True and data is not empty, merge with existing JSON (if any).
+    """
+    if not isinstance(data, dict):
+        raise ValueError("data must be a dictionary")
+
+    if clean and data:
+        # Try to load existing data
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding='utf-8') as f:
+                try:
+                    existing = json.load(f)
+                    if not isinstance(existing, dict):
+                        existing = {}
+                except Exception:
+                    existing = {}
+        else:
+            existing = {}
+        # Update dict with new key(s)
+        existing.update(data)
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, ensure_ascii=False, indent=2)
+    else:
+        # Overwrite with new data
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def save_csv(rows: list, filename: str):
@@ -46,7 +72,11 @@ def extract_json_from_response(response_str):
     try:
         return json.loads(json_str)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
+        json_str = repair_json(json_str)
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
 
 
 def extract_after_token(text: str, token: str) -> str:
