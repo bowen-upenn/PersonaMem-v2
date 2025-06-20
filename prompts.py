@@ -1,3 +1,5 @@
+import random
+
 def expand_persona(persona_str):
     prompt = f"""
     Given this persona, add name and other detailed demographic information in a JSON format. Make it detailed and comprehensive: {persona_str}
@@ -35,8 +37,9 @@ def verify_conflicts():
 
 
 def generate_conversations(persona, preference, type, is_others_pref=False):
+    who = "the user" if is_others_pref else "this person"
     prompt = f"""
-    Given this user persona and preference:
+    Given {who}'s persona and preference:
 
         Persona: "{persona}".
 
@@ -46,21 +49,39 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
     if type == 'email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message':
         if type == 'professional_writing':
             type = 'professional writing related to their work'
-        prompt += f"""
-        Think about if the user can implicitly mention this preference when they ask ChatGPT to help improve the language in their {type}, and in the original {type}, the user somehow includes this information. 
-        The {type} should use the user's first perspective. Please write such {type}, the user query to the model to refine this {type} (must be appended at the end of the original {type} as a single user turn), and the refined {type}. 
-        The user request to refine the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
-        """
+        if type == 'email' and is_others_pref:
+            prompt += f"""
+            Think about if the owner if this persona and preference can somehow implicitly mention this preference in an {type}. 
+            Please pick a random name as if they are the owner of this {type} send to this user (check the user's name in the user persona above). 
+            Please write such {type}, the user query to the model to explain this {type} (must be appended at the end of the original {type} as a single user turn), and an explanations. 
+            The user request to explain the {type} received should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
+        else:
+            whose = "the user's first perspective" if is_others_pref else f"a third person's perspective and pick a random name as the author of this {type}, such that this {type} is not written by this user"
+            prompt += f"""
+            Think about if the user can implicitly mention this preference when they ask ChatGPT to help improve the language in this {type}, and in the original {type}, the user somehow includes this information. 
+            The {type} should use {whose}. Please write such {type}, the user query to the model to refine this {type} (must be appended at the end of the original {type} as a single user turn), and the refined {type}. 
+            The user request to refine the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
     elif type == 'translation':
         random_languages = random.choice(['English', 'Hindi', 'Chinese', 'Japanese', 'Korean', 'French', 'Germany', 'Spanish', 'Arabic', 'Vietnamese', 'Italian', 'Thai', 'Portuguese', 'Hebrew', 'Ukrainian'])
-        prompt += f"""
-        First please figure out the native language of this person. Next,
-        think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in their {type} from {random_languages} into their native language. 
-        If these two languages are the same, just choose a different target language yourself, without saying it in the formatted output.
-        In the original {type}, the user somehow includes this information. 
-        Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
-        The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
-        """
+        if is_others_pref:
+            prompt += f"""
+            Think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in a {type} written by others from {random_languages} into their native language. 
+            If these two languages are the same, just choose a different source language yourself, without saying it in the formatted output.
+            In the original {type}, the user somehow includes this preference information, and mention where the user found this piece of {type}.
+            Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
+            The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
+        else:
+            prompt += f"""
+            First please figure out the native language of this person. Next,
+            think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in their own {type} written in their native language to {random_languages} for other readers.
+            If these two languages are the same, just choose a different target language yourself, without saying it in the formatted output.
+            In the original {type}, the user somehow includes this preference information, and mention that this is written by the user themselves.
+            Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
+            The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
     else:
         raise ValueError(f"Unknown type {type}")
 

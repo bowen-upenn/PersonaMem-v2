@@ -5,7 +5,7 @@ python main.py \
   --conv_output_path data/interactions.jsonl \
   --result_path results/ \
   --num_persona 1 \
-  --data_types email creative_writing professional_writing chat_message \
+  --data_types email creative_writing professional_writing chat_message translation \
   --context_length 32000 \
   --clean \
   --verbose

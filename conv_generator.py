@@ -67,7 +67,9 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
             for pref in pref_list:
                 llm.reset_history()
                 # We verify if a preference is actually aligned with the model's believed stereotypes or anti-stereotypes
-                if self_verify or pref_key != "therapy_background":
+                if not self_verify or pref_key == "therapy_background":
+                    alignment = 'yes'
+                else:
                     # 1) Guess which persona fits the preference
                     prompt_guess = prompts.guess_persona(pref, anti=(pref_key == "anti_stereotypical_pref"))
                     guessed_persona = llm.query_llm(prompt_guess, use_history=True, verbose=verbose)
@@ -77,14 +79,12 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                     resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
                     # Extract the final answer after '####Final Answer'
                     alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
-                else:
-                    alignment = 'yes'
 
                 # Only generate email conversations for aligned preferences
                 if alignment == 'yes':
                     # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
-                    # is_others_pref = random.random() < 0.3
-                    is_others_pref = False
+                    is_others_pref = random.random() < 0.4
+                    # is_others_pref = False
                     # Find one random type from implicit_types for each pref
                     type = random.choice(implicit_types)
                     prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
