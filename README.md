@@ -20,6 +20,7 @@ Run ```main.py``` with customizable parameters to generate personalized data:
       --data_types email \
       --context_length 32000 \
       --self_verify \
+      --clean \
       --verbose
 
 📌 Command-line Arguments:
@@ -31,4 +32,5 @@ Run ```main.py``` with customizable parameters to generate personalized data:
 -  ```--data_types```: Conversation types (e.g., email, etc.) for implicit preference detection. We only support ```email``` currently.
 -  ```--context_length```: Length of the context in tokens, including irrelevant ones.
 -  ```--self_verify```: Enable self-verification to assess whether each user preference aligns with the model's inferred average preference for the current demographic group.
+-  ```--clean```: Remove exisitng data and start from scratch.
 -  ```--verbose```: Enable detailed logging.
