@@ -181,7 +181,7 @@ def generate_user_question(element):
     )
 
 
-def generate_answer_options(element, user_query):
+def generate_answer_options(element, user_query, who):
     """
     Prompts the LLM to generate 4 answers to the user_query, all with the same wording/structure,
     but each reflecting a different use of personalization:
@@ -203,23 +203,46 @@ def generate_answer_options(element, user_query):
     else:
         raise NotImplementedError("Unknown scenarios")
 
-    return (
-        f"Given this user background and preference: {user_bg}\n"
-        f"User question: {user_query}\n\n"
-        "You are creating a multiple-choice benchmark."
-        "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
-        "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
-        f"2. 'opposite': The answer should be identical in structure to 'correct' but the opposite preference.\n"
-        f"3. 'random': The answer should be identical in structure to 'correct' but a random preference.\n"
-        "4. 'generic': The answer should be identical in structure but generic, suitable for anyone.\n\n"
-        "Each answer must have the same tone and length. Be natural and realistic.\n"
-        "Think step by step and return the final four answers in JSON format at the end:\n"
-        "```json"
-        "{\n"
-        "  \"correct\": <answer>,\n"
-        "  \"opposite\": <answer>,\n"
-        "  \"random\": <answer>,\n"
-        "  \"generic\": <answer>\n"
-        "}\n"
-        "```"
-    )
+    if who == 'self':
+        prompt = (
+            f"Given this user background and preference: {user_bg}\n"
+            f"User question: {user_query}\n\n"
+            "You are creating a multiple-choice benchmark."
+            "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
+            "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
+            "2. 'random': The answer should be identical in structure to 'correct' but a random preference.\n"
+            "3. 'random': The answer should be identical in structure to 'correct' but another random preference.\n"
+            "4. 'generic': The answer should be identical in structure but generic, suitable for anyone.\n\n"
+            "Each answer must have the same tone and length. Be natural and realistic.\n"
+            "Think step by step and return the final four answers in JSON format at the end:\n"
+            "```json"
+            "{\n"
+            "  \"correct\": <answer>,\n"
+            "  \"random1\": <answer>,\n"
+            "  \"random2\": <answer>,\n"
+            "  \"generic\": <answer>\n"
+            "}\n"
+            "```"
+        )
+    else:
+        prompt = (
+            f"Given this user background and preference: {user_bg}\n"
+            f"User question: {user_query}\n\n"
+            "You are creating a multiple-choice benchmark. We need to prepare more than one correct answers for diversity."
+            "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
+            "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
+            "2. 'correct': The answer should mention the same 'correct' preference but rephrased.\n"
+            "3. 'correct': The answer should mention the same 'correct' preference but rephrased in another way.\n"
+            "4. 'incorrect': The answer should be identical in structure but generic, suitable for anyone.\n\n"
+            "Each answer must have the same tone and length. Be natural and realistic.\n"
+            "Think step by step and return the final four answers in JSON format at the end:\n"
+            "```json"
+            "{\n"
+            "  \"correct1\": <answer>,\n"
+            "  \"correct2\": <answer>,\n"
+            "  \"correct3\": <answer>,\n"
+            "  \"incorrect\": <answer>\n"
+            "}\n"
+            "```"
+        )
+    return prompt
