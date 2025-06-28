@@ -1,105 +1,82 @@
-from uuid import uuid4
+import json
+from pathlib import Path
+import argparse
+from json_repair import repair_json
 
-from utils import load_json
+import prompts
+import utils
 
 
-def generate_qas(interactions_file: str, context_id: str):
+def generate_qa_for_each_element(llm, element, verbose=False):
     """
-    Generates Q&A rows for each interaction preference in three modes:
-    'future', 'related', 'contradictory'.
-    Returns a list of dicts and does NOT include the context itself.
+    Generate a QA set for a single scenario element by adding:
+    - user_query: a question that elicits personalization based on the element's preference/background.
+    - correct_answer: the model's personalized response.
+    - incorrect_answers: a list of three incorrect responses (opposite, random, generic).
+    Mutates the element dict and returns it.
     """
-    interactions = load_json(interactions_file)
-    # predefined queries per type (aligned to interactions order)
-    future_qs = [
-        "Any recommendations for travel-friendly coffee gear that’s quick to use on field trips?",
-        "What are some unique audio stations or streaming services you'd suggest for work hours?",
-        "Could you suggest indoor weekend hobbies that are mentally engaging but relaxing?",
-        "Any big events or competitions worth watching this month—sports, games, anything?",
-        "Where’s the best place to get unusual fruits or ingredients without leaving the house?",
-        "Know of any really well-designed eco-friendly containers or gear lately?",
-        "Any thoughts on practical cars that still have some character to them?",
-        "Can you recommend a nostalgic snack that’s not too sweet but still indulgent?",
-        "I’m updating my wellness routine—any high-impact or calming recs?",
-        "Got any dark sci-fi book recs that aren’t too cliché?",
-        "Any recommendations for travel-friendly coffee gear that’s quick to use on field trips?",
-        "What are some unique audio stations or streaming services you'd suggest for work hours?",
-        "Could you suggest indoor weekend hobbies that are mentally engaging but relaxing?",
-        "Any big events or competitions worth watching this month—sports, games, anything?",
-        "Where’s the best place to get unusual fruits or ingredients without leaving the house?",
-        "Where’s the best place to get unusual fruits or ingredients without leaving the house?",
-        "Any thoughts on practical cars that still have some character to them?",
-        "Can you recommend a nostalgic snack that’s not too sweet but still indulgent?",
-        "I’m updating my wellness routine—any high-impact or calming recs?",
-        "Got any dark sci-fi book recs that aren’t too cliché?"
-    ]
-    related_qs = [
-        "I'm putting together a survival kit for the field—got coffee stuff covered, just need to sort the rest.",
-        "I’ve been playing audio a lot while debugging lately—it really helps me focus.",
-        "I’ve cleared some time this weekend and I’m debating whether to stay in or head out.",
-        "I’ve kept up with a few matches recently—definitely makes downtime more fun.",
-        "I was trying to make something new and realized my ingredient stash is super basic.",
-        "I’ve been trying to stay consistent with reducing waste, especially in the lab.",
-        "My car’s holding up well on field drives, though it’s definitely got quirks.",
-        "I was clearing out my drawer and found some old snacks—really took me back.",
-        "I feel like my current pace is decent, but could use more physical balance.",
-        "I stayed up writing again last night—must’ve gotten inspired by something I read.",
-        "I'm putting together a survival kit for the field—got coffee stuff covered, just need to sort the rest.",
-        "I’ve been playing audio a lot while debugging lately—it really helps me focus.",
-        "I’ve cleared some time this weekend and I’m debating whether to stay in or head out.",
-        "I’ve kept up with a few matches recently—definitely makes downtime more fun.",
-        "I was trying to make something new and realized my ingredient stash is super basic.",
-        "I was trying to make something new and realized my ingredient stash is super basic.",
-        "My car’s holding up well on field drives, though it’s definitely got quirks.",
-        "I was clearing out my drawer and found some old snacks—really took me back.",
-        "I feel like my current pace is decent, but could use more physical balance.",
-        "I stayed up writing again last night—must’ve gotten inspired by something I read."
-    ]
-    contradictory_qs = [
-        "Thinking of trying out a matcha latte routine in the mornings instead—what do you think?",
-        "I’m considering a full silent work policy this week to see how it impacts my concentration.",
-        "I’m actually signing up for a weekend wilderness retreat—figure I should try something new.",
-        "I might skip all the game streams this month, kind of burnt out on screen stuff.",
-        "Thinking of checking out the Sunday local market this weekend just for fun—worth it?",
-        "Do you think single-use biodegradable stuff is better than reusables in some cases?",
-        "I’ve been eyeing a sleek EV coupe—feels like time for a switch.",
-        "Thinking of trying a new chocolate dessert recipe tonight—feel like experimenting.",
-        "Do you know any calming guided yoga series online? I might want to slow down a bit.",
-        "I might check out this year's Booker Prize shortlist after all—worth it?",
-        "Thinking of trying out a matcha latte routine in the mornings instead—what do you think?",
-        "I’m considering a full silent work policy this week to see how it impacts my concentration.",
-        "I’m actually signing up for a weekend wilderness retreat—figure I should try something new.",
-        "I might skip all the game streams this month, kind of burnt out on screen stuff.",
-        "Thinking of checking out the Sunday local market this weekend just for fun—worth it?",
-        "Thinking of checking out the Sunday local market this weekend just for fun—worth it?",
-        "I’ve been eyeing a sleek EV coupe—feels like time for a switch.",
-        "Thinking of trying a new chocolate dessert recipe tonight—feel like experimenting.",
-        "Do you know any calming guided yoga series online? I might want to slow down a bit.",
-        "I might check out this year's Booker Prize shortlist after all—worth it?"
-    ]
+    # Generate user query prompt and get the question
+    prompt = prompts.generate_user_question(element)
+    user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
+    print('user_query', user_query)
+    user_query = utils.extract_after_token(user_query, '####Output')
 
-    qas = []
-    for i, inter in enumerate(interactions):
-        pref = inter.get('preference', f'pref_{i}')
-        # future
-        qas.append({
-            'query_id': str(uuid4()),
-            'user_query': future_qs[i],
-            'query_type': 'future',
-            'context_id': context_id
-        })
-        # related
-        qas.append({
-            'query_id': str(uuid4()),
-            'user_query': related_qs[i],
-            'query_type': 'related',
-            'context_id': context_id
-        })
-        # contradictory
-        qas.append({
-            'query_id': str(uuid4()),
-            'user_query': contradictory_qs[i],
-            'query_type': 'contradictory',
-            'context_id': context_id
-        })
-    return qas
+    # Generate answer options prompt and get JSON with labeled answers
+    prompt = prompts.generate_answer_options(element, user_query)
+    answers_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print('answers_json', answers_json)
+    answers_json = utils.extract_json_from_response(answers_json)
+    answers = json.loads(answers_json)
+
+    # Set up correct and incorrect answers based on whether the preference belongs to the user themselves or others
+    who = element.get("who", [])
+
+    # Attach new keys to element
+    element['user_query'] = user_query
+
+    if who == 'self':
+        element['correct_answer'] = answers.get('correct')
+        incorrect = []
+        for key in ('opposite', 'random', 'generic'):
+            if key in answers:
+                incorrect.append(answers[key])
+        element['incorrect_answers'] = incorrect
+    else:
+        element['correct_answer'] = answers.get('generic')
+        incorrect = []
+        for key in ('opposite', 'random', 'correct'):
+            if key in answers:
+                incorrect.append(answers[key])
+
+        element['incorrect_answers'] = incorrect
+
+    return element
+
+
+def generate_qa(llm, input_path, output_path, verbose=False):
+    with open(input_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    for uuid, persona in data.items():
+        conversations_by_type = persona.get("conversations", {})
+        for conv_type, conv_list in conversations_by_type.items():
+            for conv_elem in conv_list:
+                llm.reset_history()
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, verbose=verbose)
+
+                if who == 'self':
+                    element.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
+                else:
+                    element.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
+
+    utils.save_json(data, output_path)
+    print(f"Saved to {output_path}")
+

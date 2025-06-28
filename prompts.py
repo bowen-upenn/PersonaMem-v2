@@ -134,3 +134,92 @@ def generate_therapy_related_history():
     Let us think step by step and output the full JSON in the end.
     """
     return prompt
+
+
+def generate_user_question(element):
+    """
+    Generates a natural first-person user query that would *elicit* a personalized response
+    based on the element's preference/background, but does NOT reference the preference/background.
+    """
+    if "stereotypical_pref" in element or "anti_stereotypical_pref" in element:
+        if "stereotypical_pref" in element:
+            context = f"Given this hidden ground-truth user preference: {element['stereotypical_pref']}"
+        else:
+            context = f"Given this hidden ground-truth user preference: {element['anti_stereotypical_pref']}"
+        instruct = (
+            """
+            Write a first-person, natural question (for a chat with an assistant) 
+            that could plausibly be asked by this user. 
+            The question should invite recommendations, ideas, advice, or explanations. 
+            It should be phrased so that a personalized answer would use this ground-truth preference specific to this user, 
+            but the question itself should not mention or allude to it, so the preference remain hidden to the chatbot. 
+            Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar, 
+            since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences, 
+            and therefore, give this user unexpected personalized responses to enhance user engagement.
+            Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
+            """
+        )
+    elif "therapy_background" in element:
+        context = f"The user has a hidden personal background: {element['therapy_background']}"
+        instruct = (
+            """
+            Write a first-person, natural question seeking therapeutic advice, coping strategies, or support.
+            The question should be influenced by the user's background, but not mention or reference it, so the preference remain hidden to the chatbot.
+            Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar,
+            since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences.
+            and therefore, give this user unexpected personalized responses to enhance user engagement.
+            Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
+            """
+        )
+    else:
+        raise NotImplementedError("Unknown scenarios")
+
+    return (
+        f"{context}\n"
+        f"{instruct}\n"
+        f"Think step by step and return the user question after ###Output."
+    )
+
+
+def generate_answer_options(element, user_query):
+    """
+    Prompts the LLM to generate 4 answers to the user_query, all with the same wording/structure,
+    but each reflecting a different use of personalization:
+      - 'correct': personalized to the user's background or preference (contextually, not explicitly).
+      - 'opposite': same structure, but uses the *opposite* background/preference.
+      - 'random': uses a random background/preference unrelated to the user.
+      - 'generic': a generic, non-personalized answer.
+    All should be plausible, same length, and not leak the background directly.
+    We always assume the preference belongs to the user themselves in this prompt,
+    and will adjust this assumption in qa_generator.py.
+    """
+    # Construct backgrounds for each answer type
+    if "stereotypical_pref" in element:
+        user_bg = element["stereotypical_pref"]
+    elif "anti_stereotypical_pref" in element:
+        user_bg = element["anti_stereotypical_pref"]
+    elif "therapy_background" in element:
+        user_bg = element["therapy_background"]
+    else:
+        raise NotImplementedError("Unknown scenarios")
+
+    return (
+        f"Given this user background and preference: {user_bg}\n"
+        f"User question: {user_query}\n\n"
+        "You are creating a multiple-choice benchmark."
+        "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
+        "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
+        f"2. 'opposite': The answer should be identical in structure to 'correct' but the opposite preference.\n"
+        f"3. 'random': The answer should be identical in structure to 'correct' but a random preference.\n"
+        "4. 'generic': The answer should be identical in structure but generic, suitable for anyone.\n\n"
+        "Each answer must have the same tone and length. Be natural and realistic.\n"
+        "Think step by step and return the final four answers in JSON format at the end:\n"
+        "```json"
+        "{\n"
+        "  \"correct\": <answer>,\n"
+        "  \"opposite\": <answer>,\n"
+        "  \"random\": <answer>,\n"
+        "  \"generic\": <answer>\n"
+        "}\n"
+        "```"
+    )
