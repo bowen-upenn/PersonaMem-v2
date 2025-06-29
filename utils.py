@@ -21,12 +21,9 @@ def load_json(filename):
 
 def save_json(data, filename, clean=False):
     """
-    Save dictionary to a JSON file.
+    Save dictionary or a list of dictionaries to a JSON file.
     If clean=True and data is not empty, merge with existing JSON (if any).
     """
-    if not isinstance(data, dict):
-        raise ValueError("data must be a dictionary")
-
     if clean and data:
         # Try to load existing data
         if os.path.exists(filename):

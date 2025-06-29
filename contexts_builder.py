@@ -7,7 +7,6 @@ import utils
 
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
 
-
 def count_tokens(text) -> int:
     if isinstance(text, str):
         return len(ENCODER.encode(text))
@@ -16,58 +15,60 @@ def count_tokens(text) -> int:
     elif isinstance(text, dict):
         return len(ENCODER.encode(text['content']))
     else:
-        raise ValueError("Input must be a string or a list of strings.")
+        raise ValueError("Input must be a string, dict, or list of dicts.")
 
 
-def build_context(interactions, irrelevant_file, context_len):
+def build_context(interactions, context_len=None):
     """
-    Constructs a ~32k-token context by sampling from 'irrelevant_file'
-    and interleaving with conversations from 'interactions_file'.
-    Returns a dict {context_id: messages} and saves to JSON.
+    Constructs a multi-turn conversation list for each persona by interleaving
+    their conversation blocks with irrelevant data. Inserts updated blocks
+    at random positions. Saves flattened messages to JSON and returns a list of dictionaries:
+        [ {role, content}, ... ]
     """
-    irrelevant = utils.load_json(irrelevant_file)
-    random.shuffle(irrelevant)
+    for uuid, persona in interactions.items():
+        # separate blocks
+        not_updated = []      # list of message lists
+        updated_blocks = []   # list of message lists to insert randomly
 
-    # load data of each persona
-    all_uuids = interactions.keys()
-    for uuid in all_uuids:
-        interaction_curr_persona = interactions[uuid].get("conversations", {})
+        for conv_type, blocks in persona.get("conversations", {}).items():
+            for block in blocks:
+                msgs = block.get("conversations", [])
+                if block.get("updated", False):
+                    updated_blocks.append(msgs)
+                else:
+                    not_updated.append(msgs)
 
-        messages = []
-        total = 0
-        idx = 0
+        # shuffle non-updated base blocks
+        random.shuffle(not_updated)
 
-        # add ~80% irrelevant messages first
-        limit_irrelevant = context_len * 0.8
-        while idx < len(irrelevant) and total < limit_irrelevant:
-            original_idx = list(irrelevant[idx].keys())[0]
-            conv = irrelevant[idx][original_idx]
-            total += count_tokens(conv)
-            messages.append(conv)
-            idx += 1
+        # start ordered list
+        ordered = list(not_updated)
 
-        num_irrelevant_tokens = total
+        # insert each updated block at a random position
+        for msgs in updated_blocks:
+            insert_idx = random.randint(0, len(ordered))
+            ordered.insert(insert_idx, msgs)
 
-        # interleave all conversations from interactions
-        data_types = interaction_curr_persona.keys()
-        for data_type in data_types:
-            conv_curr_type = interaction_curr_persona[data_type]
-            # randomly shuffle this list
-            random.shuffle(conv_curr_type)
+        # flatten to single list
+        all_messages = [msg for block in ordered for msg in block]
 
-            for conv in conv_curr_type:
-                conv = conv.get("conversations", [])
-                messages.append(conv)
-                total += count_tokens(conv)
+        # compute total tokens
+        total_tokens = count_tokens(all_messages)
+        print(f"Total tokens: {total_tokens}.")
 
-        print(f"Total tokens in {uuid}: {total}. Number of irrelevant tokens: {num_irrelevant_tokens}.")
+        # # optional trimming by token budget
+        # if context_len is not None:
+        #     trimmed = []
+        #     tokens = 0
+        #     for msg in all_messages:
+        #         tcount = count_tokens(msg)
+        #         if tokens + tcount > context_len:
+        #             break
+        #         trimmed.append(msg)
+        #         tokens += tcount
+        #     all_messages = trimmed
 
-        # shuffle the messages as a list of lists
-        random.shuffle(messages)
-
-        # flatten the messages as a single list
-        messages = [msg for sublist in messages for msg in sublist]
-
-        # save to JSON with unique ID
-        utils.save_json(messages, f'data/contexts/context_{uuid}.json')
-        print(f"Saved context for {uuid} with {len(messages)} messages.")
+        # save raw messages
+        filename = f"data/contexts/context_{uuid}.json"
+        utils.save_json(all_messages, filename)
+        print(f"Saved contexts to {filename}.")
