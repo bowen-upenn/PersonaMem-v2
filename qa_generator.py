@@ -8,7 +8,7 @@ import prompts
 import utils
 
 
-def generate_qa_for_each_element(llm, element, verbose=False):
+def generate_qa_for_each_element(llm, element, conv_list, verbose=False):
     """
     Generate a QA set for a single scenario element by adding:
     - user_query: a question that elicits personalization based on the element's preference/background.
@@ -33,12 +33,30 @@ def generate_qa_for_each_element(llm, element, verbose=False):
     # Attach new keys to element
     element['user_query'] = user_query
 
+    # For updated preference, we find its previous one and assign previous correct option as an incorrect one
+    prev_correct = None
+    if element['updated']:
+        prev_pref = element['prev_pref']
+        for curr_element in conv_list:
+            if (('stereotypical_pref' in curr_element and curr_element['stereotypical_pref'] == prev_pref) or
+                    ('anti_stereotypical_pref' in curr_element and curr_element['anti_stereotypical_pref'] == prev_pref)):
+                # Previous preference must already have correct answers generated
+                prev_correct = curr_element['correct_answer']
+            else:
+                continue
+
     if who == 'self':
         element['correct_answer'] = answers.get('correct')
         incorrect = []
-        for key in ('random1', 'random2', 'generic'):
-            if key in answers:
-                incorrect.append(answers[key])
+        if prev_correct:    # only happen with who == self
+            for key in ('random1', 'generic'):
+                if key in answers:
+                    incorrect.append(answers[key])
+            incorrect.append(prev_correct)
+        else:
+            for key in ('random1', 'random2', 'generic'):
+                if key in answers:
+                    incorrect.append(answers[key])
         element['incorrect_answers'] = incorrect
     else:
         element['correct_answer'] = answers.get('incorrect')
@@ -66,7 +84,7 @@ def generate_qa(llm, input_path, output_path, verbose=False):
                 if conv_type == 'knowledge_query' and conv_elem['idx_repeat'] < 2:   # we assume the user asking a topic >= 3 times indicates user interests
                     continue
 
-                qa_fields = generate_qa_for_each_element(llm, conv_elem, verbose=verbose)
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, verbose=verbose)
                 conv_elem.update({
                     "user_query": qa_fields.get("user_query"),
                     "correct_answer": qa_fields.get("correct_answer"),

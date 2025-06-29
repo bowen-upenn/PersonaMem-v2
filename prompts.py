@@ -36,6 +36,13 @@ def verify_conflicts():
     return prompt
 
 
+def update_preference(pref):
+    prompt = f"""
+    Assume the user later changes their previous preference "{pref}" to its opposite. Please give me the new, opposite preference here. No additional text.
+    """
+    return prompt
+
+
 def generate_conversations(persona, preference, type, is_others_pref=False):
     who = "the user" if is_others_pref else "this person"
     prompt = f"""
