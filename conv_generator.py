@@ -11,10 +11,10 @@ import utils
 def generate_interactions_from_persona(llm, all_personas, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, verbose=False):
     """
     Load one random persona from the JSONL file, then sequentially query the Assistant API with three prompts:
-      1) Add name and demographic info in JSON for [PERSONA]
-      2) Propose 10 overly stereotypical preferences
-      3) Propose 10 anti-stereotypical preferences avoiding conflicts
-      4) Verify and replace any conflicts
+      1) Add name and demographic info in JSON for the persona
+      2) Propose overly stereotypical and anti-stereotypical preferences
+      3) Verify and replace any conflicts
+      4) Generate cross-domain user-chatbot conversations that implicitly mention the preferences
     Save the final JSON to output_file.
     """
     output_dict = {}
@@ -83,16 +83,30 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                 # Only generate email conversations for aligned preferences
                 if alignment == 'yes':
                     # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
-                    is_others_pref = random.random() < 0.4
-                    # is_others_pref = False
-                    # Find one random type from implicit_types for each pref
-                    type = random.choice(implicit_types)
-                    prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
-                    conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-                    conv_turns = utils.extract_json_from_response(conv_turns)
-                    if conv_turns:
-                        who = 'others' if is_others_pref else 'self'
-                        conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns})
+                    is_others_pref = random.random() < 0.33
+
+                    # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
+                    if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                        repeat = random.randint(1, 6)
+                        type = 'knowledge_query'
+                        for idx_repeat in range(repeat):
+                            llm.reset_history()
+                            prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
+
+                            conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                            conv_turns = utils.extract_json_from_response(conv_turns)
+                            if conv_turns:
+                                conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns})
+                    else:
+                        # Find one random type from implicit_types for each pref
+                        type = random.choice(implicit_types)
+                        prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
+
+                        conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                        conv_turns = utils.extract_json_from_response(conv_turns)
+                        if conv_turns:
+                            who = 'others' if is_others_pref else 'self'
+                            conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns})
 
             # Update final_json to only include aligned preferences
             aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]

@@ -22,6 +22,7 @@ def main():
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model.')
+    parser.add_argument('--step', type=str, default='generate_data', help='Choose generate_data, generate_qa, prepare_benchmark, or run_eval.')
     parser.add_argument('--conv_output_path', type=str, default='data/interactions.jsonl', help='Set the path to the output directory')
     parser.add_argument('--qa_output_path', type=str, default='data/qas.jsonl', help='Set the path to the output directory')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
@@ -35,6 +36,7 @@ def main():
 
     # Override args from config.yaml with command-line arguments if provided
     args['models']['llm_model'] = cmd_args.model if cmd_args.model is not None else args['models']['llm_model']
+    args['inference']['step'] = cmd_args.step if cmd_args.step is not None else args['inference']['step']
     args['data']['conv_output_path'] = cmd_args.conv_output_path if cmd_args.conv_output_path is not None else args['data']['conv_output_path']
     args['data']['qa_output_path'] = cmd_args.qa_output_path if cmd_args.qa_output_path is not None else args['data']['qa_output_path']
     args['data']['result_path'] = cmd_args.result_path if cmd_args.result_path is not None else args['data']['result_path']
@@ -56,20 +58,28 @@ def main():
 
     llm = QueryLLM(args)
 
-    # find if the conv_output_path already exists
-    if not os.path.exists(args['data']['conv_output_path']):
+    if args['inference']['step'] == 'generate_data':
         output_dict = generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],
                                                          num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], verbose=args['inference']['verbose'])
-    else:
-        print(f"File {args['data']['conv_output_path']} already exists. Loading existing interactions.")
+    elif args['inference']['step'] == 'generate_qa':
+        if not os.path.exists(args['data']['conv_output_path']):
+            raise FileNotFoundError
+        print(f"File {args['data']['conv_output_path']} exists. Loading existing interactions.")
         with open(args['data']['conv_output_path'], 'r') as file:
             output_dict = json.load(file)
 
-    # # Build single long context
-    # build_context(output_dict, args['data']['irrelevant_context_path'], args['data']['context_length'])
+        # Generate all Q&A rows
+        qas = generate_qa(llm, input_path=args['data']['conv_output_path'], output_path=args['data']['qa_output_path'])
 
-    # # Generate all Q&A rows
-    qas = generate_qa(llm, input_path=args['data']['conv_output_path'], output_path=args['data']['qa_output_path'])
+    # Build long context
+    elif args['inference']['step'] == 'prepare_benchmark':
+    # build_context(output_dict, args['data']['irrelevant_context_path'], args['data']['context_length'])
+        pass
+
+    elif args['inference']['step'] == 'run_eval':
+        pass
+    else:
+        raise KeyError
 
 if __name__ == '__main__':
     main()

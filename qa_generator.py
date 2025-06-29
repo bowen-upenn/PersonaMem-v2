@@ -41,7 +41,7 @@ def generate_qa_for_each_element(llm, element, verbose=False):
                 incorrect.append(answers[key])
         element['incorrect_answers'] = incorrect
     else:
-        element['correct_answer'] = answers.get('generic')
+        element['correct_answer'] = answers.get('incorrect')
         incorrect = []
         for key in ('correct1', 'correct2', 'correct3'):
             if key in answers:
@@ -62,8 +62,11 @@ def generate_qa(llm, input_path, output_path, verbose=False):
             print('conv_type', conv_type)
             for conv_elem in tqdm(conv_list):
                 llm.reset_history()
-                qa_fields = generate_qa_for_each_element(llm, conv_elem, verbose=verbose)
 
+                if conv_type == 'knowledge_query' and conv_elem['idx_repeat'] < 2:   # we assume the user asking a topic >= 3 times indicates user interests
+                    continue
+
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, verbose=verbose)
                 conv_elem.update({
                     "user_query": qa_fields.get("user_query"),
                     "correct_answer": qa_fields.get("correct_answer"),

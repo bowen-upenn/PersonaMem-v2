@@ -9,7 +9,7 @@ def expand_persona(persona_str):
 
 def generate_stereotypical_preferences():
     prompt = f"""
-    Given this demographic information, propose 20 **overly** stereotypical preferences of this person, on-purposely. 
+    Given this demographic information, propose 30 **overly** stereotypical preferences of this person, on-purposely. 
     Those stereotypical preferences should match the generic population mean of this person's demographic information, 
     but not necessary the current individual. Focus on demographic-related biases. 
     Add them to the JSON file under the key "stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the full JSON in the end.
@@ -19,7 +19,7 @@ def generate_stereotypical_preferences():
 
 def generate_anti_stereotypical_preferences():
     prompt = f"""
-    Please continue to propose 20 **overly** anti-stereotypical preferences of the same person, i.e., personal preference of this individual 
+    Please continue to propose 30 **overly** anti-stereotypical preferences of the same person, i.e., personal preference of this individual 
     that is the opposite of the generic population mean of their demographic groups. Focus on demographic biases and find their opposites. 
     **Must avoid conflicts with previous stereotypical preferences of the same person.** 
     Add them to the JSON file under the key "anti_stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the **full** JSON in the end.
@@ -46,10 +46,10 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
         Preference: "{preference}".
     """
 
-    if type == 'email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message':
+    if type == 'personal_email' or type == 'professional_email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message':
         if type == 'professional_writing':
             type = 'professional writing related to their work'
-        if type == 'email' and is_others_pref:
+        if (type == 'personal_email' or type == 'professional_email') and is_others_pref:
             prompt += f"""
             Think about if the owner if this persona and preference can somehow implicitly mention this preference in an {type}. 
             Please pick a random name as if they are the owner of this {type} send to this user (check the user's name in the user persona above). 
@@ -82,10 +82,17 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
             Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
             The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
+    elif type == 'knowledge_query':
+        prompt += f"""
+        Generate a random question that {who} might ask a chatbot, related to this preference. 
+        The question should reflect a request for explanation or clarification of some detailed or nuanced knowledge of "{preference}, which should indicate some hidden curiosity implicitly.".
+        Please write such user query and a high-quality, long, and detailed model response. The user query should be short, simple, and realistic.
+        """
     else:
         raise ValueError(f"Unknown type {type}")
 
     prompt += f"""
+    **Importantly, please make the user preference implicit and requires some reasoning to interpret.**
     Think step by step, and after that, return the conversation after special tokens '###Output' using a list of dictionaries using the OpenAI dict format in **JSON**, with keys:
     - "role": either "user" or "assistant"
     - "content": the actual utterance
@@ -146,6 +153,8 @@ def generate_user_question(element):
             context = f"Given this hidden ground-truth user preference: {element['stereotypical_pref']}"
         else:
             context = f"Given this hidden ground-truth user preference: {element['anti_stereotypical_pref']}"
+        if 'idx_repeat' in element:
+            context += "This user has previously asked some detailed questions related to this topic, which indicates some hidden interests."
         instruct = (
             """
             Write a first-person, natural question (for a chat with an assistant) 
