@@ -71,10 +71,11 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
             The user request to refine the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
     elif type == 'translation':
-        random_languages = random.choice(['English', 'Hindi', 'Chinese', 'Japanese', 'Korean', 'French', 'Germany', 'Spanish', 'Arabic', 'Vietnamese', 'Italian', 'Thai', 'Portuguese', 'Hebrew', 'Ukrainian'])
+        random_languages = random.choice(['Chinese', 'Japanese', 'Hindi', 'Korean', 'French', 'Germany', 'Spanish', 'Arabic', 'Vietnamese', 'Italian', 'Thai', 'Portuguese', 'Hebrew', 'Ukrainian'])
+        target_language = 'English' if random.random() > 0.67 else 'their native language'
         if is_others_pref:
             prompt += f"""
-            Think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in a {type} written by others from {random_languages} into their native language. 
+            Think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in a {type} written by others from {random_languages} into {target_language}. 
             If these two languages are the same, just choose a different source language yourself, without saying it in the formatted output.
             In the original {type}, the user somehow includes this preference information, and mention where the user found this piece of {type}.
             Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
@@ -83,11 +84,29 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
         else:
             prompt += f"""
             First please figure out the native language of this person. Next,
-            think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in their own {type} written in their native language to {random_languages} for other readers.
+            think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in their {type} written in {target_language} to {random_languages} for other readers.
             If these two languages are the same, just choose a different target language yourself, without saying it in the formatted output.
             In the original {type}, the user somehow includes this preference information, and mention that this is written by the user themselves.
             Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
             The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
+    elif type == 'trouble_consult':
+        if is_others_pref:
+            prompt += f"""
+            Think about if the user can implicitly mention this preference when they consult ChatGPT about some troubles this user knows has in their lives. 
+            The trouble topic can be diverse like relations, health, romantics, politics, family, study, work, safety, identity, personal character, philosophy, destiny, and etc, 
+            and the person who experienced this trouble can be anyone this user knows, but not themselves. The user query needs to mention who has this concern.
+            However, "{preference}" is NOT what troubles the person. The user should talk about this person having other concerns while unintentionally and naturally mentions this preference.
+            Please write such user query, and the chatbot's answers. 
+            The user query should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            """
+        else:
+            prompt += f"""
+            Think about if the user can implicitly mention this preference when they consult ChatGPT about some troubles the user has in their lives. 
+            The trouble topic can be diverse like relations, health, romantics, politics, family, study, work, safety, identity, personal character, philosophy, destiny, and etc.
+            However, "{preference}" is NOT what troubles the user. The user should talk about other concerns while unintentionally and naturally mentions this preference.
+            Please write such user query, and the chatbot's answers. 
+            The user query should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
     elif type == 'knowledge_query':
         prompt += f"""

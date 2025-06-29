@@ -79,6 +79,19 @@ def extract_json_from_response(response_str):
             raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
 
 
+def merge_consecutive_roles(messages):
+    if not messages:
+        return []
+    merged = [messages[0].copy()]
+    for msg in messages[1:]:
+        if msg['role'] == merged[-1]['role']:
+            # Merge content with two newlines for readability
+            merged[-1]['content'] += "\n\n" + msg['content']
+        else:
+            merged.append(msg.copy())
+    return merged
+
+
 def extract_after_token(text: str, token: str) -> str:
     """
     Extracts and returns the portion of `text` that follows the first occurrence of `token`.

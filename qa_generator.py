@@ -81,8 +81,13 @@ def generate_qa(llm, input_path, output_path, verbose=False):
             for conv_elem in tqdm(conv_list):
                 llm.reset_history()
 
-                if conv_type == 'knowledge_query' and conv_elem['idx_repeat'] < 2:   # we assume the user asking a topic >= 3 times indicates user interests
+                if conv_type != 'knowledge_query':
                     continue
+
+                if conv_type == 'knowledge_query':
+                    # print("conv_elem['idx_repeat']", conv_elem['idx_repeat'])
+                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                        continue # we assume the user asking a topic >= 3 times indicates user interests
 
                 qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, verbose=verbose)
                 conv_elem.update({

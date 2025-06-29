@@ -58,6 +58,7 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
         conversations = {}
         for type in implicit_types:
             conversations[type] = []
+        updates = {}
 
         for pref_key, pref_list in [
             ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
@@ -89,6 +90,9 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                     if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
                         repeat = random.randint(1, 6)
                         type = 'knowledge_query'
+                        if verbose:
+                            print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
+
                         for idx_repeat in range(repeat):
                             llm.reset_history()
                             prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
@@ -100,40 +104,44 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                     else:
                         # Find one random type from implicit_types for each pref
                         type = random.choice(implicit_types)
+                        if verbose:
+                            print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
+
                         prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
 
                         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
                         conv_turns = utils.extract_json_from_response(conv_turns)
+                        conv_turns = utils.merge_consecutive_roles(conv_turns)
                         if conv_turns:
                             who = 'others' if is_others_pref else 'self'
                             conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
 
-                    # We update 1/3 preferences to their opposite along the timeline
-                    if random.random() < 0.33 and not is_others_pref and pref_key != "therapy_background" and type != 'knowledge_query':
+                    # We update 2/3 preferences to their opposite along the timeline
+                    if random.random() < 0.67 and not is_others_pref and pref_key != "therapy_background" and type != 'knowledge_query':
                         llm.reset_history()
                         prompt = prompts.update_preference(pref)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
                         updated_pref = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-                        # Update the JSON file
-                        final_json[pref_key][pref] = f"{pref} -> {updated_pref}"
+                        # Record the update
+                        updates[pref] = updated_pref
 
                         llm.reset_history()
-                        type = random.choice(implicit_types)
                         prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref)
 
                         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
                         conv_turns = utils.extract_json_from_response(conv_turns)
+                        conv_turns = utils.merge_consecutive_roles(conv_turns)
                         if conv_turns:
-                            conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': prev})
+                            conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
 
             # Update final_json to only include aligned preferences
             aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]
             aligned_anti = [c['anti_stereotypical_pref'] for convs in conversations.values() for c in convs if 'anti_stereotypical_pref' in c]
 
-            final_json['stereotypical_preferences'] = aligned_stereo
-            final_json['anti_stereotypical_preferences'] = aligned_anti
+            final_json['stereotypical_preferences'] = list(set(aligned_stereo))     # the repeated calls on knowledge_query may introduce repeated preferences in the previous step
+            final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
+            final_json['preference_updates'] = updates
 
-        print('conversations', conversations)
         # 6) attach to the parsed output and save
         final_json["conversations"] = conversations
         persona_id = str(uuid4())
