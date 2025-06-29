@@ -60,14 +60,14 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
             prompt += f"""
             Think about if the owner if this persona and preference can somehow implicitly mention this preference in an {type}. 
             Please pick a random name as if they are the owner of this {type} send to this user (check the user's name in the user persona above). 
-            Please write such {type}, the user query to the model to explain this {type} (must be appended at the end of the original {type} as a single user turn), and an explanations. 
+            Please write the user query to the model to explain this {type}, the {type}, and an explanations. 
             The user request to explain the {type} received should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
         else:
             whose = "the user's first perspective" if is_others_pref else f"a third person's perspective and pick a random name as the author of this {type}, such that this {type} is not written by this user"
             prompt += f"""
             Think about if the user can implicitly mention this preference when they ask ChatGPT to help improve the language in this {type}, and in the original {type}, the user somehow includes this information. 
-            The {type} should use {whose}. Please write such {type}, the user query to the model to refine this {type} (must be appended at the end of the original {type} as a single user turn), and the refined {type}. 
+            The {type} should use {whose}. Please write the user query to the model to refine this {type}, the {type}, and the refined {type}. 
             The user request to refine the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
     elif type == 'translation':
@@ -78,7 +78,7 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
             Think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in a {type} written by others from {random_languages} into {target_language}. 
             If these two languages are the same, just choose a different source language yourself, without saying it in the formatted output.
             In the original {type}, the user somehow includes this preference information, and mention where the user found this piece of {type}.
-            Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
+            Please write the user query to the model to translate this {type}, the {type}, and the translated {type}. 
             The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
         else:
@@ -87,7 +87,7 @@ def generate_conversations(persona, preference, type, is_others_pref=False):
             think about if the user can implicitly mention this preference when they ask ChatGPT to help translate in their {type} written in {target_language} to {random_languages} for other readers.
             If these two languages are the same, just choose a different target language yourself, without saying it in the formatted output.
             In the original {type}, the user somehow includes this preference information, and mention that this is written by the user themselves.
-            Please write such {type}, the user query to the model to translate this {type} (must be appended at the end of the original {type} as a single user turn), and the translated {type}. 
+            Please write the user query to the model to translate this {type}, the {type}, and the translated {type}. 
             The user request to translate the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
     elif type == 'trouble_consult':
