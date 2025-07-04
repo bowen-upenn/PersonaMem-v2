@@ -3,6 +3,7 @@ import random
 import openai
 import re
 from uuid import uuid4
+from datasets import load_dataset
 
 import prompts
 import utils
@@ -46,7 +47,17 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
         prompt = prompts.generate_therapy_related_history()
         final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
 
-        # 6) curate conversations
+        # # 6) generate coding related preferences
+        # prompt = prompts.pick_coding_language()
+        # coding_language = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        # try:
+        #     ds = load_dataset("codeparrot/github-code", streaming=True, split="train", languages=[coding_language], trust_remote_code=True)
+        #     for element in iter(ds).take(10_000):
+        #     print(next(iter(ds))["code"])
+        # except:
+        #     pass
+
+        # 7) curate conversations
         # parse JSON part from the response
         try:
             final_json = utils.extract_json_from_response(final_json)
@@ -142,7 +153,7 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
             final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
             final_json['preference_updates'] = updates
 
-        # 6) attach to the parsed output and save
+        # 8) attach to the parsed output and save
         final_json["conversations"] = conversations
         persona_id = str(uuid4())
         output_dict[persona_id] = final_json
