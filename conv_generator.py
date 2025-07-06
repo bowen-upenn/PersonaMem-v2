@@ -98,23 +98,33 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                     is_others_pref = random.random() < 0.33
 
                     # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
-                    if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                    # if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                    if pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
                         """ 
                         This block of code generates repetitive user knowledge queries to the chatbot
                         """
                         repeat = random.randint(1, 6)
                         type = 'knowledge_query'
+                        image_query = True #if random.random() < 0.5 else False
                         if verbose:
-                            print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
+                            print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}{utils.Colors.OKGREEN} multi-modal: {utils.Colors.ENDC}{image_query}')
 
                         for idx_repeat in range(repeat):
                             llm.reset_history()
-                            prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
 
-                            conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-                            conv_turns = utils.extract_json_from_response(conv_turns)
-                            if conv_turns:
-                                conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False})
+                            if image_query:
+                                # Image-based user query
+                                images_searched = llm.search_images(pref)
+                                print('images_searched', images_searched)
+
+                            else:
+                                # Text-based user query
+                                prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
+
+                                conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                                conv_turns = utils.extract_json_from_response(conv_turns)
+                                if conv_turns:
+                                    conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False})
                     else:
                         """
                         This is the default block that implicitly encode user personas and preferences into random cross-domain scenarios

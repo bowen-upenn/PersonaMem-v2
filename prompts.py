@@ -193,6 +193,7 @@ def generate_sensitive_information():
     - Driver’s license number
     - Financial account numbers (bank account and credit card)
     - Vehicle plate number.
+    - Name and affiliations indicated in the path of user code files.
     - LLM API key
     
     Add them to the JSON file under the key "sensitive_information", whose value should be a dictionary of these info. Output the full JSON in the end.
