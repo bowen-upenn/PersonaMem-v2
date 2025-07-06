@@ -45,17 +45,11 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
 
         # 5) additional therapy-related personal history
         prompt = prompts.generate_therapy_related_history()
-        final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        llm.query_llm(prompt, use_history=True, verbose=verbose)
 
-        # # 6) generate coding related preferences
-        # prompt = prompts.pick_coding_language()
-        # coding_language = llm.query_llm(prompt, use_history=True, verbose=verbose)
-        # try:
-        #     ds = load_dataset("codeparrot/github-code", streaming=True, split="train", languages=[coding_language], trust_remote_code=True)
-        #     for element in iter(ds).take(10_000):
-        #     print(next(iter(ds))["code"])
-        # except:
-        #     pass
+        # # 6) generate sensitive private information
+        prompt = prompts.generate_sensitive_information()
+        final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
 
         # 7) curate conversations
         # parse JSON part from the response
@@ -71,6 +65,12 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
             conversations[type] = []
         updates = {}
 
+        try:
+            sensitive_info = final_json['sensitive_information']
+        except json.JSONDecodeError as e:
+            print("Failed to parse JSON:", e)
+            sensitive_info = {}
+
         for pref_key, pref_list in [
             ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
             ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
@@ -79,7 +79,7 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
             for pref in pref_list:
                 llm.reset_history()
                 # We verify if a preference is actually aligned with the model's believed stereotypes or anti-stereotypes
-                if not self_verify or pref_key == "therapy_background":
+                if not self_verify or pref_key == "therapy_background" or pref_key == "sensitive_information":
                     alignment = 'yes'
                 else:
                     # 1) Guess which persona fits the preference
@@ -99,6 +99,9 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
 
                     # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
                     if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                        """ 
+                        This block of code generates repetitive user knowledge queries to the chatbot
+                        """
                         repeat = random.randint(1, 6)
                         type = 'knowledge_query'
                         if verbose:
@@ -113,37 +116,67 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                             if conv_turns:
                                 conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False})
                     else:
+                        """
+                        This is the default block that implicitly encode user personas and preferences into random cross-domain scenarios
+                        """
                         # Find one random type from implicit_types for each pref
                         type = random.choice(implicit_types)
                         if verbose:
                             print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
 
-                        prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
+                        # Access if the chatbot can recognize sensitive private information and avoid them in the responses
+                        random_sensitive_info = None
+                        if random.random() < 0.33:
+                            key = random.choice(list(sensitive_info.keys()))
+                            value = str(sensitive_info[key])
+                            random_sensitive_info = f"{key}: {value}"
+                            if verbose:
+                                print("random_sensitive_info", random_sensitive_info)
 
+                        prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref, random_sensitive_info)
                         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+
                         conv_turns = utils.extract_json_from_response(conv_turns)
                         conv_turns = utils.merge_consecutive_roles(conv_turns)
+                        who = 'others' if is_others_pref else 'self'
+
                         if conv_turns:
-                            who = 'others' if is_others_pref else 'self'
-                            conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
+                            if random_sensitive_info:
+                                conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False, 'sensitive_info': random_sensitive_info})
+                            else:
+                                conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
 
                     # We update 2/3 preferences to their opposite along the timeline
-                    if random.random() < 0.67 and not is_others_pref and pref_key != "therapy_background" and type != 'knowledge_query':
+                    """
+                    This block of code generates preference updates
+                    """
+                    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"]:
                         llm.reset_history()
                         prompt = prompts.update_preference(pref)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
                         updated_pref = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
                         # Record the update
                         updates[pref] = updated_pref
-
                         llm.reset_history()
-                        prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref)
 
+                        random_sensitive_info = None
+                        if random.random() < 0.33:
+                            key = random.choice(list(sensitive_info.keys()))
+                            value = sensitive_info[key]
+                            random_sensitive_info = f"{key}: {value}"
+                            if verbose:
+                                print("random_sensitive_info", random_sensitive_info)
+
+                        prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref, random_sensitive_info)
                         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+
                         conv_turns = utils.extract_json_from_response(conv_turns)
                         conv_turns = utils.merge_consecutive_roles(conv_turns)
                         if conv_turns:
-                            conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
+                            if random_sensitive_info:
+                                conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref, 'sensitive_info': random_sensitive_info})
+                            else:
+                                conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
 
             # Update final_json to only include aligned preferences
             aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]

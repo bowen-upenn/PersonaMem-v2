@@ -70,6 +70,30 @@ def generate_qa_for_each_element(llm, element, conv_list, verbose=False):
     return element
 
 
+def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
+    # Generate user query prompt and get the question
+    prompt = prompts.generate_user_question_sensitive_info(element, persona)
+    user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
+    user_query = utils.extract_after_token(user_query, '###Output')
+
+    # Generate answer options prompt and get JSON with labeled answers
+    who = element['who']
+    prompt = prompts.generate_answer_options_sensitive_info(element, user_query)
+    answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    answers = utils.extract_json_from_response(answers)
+
+    # Attach new keys to element
+    element['user_query_sensitive_info'] = user_query
+    element['correct_answer_sensitive_info'] = answers.get('correct')
+    incorrect = []
+    for key in ('leaked1', 'leaked2', 'random'):
+        if key in answers:
+            incorrect.append(answers[key])
+    element['incorrect_answers_sensitive_info'] = incorrect
+
+    return element
+
+
 def generate_qa(llm, input_path, output_path, verbose=False):
     with open(input_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -92,6 +116,19 @@ def generate_qa(llm, input_path, output_path, verbose=False):
                     "correct_answer": qa_fields.get("correct_answer"),
                     "incorrect_answers": qa_fields.get("incorrect_answers"),
                 })
+
+                if "sensitive_info" in conv_elem:
+                    print('sensitive_info', conv_elem['sensitive_info'])
+                    curr_persona = persona.get("persona", "")
+                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
+                    conv_elem.update({
+                        "user_query_sensitive_info": qa_fields.get("user_query_sensitive_info"),
+                        "correct_answer_sensitive_info": qa_fields.get("correct_answer_sensitive_info"),
+                        "incorrect_answers_sensitive_info": qa_fields.get("incorrect_answers_sensitive_info"),
+                    })
+                    print("conv_elem['user_query_sensitive_info']", conv_elem['user_query_sensitive_info'])
+                    print("conv_elem['correct_answer_sensitive_info']", conv_elem["correct_answer_sensitive_info"])
+                    print("conv_elem['incorrect_answers_sensitive_info']", conv_elem["incorrect_answers_sensitive_info"])
 
     utils.save_json(data, output_path)
     print(f"Saved to {output_path}")
