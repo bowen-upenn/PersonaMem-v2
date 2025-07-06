@@ -1,18 +1,48 @@
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 import timeout_decorator
 import utils
 import os
+import re
+from dotenv import load_dotenv
+import json
 
 
 class QueryLLM:
     def __init__(self, args):
         self.args = args
-        # Load the API key
-        with open("api_tokens/openai_key.txt", "r") as api_key_file:
-            self.api_key = api_key_file.read().strip()
-
-        self.client = OpenAI(api_key=self.api_key)
         self.history = []
+
+        load_dotenv()   # Load environment variables
+        self._setup_client()
+
+
+    def _setup_client(self):
+        """Setup OpenAI or Azure OpenAI client based on environment variables."""
+        # Check for Azure OpenAI configuration first
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_key = os.getenv("AZURE_OPENAI_KEY")
+        azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+        
+        if azure_endpoint and azure_key and azure_deployment:
+            print("Using Azure OpenAI configuration")
+            self.client = AzureOpenAI(
+                azure_endpoint=azure_endpoint,
+                api_key=azure_key,
+                api_version=azure_api_version,
+            )
+            self.model = azure_deployment
+        else:
+            try:
+                print("Using OpenAI configuration")
+                self.client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+                self.model = self.args['models']['llm_model']
+            except Exception as e:
+                raise ValueError(
+                    "No valid LLM configuration found. Please set either:\n"
+                    "Microsoft Azure with AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME\n"
+                    "or OpenAI with OPENAI_KEY."
+                )
 
 
     def reset_history(self):
@@ -20,56 +50,38 @@ class QueryLLM:
 
 
     @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # 60s timeout
-    def search_images(self, preference, recency=None, domains=None):
+    def search_images(self, preference):
         """
-        Use the image_query tool to search for images matching the query.
+        Generate image search queries based on user preferences and perform actual web search for images.
+        Uses OpenAI's web search capabilities to find relevant images.
         Returns a list of image URLs.
         """
-        # Define the image_query function schema
-        functions = [
-            {
-                "name": "image_query",
-                "description": "Search for images given a text query and provide textual responses",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "q": {"type": "string", "description": "Search query text"},
-                        "recency": {"type": ["integer", "null"], "description": "Filter by recency in days"},
-                        "domains": {
-                            "type": ["array", "null"],
-                            "items": {"type": "string"},
-                            "description": "Optional list of domains to restrict search"
-                        }
-                    },
-                    "required": ["q"]
-                }
-            }
-        ]
-
-        # Call the ChatCompletion API with a forced tool call
-        response = self.client.chat.completions.create(
+        # Use OpenAI's web search tool to find images
+        response = self.client.responses.create(
             model=self.args['models']['llm_model'],
-            messages=[{"role": "user", "content": f"Search 3 images that subtly hint at the user’s preferences: {preference[0].lower()}{preference[1:]}. "}],
-            functions=functions,
-            function_call={"name": "image_query"}
+            input=f"Search for images related to this preference: '{preference}'. Find one high-quality image with URL that subtly relate to this preference. Use real-world photos as if they were taken by this user.",
+            tools=[{
+                "type": "web_search"
+            }],
         )
 
-        message = response.choices[0].message
-        # Safely check for a function_call attribute
-        fc = getattr(message, 'function_call', None)
-        if fc and getattr(fc, 'name', None) == "image_query":
-            # Parse arguments (if any) and get results
-            try:
-                # If the tool result is provided in the function_call
-                results = getattr(fc, 'result', []) or []
-            except Exception:
-                results = []
-            # Extract URLs
-            return [item.get("url") for item in results if isinstance(item, dict) and item.get("url")]
+        # Extract image URLs from the response
+        print(json.dumps(response.output, default=lambda o: o.__dict__, indent=2))
+        response = response.output
 
-        # No images found or function_call missing
-        return []
+        # Parse the response to find image URLs using the https URL pattern
+        image_urls = []
+        for result in response:
+            if 'content' in result:
+                text = result['content']['text']
+                # Find all URLs in the text using regex
+                # This regex captures URLs in markdown format [text](url)
+                urls = re.findall(r'\[.*?\]\((https?://[^\s\)]+)\)', text)
+                image_urls.extend(urls)
 
+        print(image_urls)
+        return image_urls
+    
 
     @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
     def query_llm(self, prompt, use_history=False, verbose=False):
