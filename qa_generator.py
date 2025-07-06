@@ -86,7 +86,7 @@ def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
     element['user_query_sensitive_info'] = user_query
     element['correct_answer_sensitive_info'] = answers.get('correct')
     incorrect = []
-    for key in ('leaked1', 'leaked2', 'random'):
+    for key in ('leaked', 'incorrect', 'random'):
         if key in answers:
             incorrect.append(answers[key])
     element['incorrect_answers_sensitive_info'] = incorrect
