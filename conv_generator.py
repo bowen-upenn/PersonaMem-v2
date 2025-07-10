@@ -105,17 +105,16 @@ def generate_interactions_from_persona(llm, all_personas, output_path, implicit_
                         """
                         repeat = random.randint(1, 6)
                         type = 'knowledge_query'
-                        image_query = True #if random.random() < 0.5 else False
-                        if verbose:
-                            print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}{utils.Colors.OKGREEN} multi-modal: {utils.Colors.ENDC}{image_query}')
-
                         for idx_repeat in range(repeat):
+                            image_query = True #if random.random() < 0.5 else False
                             llm.reset_history()
 
                             if image_query:
-                                # Image-based user query
-                                images_searched = llm.search_images(pref)
+                                # Image-based user query using persona_str for better matching
+                                images_searched = llm.search_images(persona_str)
                                 print('images_searched', images_searched)
+                                # TODO: Generate conversation based on the retrieved images
+                                # For now, we'll skip the conversation generation for image queries
 
                             else:
                                 # Text-based user query

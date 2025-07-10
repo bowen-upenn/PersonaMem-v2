@@ -5,6 +5,9 @@ import os
 import re
 from dotenv import load_dotenv
 import json
+import requests
+import hashlib
+from urllib.parse import urlparse
 
 
 class QueryLLM:
@@ -12,7 +15,7 @@ class QueryLLM:
         self.args = args
         self.history = []
 
-        load_dotenv()   # Load environment variables
+        load_dotenv(override=True)
         self._setup_client()
 
 
@@ -23,6 +26,11 @@ class QueryLLM:
         azure_key = os.getenv("AZURE_OPENAI_KEY")
         azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+
+        print(f"Debug - Environment variables:")
+        print(f"  AZURE_OPENAI_ENDPOINT: {azure_endpoint}")
+        print(f"  AZURE_OPENAI_DEPLOYMENT_NAME: {azure_deployment}")
+        print(f"  AZURE_OPENAI_API_VERSION: {azure_api_version}")
         
         if azure_endpoint and azure_key and azure_deployment:
             print("Using Azure OpenAI configuration")
@@ -48,54 +56,63 @@ class QueryLLM:
     def reset_history(self):
         self.history = []
 
-
-    @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # 60s timeout
-    def search_images(self, preference):
+    def search_images(self, pref: str):
         """
-        Generate image search queries based on user preferences and perform actual web search for images.
-        Uses OpenAI's web search capabilities to find relevant images.
-        Returns a list of image URLs.
+        Search for images related to a preference using the ImageMatcher.
+        This method will be called from conv_generator.py
+        
+        Args:
+            pref: The preference string to search images for
+            
+        Returns:
+            List of image paths related to the preference (top 5 most similar)
         """
-        # Use OpenAI's web search tool to find images
-        response = self.client.responses.create(
-            model=self.args['models']['llm_model'],
-            input=f"Search for images related to this preference: '{preference}'. Find one high-quality image with URL that subtly relate to this preference. Use real-world photos as if they were taken by this user.",
-            tools=[{
-                "type": "web_search"
-            }],
-        )
-
-        # Extract image URLs from the response
-        print(json.dumps(response.output, default=lambda o: o.__dict__, indent=2))
-        response = response.output
-
-        # Parse the response to find image URLs using the https URL pattern
-        image_urls = []
-        for result in response:
-            if 'content' in result:
-                text = result['content']['text']
-                # Find all URLs in the text using regex
-                # This regex captures URLs in markdown format [text](url)
-                urls = re.findall(r'\[.*?\]\((https?://[^\s\)]+)\)', text)
-                image_urls.extend(urls)
-
-        print(image_urls)
-        return image_urls
-    
+        # Import here to avoid circular import
+        from image_matcher import ImageMatcher
+        
+        # Create ImageMatcher instance if not already created
+        if not hasattr(self, 'image_matcher'):
+            self.image_matcher = ImageMatcher(self.args, self)
+        
+        # Search for the most similar images (top 5)
+        similar_images = self.image_matcher.find_most_similar_image(pref, top_k=5)
+        
+        if similar_images:
+            # Return just the image paths (without similarity scores)
+            return [img_path for img_path, _ in similar_images]
+        else:
+            return []
 
     @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
-    def query_llm(self, prompt, use_history=False, verbose=False):
+    def query_llm(self, prompt, use_history=False, image=None, verbose=False):
         """
         Send a message to the LLM. If use_history is True,
         `prompt` should be a list of message dicts [{'role': ..., 'content': ...}, ...].
         Otherwise, `prompt` is a single string.
         """
         # Prepare messages for the API call
+        if image:
+            curr_message = [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        else:
+            curr_message = [{"role": "user", "content": prompt}]
+
         if use_history:
-            self.history.extend([{"role": "user", "content": prompt}])
+            self.history.extend(curr_message)
             messages = self.history
         else:
-            messages = [{"role": "user", "content": prompt}]
+            messages = curr_message
 
         # Call the Chat Completions API
         response = self.client.chat.completions.create(

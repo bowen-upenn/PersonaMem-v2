@@ -190,13 +190,39 @@ def generate_sensitive_information():
     - Social Security Number (SSN)
     - Real ID Number
     - Passport number
-    - Driver’s license number
+    - Driver's license number
     - Financial account numbers (bank account and credit card)
     - Vehicle plate number.
     - Name and affiliations indicated in the path of user code files.
     - LLM API key
     
     Add them to the JSON file under the key "sensitive_information", whose value should be a dictionary of these info. Output the full JSON in the end.
+    """
+    return prompt
+
+
+def create_demographic_prompt():
+    """
+    Create a prompt for analyzing image demographics.
+    """
+    prompt = """
+    Analyze this image and provide demographic information about who would most likely be the photographer. 
+    Consider the following factors:
+    - Location (urban/rural, specific regions or countries)
+    - Languages of texts visible in the scene
+    - Nationality and ethnicity indicators
+    - Socioeconomic status indicators (poor/rich)
+    - Type of scenario/setting
+    - Cultural context and background
+    
+    Based on these observations, propose the most likely demographic information of the photographer including:
+    - Age range
+    - Nationality/ethnicity
+    - Socioeconomic status
+    - Profession/occupation
+    - Geographic location
+    
+    Please provide a detailed analysis and then conclude with a structured demographic profile after #### in the end.
     """
     return prompt
 
