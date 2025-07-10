@@ -1,4 +1,4 @@
-## 🌟 Unspoken Selves: Benchmarking LLM Personalization from Implicit User Personas 🌟
+## 🌟 Unspoken Selves: Benchmarking and Boosting LLM Personalization from Implicit User Personas 🌟
 
  [![Slides](https://img.shields.io/badge/Google_Slides-Link-yellow)](https://docs.google.com/presentation/d/1ZKQ0SLK2CLvrioqLTs5mRsEm00NHCL32HwBeb_bJmRM/edit?usp=sharing) 
 
