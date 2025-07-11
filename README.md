@@ -1,4 +1,4 @@
-## 🌟 Unspoken Selves: Benchmarking and Boosting LLM Personalization from Implicit User Personas via Reinforcement Finetuning 🌟
+## 🌟 Unspoken Selves: Benchmarking and Continuous Learning of Implicit User Personas via Reinforcement Finetuning 🌟
 
  [![Slides](https://img.shields.io/badge/Google_Slides-Link-yellow)](https://docs.google.com/presentation/d/1ZKQ0SLK2CLvrioqLTs5mRsEm00NHCL32HwBeb_bJmRM/edit?usp=sharing) 
 
