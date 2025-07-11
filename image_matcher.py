@@ -16,7 +16,7 @@ from query_llm import QueryLLM
 
 
 class ImageMatcher:
-    def __init__(self, llm, recreate=False, verbose=False):
+    def __init__(self, llm):
         """
         Initialize the ImageMatcher with configuration and LLM client.
         
@@ -32,9 +32,6 @@ class ImageMatcher:
         self.image_database = {}
         self.embeddings_matrix = None
         self.image_paths = []
-        
-        # Load or create embeddings cache
-        self.load_or_create_embeddings_cache(recreate, verbose)
     
 
     def load_images_from_directory(self) -> List[str]:
@@ -162,14 +159,12 @@ class ImageMatcher:
             print("No valid embeddings were created.")
     
 
-    def find_most_similar_image(self, persona_str: str, top_k: int = 5) -> List[Tuple[str, float]]:
+    def find_most_similar_image(self, persona_str: str, top_k: int = 6) -> List[Tuple[str, float]]:
         """
-        Task 3 & 5: Find the top k most similar images to a persona using cosine similarity.
-        
         Args:
             persona_str: The persona string to match against
-            top_k: Number of top similar images to return (default: 5)
-            
+            top_k: Number of top similar images to return (default: 6)
+
         Returns:
             List of tuples (image_path, similarity_score) for top k images, or empty list if no images available
         """
@@ -251,7 +246,10 @@ def main():
 
     # Initialize LLM and ImageMatcher
     llm = QueryLLM(args)
-    image_matcher = ImageMatcher(llm, recreate=cmd_args.recreate, verbose=args['inference']['verbose'])
+    image_matcher = ImageMatcher(llm)
+
+    # Load or create embeddings cache
+    image_matcher.load_or_create_embeddings_cache(recreate=cmd_args.recreate, verbose=args['inference']['verbose'])
 
     # Check if embeddings database already exists
     stats = image_matcher.get_database_stats()

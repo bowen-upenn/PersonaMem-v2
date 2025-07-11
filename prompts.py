@@ -114,6 +114,18 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
         The question should reflect a request for explanation or clarification of some detailed or nuanced knowledge of "{preference}, which should indicate some hidden curiosity implicitly.".
         Please write such user query and a high-quality, long, and detailed model response. The user query should be short, simple, and realistic.
         """
+    elif type == 'multimodal':
+        if is_others_pref:
+            prompt += f"""
+            Assume the user is sending this image to the chatbot as part of the image understanding or VQA dataset. Generate a random test question in the dataset.
+            The question is a standard test question and not related to the user themselves. Please write such test question and model response.
+            """
+        else:
+            prompt += f"""
+            Assume the user is sending this image to the chatbot, because the user has a preference or interests in "{preference}" related to this image. Generate a random question that the user might ask a chatbot, related to this scenario. 
+            The question should reflect a request for explanation or clarification of some detailed or nuanced knowledge of this image and the preference above, which should indicate some hidden curiosity implicitly.".
+            Please write such user query and a high-quality, long, and detailed model response. The user query should be short, simple, and realistic.
+            """
     else:
         raise ValueError(f"Unknown type {type}")
 
@@ -223,6 +235,20 @@ def create_demographic_prompt():
     - Geographic location
     
     Please provide a detailed analysis and then conclude with a structured demographic profile after #### in the end.
+    """
+    return prompt
+
+
+def find_preference_from_image(persona_str, is_others_pref):
+    """
+    Find the user's preference based on the content of the image.
+    """
+    if not is_others_pref:
+        prompt = f"""This is the user persona: {persona_str}."""
+
+    prompt = f"""
+    Imagine that the user is sending the following image to the chatbot.
+    Please analyze the image and extract one potential user preference that can be inferred from sending this image.
     """
     return prompt
 

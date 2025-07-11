@@ -3,12 +3,15 @@ import argparse
 import sys
 import os
 import json
+from datetime import datetime
+import pytz
 
 from contexts_builder import build_context
 from qa_generator import generate_qa
 from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
 from query_llm import QueryLLM
+from image_matcher import ImageMatcher
 
 
 def main():
@@ -57,9 +60,27 @@ def main():
         args['data']['data_types'] = [args['data']['data_types']]
 
     llm = QueryLLM(args)
+    image_matcher = ImageMatcher(llm)
+    image_matcher.load_or_create_embeddings_cache()
 
     if args['inference']['step'] == 'generate_data':
-        output_dict = generate_interactions_from_persona(llm, all_personas, output_path=args['data']['conv_output_path'], implicit_types=args['data']['data_types'],
+        # Add Pacific time timestamp to the output filename
+        pacific_tz = pytz.timezone('US/Pacific')
+        now = datetime.now(pacific_tz)
+        timestamp = now.strftime('%y%m%d_%H%M%S')
+        
+        # Modify the output path to include timestamp
+        base_path = args['data']['conv_output_path']
+        if base_path.endswith('.json'):
+            timestamped_path = base_path.replace('.json', f'_{timestamp}.json')
+        elif base_path.endswith('.jsonl'):
+            timestamped_path = base_path.replace('.jsonl', f'_{timestamp}.jsonl')
+        else:
+            timestamped_path = f"{base_path}_{timestamp}"
+        
+        print(f"Saving interactions to: {timestamped_path}")
+        
+        output_dict = generate_interactions_from_persona(llm, all_personas, image_matcher, output_path=timestamped_path, implicit_types=args['data']['data_types'],
                                                          num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], verbose=args['inference']['verbose'])
     elif args['inference']['step'] == 'generate_qa':
         if not os.path.exists(args['data']['conv_output_path']):
