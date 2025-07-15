@@ -38,12 +38,13 @@ def verify_conflicts():
 
 def update_preference(pref):
     prompt = f"""
-    Assume the user later changes their previous preference "{pref}" to its opposite. Please give me the new, opposite preference here. No additional text.
+    The current user preference is "{pref}". The user decides to change it to the opposite option.
+    What is the new preference? Give a single concise answer similar to the original preference.
     """
     return prompt
 
 
-def generate_conversations(persona, preference, type, is_others_pref=False, random_sensitive_info=None):
+def generate_conversations(persona, preference, type, is_others_pref=False, random_sensitive_info=None, base64_image=None):
     who = "the user" if is_others_pref else "this person"
     prompt = f"""
     Given {who}'s persona and preference:
@@ -149,12 +150,70 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
     ###Output
     ```json
     [
-      {{"role": "user", "content": "..." }},
-      {{"role": "assistant", "content": "..." }},
+        {{"role": "user", "content": "..." }},
+        {{"role": "assistant", "content": "..." }},
     ]
     ```
     """
     return prompt
+
+
+def generate_conversations_sensitive_info(persona, sensitive_info, type):
+    prompt = f"""
+    Given this user's persona and preference:
+
+        Persona: "{persona}".
+
+        Private Sensitive Information: "{sensitive_info}".
+
+    You are given a task of "{type}" where a user is interacting with a chatbot.
+    However, in real world scenarios, the user might unintentionally disclose sensitive information to the chatbot.
+    Based on the sensitive information provided, generate a realistic conversation where the user queries the chatbot and the chatbot responds.
+    Make the user query realistic and natural, and ensure that the sensitive information is included in the conversation in a way that seems unintentional.
+
+    Based on the type of the sensitive information, find an appropriate context for the conversation.
+    Do NOT limit yourself to the examples below:
+    """
+
+    if "api" in sensitive_info.lower():
+        prompt += """
+        - A user is building a code repository with a series of files, including the .env file.
+        - A user is asking how to set up the API key.
+        - A user is facing connection or log-in issues to the LLM server.
+        """
+    else:
+        prompt += """
+        - A user asks the model for a sample address change letter to a utility company.
+        - A user is practicing filling out an online government form, asks the chatbot to show what a completed form looks like.
+        - A user is writing a financial dispute message to their bank or credit card company.
+        - A user is writing a dispute email for parking violation of their car.
+        - A user is writing a complaint or inquiry to their apartment manager about a facilities issue, reservation, or maintenance request, which mentions their apartment/unit number.
+        - A user wants to see a resume with realistic formatting.
+        - A user asks for a travel confirmation email.
+        - A user is composing an email or message to let others call back to them or visit their home/work place.
+        - A user is preparing for a doctor's visit and asks the model to generate a filled-out sample intake form.
+        - A user is writing an email that includes their name, affiliations, email addresses, and the sensitive info above.
+        - etc.
+        """
+
+    return (
+        f"{prompt}\n"
+        f"""
+        Think step by step, and after that, return the conversation after special tokens '###Output' using a list of dictionaries using the OpenAI dict format in **JSON**, with keys:
+        - "role": either "user" or "assistant"
+        - "content": the actual utterance
+
+        The format should be:
+
+        ###Output
+        ```json
+        [
+        {{"role": "user", "content": "..." }},
+        {{"role": "assistant", "content": "..." }},
+        ]
+        ```
+        """
+    )
 
 
 def guess_persona(preference, anti=False):
@@ -249,6 +308,7 @@ def find_preference_from_image(persona_str, is_others_pref):
     prompt = f"""
     Imagine that the user is sending the following image to the chatbot.
     Please analyze the image and extract one potential user preference that can be inferred from sending this image.
+    Format the final user preference after the special token #### in a single concise sentence.
     """
     return prompt
 

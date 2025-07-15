@@ -129,3 +129,34 @@ def encode_image_to_base64(image_path: str) -> str:
     except Exception as e:
         print(f"Error encoding image {image_path}: {e}")
         return None
+
+
+def rewrite_user_query_to_add_image(conv_turns, base64_image):
+    """
+    Rewrite the user query in conversation turns to include the base64 image.
+
+    Args:
+        conv_turns: List of conversation turns
+        base64_image: Base64 encoded image string
+
+    Returns:
+        List of rewritten conversation turns
+    """
+    if not conv_turns:
+        return []
+
+    rewritten = []
+    for turn in conv_turns:
+        if turn['role'] == 'user':
+            # Add the image to the user query
+            turn['content'] = [
+                {"type": "text", "text": turn['content']},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                }
+            ]
+        rewritten.append(turn)
+    return rewritten

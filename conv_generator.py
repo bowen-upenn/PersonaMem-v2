@@ -95,18 +95,15 @@ def get_random_sensitive_info(sensitive_info, verbose=False):
     Returns:
         str or None: Random sensitive info string or None
     """
-    random_sensitive_info = None
-    if random.random() < 0.33:
-        key = random.choice(list(sensitive_info.keys()))
-        value = str(sensitive_info[key])
-        random_sensitive_info = f"{key}: {value}"
-        if verbose:
-            print("random_sensitive_info", random_sensitive_info)
+    key = random.choice(list(sensitive_info.keys()))
+    value = str(sensitive_info[key])
+    random_sensitive_info = f"{key}: {value}"
+    if verbose:
+        print("random_sensitive_info", random_sensitive_info)
     return random_sensitive_info
 
 
-def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
-                                        sensitive_info, conversations, is_others_pref, verbose=False):
+def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, verbose=False):
     """
     Generate cross-domain user-chatbot conversations that implicitly encode user personas and preferences.
     """
@@ -114,10 +111,7 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type,
     if verbose:
         print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
 
-    # Access if the chatbot can recognize sensitive private information and avoid them in the responses
-    random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
-
-    prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref, random_sensitive_info)
+    prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
     print('prompt', prompt)
     conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
@@ -126,41 +120,31 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type,
     who = 'others' if is_others_pref else 'self'
 
     if conv_turns:
-        if random_sensitive_info:
-            conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False, 'sensitive_info': random_sensitive_info})
-        else:
-            conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
+        conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
 
 
-def generate_preference_updates(llm, persona_str, pref, pref_key, type, implicit_types, 
-                               sensitive_info, conversations, updates, is_others_pref, verbose=False):
+def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversations, updates, is_others_pref, verbose=False):
     """
     Generate preference updates by changing preferences to their opposite along the timeline.
     """
-    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"]:
-        llm.reset_history()
-        prompt = prompts.update_preference(pref)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
-        updated_pref = llm.query_llm(prompt, use_history=False, verbose=verbose)
+    llm.reset_history()
+    prompt = prompts.update_preference(pref)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
+    updated_pref = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-        # Record the update
-        updates[pref] = updated_pref
-        llm.reset_history()
+    # Record the update
+    updates[pref] = updated_pref
+    llm.reset_history()
 
-        random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
+    prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref)
+    conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-        prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref, random_sensitive_info)
-        conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-
-        conv_turns = utils.extract_json_from_response(conv_turns)
-        conv_turns = utils.merge_consecutive_roles(conv_turns)
-        if conv_turns:
-            if random_sensitive_info:
-                conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref, 'sensitive_info': random_sensitive_info})
-            else:
-                conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
+    conv_turns = utils.extract_json_from_response(conv_turns)
+    conv_turns = utils.merge_consecutive_roles(conv_turns)
+    if conv_turns:
+        conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
 
 
-def find_preference_from_image(llm, persona_str, image_path, pref_key, conversations, is_others_pref, verbose=False):
+def find_preference_from_image_and_generate_conversations(llm, persona_str, image_path, conversations, is_others_pref, verbose=False):
     """
     Find the user's preference based on the content of the image.
     """
@@ -173,18 +157,22 @@ def find_preference_from_image(llm, persona_str, image_path, pref_key, conversat
 
     prompt = prompts.find_preference_from_image(persona_str, is_others_pref)
     preference = llm.query_llm(prompt, image=base64_image, use_history=True, verbose=verbose)
+    preference = utils.extract_after_token(preference, '####').strip()  # Extract the preference after the special token
 
     prompt = prompts.generate_conversations(persona_str, preference, type, is_others_pref)
     conv_turns = llm.query_llm(prompt, image=base64_image, use_history=True, verbose=verbose)
 
     conv_turns = utils.extract_json_from_response(conv_turns)
     conv_turns = utils.merge_consecutive_roles(conv_turns)
+
+    # add the image to the user query
+    if base64_image:
+        conv_turns = utils.rewrite_user_query_to_add_image(conv_turns, base64_image)
+
     who = 'others' if is_others_pref else 'self'
 
     if conv_turns:
-        conversations[type].append({pref_key: preference, 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path})
-
-    return preference, conversations
+        conversations[type].append({'multimodal': preference, 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path})
 
 
 def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, verbose=False):
@@ -194,13 +182,32 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
     Returns:
         tuple: (conversations, updates)
     """
-    conversations = {}
+    conversations = {'multimodal': []}
     for type in implicit_types:
         conversations[type] = []
     updates = {}
 
+    image_paths = final_json.get("matched_images", [])
+    for image_idx, image_path in enumerate(image_paths):
+        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
+        # Generate preference and conversations as if the user is providing an image to the chatbot
+        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+
     try:
         sensitive_info = final_json['sensitive_information']
+        # Add conversations with sensitive information
+        if sensitive_info:
+            random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
+            type = random.choice(implicit_types)
+            if verbose:
+                print(f"Sensitive information: {random_sensitive_info} for type {type}")
+            prompt = prompts.generate_conversations_sensitive_info(persona_str, random_sensitive_info, type)
+            conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+
+            conv_turns = utils.extract_json_from_response(conv_turns)
+            conv_turns = utils.merge_consecutive_roles(conv_turns)
+            if conv_turns:
+                conversations[type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
     except (json.JSONDecodeError, KeyError) as e:
         print("Failed to parse sensitive_information:", e)
         sensitive_info = {}
@@ -208,41 +215,33 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
     for pref_key, pref_list in [
         ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
-        ("therapy_background", final_json.get("therapy_background", [])),
-        ("matched_images", final_json.get("matched_images", [])),
+        ("therapy_background", final_json.get("therapy_background", []))
     ]:
-        for pref_idx, pref in enumerate(pref_list):
+        for pref_idx, pref in tqdm(enumerate(pref_list)):
             llm.reset_history()
 
             try:
-                if pref_key == "matched_images":
+                # Verify preference alignment
+                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
+
+                # Only generate conversations for aligned preferences
+                if alignment == 'yes':
                     # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
-                    is_others_pref = pref_idx > 0.67 * len(pref_list)   # sorted by the order of relevance
+                    is_others_pref = random.random() < 0.33
 
-                    # Generate preference and conversations as if the user is providing an image to the chatbot
-                    pref, conversations = find_preference_from_image(llm, str(final_json), pref, pref_key, conversations, is_others_pref, verbose=verbose)
-                else:
-                    # Verify preference alignment
-                    alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
+                    # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
+                    if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                        generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
+                    else:
+                        # Generate cross-domain conversations in random types
+                        type = random.choice(implicit_types)
+                        generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, verbose)
 
-                    # Only generate conversations for aligned preferences
-                    if alignment == 'yes':
-                        # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
-                        is_others_pref = random.random() < 0.33
-
-                        # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
-                        if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
-                            generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
-                        else:
-                            # Generate cross-domain conversations in random types
-                            type = random.choice(implicit_types)
-                            generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
-                                                                sensitive_info, conversations, is_others_pref, verbose)
-
-                        # Generate preference updates
+                    # Generate preference updates
+                    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"]:
                         type = random.choice(implicit_types) if pref_key == "therapy_background" or 'knowledge_query' not in implicit_types else 'knowledge_query'
-                        generate_preference_updates(llm, persona_str, pref, pref_key, type, implicit_types, 
-                                                sensitive_info, conversations, updates, is_others_pref, verbose)
+                        generate_preference_updates(llm, persona_str, pref, pref_key, type, conversations, updates, is_others_pref, verbose)
+
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
                 continue
