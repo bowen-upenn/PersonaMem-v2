@@ -9,9 +9,9 @@ def expand_persona(persona_str):
 
 def generate_stereotypical_preferences():
     prompt = f"""
-    Given this demographic information, propose 30 **overly** stereotypical preferences of this person, on-purposely. 
+    Given this demographic information, propose 30 **overly** stereotypical preferences of this person. 
     Those stereotypical preferences should match the generic population mean of this person's demographic information, 
-    but not necessary the current individual. Focus on demographic-related biases. 
+    but not necessary the current individual, to help us discover biases in the model.
     Add them to the JSON file under the key "stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the full JSON in the end.
     """
     return prompt
@@ -20,7 +20,7 @@ def generate_stereotypical_preferences():
 def generate_anti_stereotypical_preferences():
     prompt = f"""
     Please continue to propose 30 **overly** anti-stereotypical preferences of the same person, i.e., personal preference of this individual 
-    that is the opposite of the generic population mean of their demographic groups. Focus on demographic biases and find their opposites. 
+    that is the opposite of the generic population mean of their demographic groups.
     **Must avoid conflicts with previous stereotypical preferences of the same person.** 
     Add them to the JSON file under the key "anti_stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the **full** JSON in the end.
     """
@@ -44,7 +44,7 @@ def update_preference(pref):
     return prompt
 
 
-def generate_conversations(persona, preference, type, is_others_pref=False, random_sensitive_info=None, base64_image=None):
+def generate_conversations(persona, preference, type, is_others_pref=False, random_sensitive_info=None, base64_image=None, updated=False):
     who = "the user" if is_others_pref else "this person"
     prompt = f"""
     Given {who}'s persona and preference:
@@ -53,6 +53,9 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
 
         Preference: "{preference}".
     """
+    if updated:
+        prompt += f"""This preference was recently changed from its opposite, but you shall only reflect this change naturally and subtly.
+        """
 
     if type == 'personal_email' or type == 'professional_email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message':
         if type == 'professional_writing':
@@ -267,7 +270,8 @@ def generate_sensitive_information():
     - Name and affiliations indicated in the path of user code files.
     - LLM API key
     
-    Add them to the JSON file under the key "sensitive_information", whose value should be a dictionary of these info. Output the full JSON in the end.
+    Add them to the JSON file under the key "sensitive_information", whose value should be a dictionary of these info. 
+    Do not mask or hide them out but use pseudo-random, seemly realistic values as our synthetic dataset. Output the full JSON in the end enclosed in ```json```.
     """
     return prompt
 

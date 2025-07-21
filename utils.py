@@ -25,7 +25,11 @@ def save_json(data, filename, clean=False):
     Save dictionary or a list of dictionaries to a JSON file.
     If clean=True and data is not empty, merge with existing JSON (if any).
     """
-    if clean and data:
+    if clean:
+        # Overwrite with new data
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    else:
         # Try to load existing data
         if os.path.exists(filename):
             with open(filename, 'r', encoding='utf-8') as f:
@@ -41,10 +45,6 @@ def save_json(data, filename, clean=False):
         existing.update(data)
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(existing, f, ensure_ascii=False, indent=2)
-    else:
-        # Overwrite with new data
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def save_csv(rows: list, filename: str):
@@ -61,20 +61,25 @@ def extract_json_from_response(response_str):
     Extracts JSON array or object from a response string enclosed in triple backticks with 'json',
     and parses it into a Python dictionary or list.
     """
-    # Match content inside ```json ... ```
-    match = re.search(r"```json\s*(.*?)\s*```", response_str, re.DOTALL)
-    if not match:
-        raise ValueError("No JSON content found in response.")
+    # Check if response_str is already a valid JSON or just a string
+    if isinstance(response_str, str):
+        # Match content inside ```json ... ```
+        match = re.search(r"```json\s*(.*?)\s*```", response_str, re.DOTALL)
+        if not match:
+            raise ValueError("No JSON content found in response.")
 
-    json_str = match.group(1).strip()
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError as e:
-        json_str = repair_json(json_str)
+        json_str = match.group(1).strip()
+    
         try:
             return json.loads(json_str)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
+            json_str = repair_json(json_str)
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Error decoding JSON: {e}\nExtracted content:\n{json_str}")
+    else:
+        return response_str
 
 
 def merge_consecutive_roles(messages):
@@ -131,16 +136,20 @@ def encode_image_to_base64(image_path: str) -> str:
         return None
 
 
-def rewrite_user_query_to_add_image(conv_turns, base64_image):
+def rewrite_user_query_to_add_image(conv_turns, image_path):
     """
     Rewrite the user query in conversation turns to include the base64 image.
 
     Args:
         conv_turns: List of conversation turns
-        base64_image: Base64 encoded image string
+        image_path: Path to the image file
 
     Returns:
         List of rewritten conversation turns
+
+    We save image_path as an efficient placeholder.
+    In context_builder.py, we will rewrite the image_path with the actual base64 string,
+    so that we won't save the base64 string redundantly.
     """
     if not conv_turns:
         return []
@@ -154,7 +163,7 @@ def rewrite_user_query_to_add_image(conv_turns, base64_image):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
+                        "url": f"data:image/jpeg;base64,{image_path}"
                     }
                 }
             ]

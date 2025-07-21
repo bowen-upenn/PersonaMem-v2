@@ -2,6 +2,7 @@ import json
 import random
 from uuid import uuid4
 from tqdm import tqdm
+from json_repair import repair_json
 
 import prompts
 import utils
@@ -46,6 +47,12 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
         if verbose:
             print(f"Matched images: {matched_images}")
 
+    # Convert final json from a string to a JSON dictionary
+    final_json = utils.extract_json_from_response(final_json)
+
+    if verbose:
+        print({f"all keys in final_json": list(final_json.keys())})
+
     return persona_str, final_json, matched_images if image_matcher else []
 
 
@@ -83,7 +90,15 @@ def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, 
         prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
 
         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-        conv_turns = utils.extract_json_from_response(conv_turns)
+        try:
+            conv_turns = utils.extract_json_from_response(conv_turns)
+        except json.JSONDecodeError as e:
+            try:
+                conv_turns = repair_json(conv_turns)
+                conv_turns = utils.extract_json_from_response(conv_turns)
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse knowledge query response: {e}")
+                continue
         if conv_turns:
             conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False})
 
@@ -112,10 +127,18 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
         print(f'{utils.Colors.OKGREEN}{pref_key}: {utils.Colors.ENDC}{pref}{utils.Colors.OKGREEN} data type: {utils.Colors.ENDC}{type}')
 
     prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref)
-    print('prompt', prompt)
     conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-    conv_turns = utils.extract_json_from_response(conv_turns)
+    try:
+        conv_turns = utils.extract_json_from_response(conv_turns)
+    except json.JSONDecodeError as e:
+        try:
+            conv_turns = repair_json(conv_turns)
+            conv_turns = utils.extract_json_from_response(conv_turns)
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse knowledge query response: {e}")
+            return
+
     conv_turns = utils.merge_consecutive_roles(conv_turns)
     who = 'others' if is_others_pref else 'self'
 
@@ -135,10 +158,19 @@ def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversa
     updates[pref] = updated_pref
     llm.reset_history()
 
-    prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref)
+    prompt = prompts.generate_conversations(persona_str, updated_pref, type, is_others_pref, updated=True)
     conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-    conv_turns = utils.extract_json_from_response(conv_turns)
+    try:
+        conv_turns = utils.extract_json_from_response(conv_turns)
+    except json.JSONDecodeError as e:
+        try:
+            conv_turns = repair_json(conv_turns)
+            conv_turns = utils.extract_json_from_response(conv_turns)
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse knowledge query response: {e}")
+            return
+
     conv_turns = utils.merge_consecutive_roles(conv_turns)
     if conv_turns:
         conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
@@ -162,12 +194,21 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
     prompt = prompts.generate_conversations(persona_str, preference, type, is_others_pref)
     conv_turns = llm.query_llm(prompt, image=base64_image, use_history=True, verbose=verbose)
 
-    conv_turns = utils.extract_json_from_response(conv_turns)
+    try:
+        conv_turns = utils.extract_json_from_response(conv_turns)
+    except json.JSONDecodeError as e:
+        try:
+            conv_turns = repair_json(conv_turns)
+            conv_turns = utils.extract_json_from_response(conv_turns)
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse knowledge query response: {e}")
+            return None, conversations
+        
     conv_turns = utils.merge_consecutive_roles(conv_turns)
 
     # add the image to the user query
     if base64_image:
-        conv_turns = utils.rewrite_user_query_to_add_image(conv_turns, base64_image)
+        conv_turns = utils.rewrite_user_query_to_add_image(conv_turns, image_path)
 
     who = 'others' if is_others_pref else 'self'
 
@@ -187,30 +228,31 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         conversations[type] = []
     updates = {}
 
-    image_paths = final_json.get("matched_images", [])
-    for image_idx, image_path in enumerate(image_paths):
-        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
-        # Generate preference and conversations as if the user is providing an image to the chatbot
-        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+    sensitive_info = final_json['sensitive_information']
+    # Add conversations with sensitive information
+    if sensitive_info:
+        random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
+        type = random.choice(implicit_types)
+        if verbose:
+            print(f"Sensitive information: {random_sensitive_info} for type {type}")
+        prompt = prompts.generate_conversations_sensitive_info(persona_str, random_sensitive_info, type)
+        conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
-    try:
-        sensitive_info = final_json['sensitive_information']
-        # Add conversations with sensitive information
-        if sensitive_info:
-            random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
-            type = random.choice(implicit_types)
-            if verbose:
-                print(f"Sensitive information: {random_sensitive_info} for type {type}")
-            prompt = prompts.generate_conversations_sensitive_info(persona_str, random_sensitive_info, type)
-            conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
-
+        try:
             conv_turns = utils.extract_json_from_response(conv_turns)
             conv_turns = utils.merge_consecutive_roles(conv_turns)
             if conv_turns:
                 conversations[type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
-    except (json.JSONDecodeError, KeyError) as e:
-        print("Failed to parse sensitive_information:", e)
-        sensitive_info = {}
+        except json.JSONDecodeError as e:
+            try:
+                conv_turns = repair_json(conv_turns)
+                conv_turns = utils.extract_json_from_response(conv_turns)
+                conv_turns = utils.merge_consecutive_roles(conv_turns)
+                if conv_turns:
+                    conversations[type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse knowledge query response: {e}")
+                sensitive_info = {}
 
     for pref_key, pref_list in [
         ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
@@ -245,6 +287,13 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
                 continue
+
+    image_paths = final_json.get("matched_images", [])
+    for image_idx, image_path in enumerate(image_paths):
+        llm.reset_history()
+        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
+        # Generate preference and conversations as if the user is providing an image to the chatbot
+        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
 
     return conversations, updates
 
@@ -281,8 +330,13 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
         final_json_response = utils.extract_json_from_response(final_json_response)
         final_json_response['matched_images'] = matched_images
     except json.JSONDecodeError as e:
-        print("Failed to parse JSON:", e)
-        return None
+        try:
+            final_json_response = repair_json(final_json_response)
+            final_json_response = utils.extract_json_from_response(final_json_response)
+        except json.JSONDecodeError as e:
+            final_json_response['matched_images'] = matched_images
+            print("Failed to parse JSON:", e)
+            return None
 
     # Process preferences and generate conversations
     conversations, updates = convert_preferences_to_conversations(llm, persona_str, final_json_response, implicit_types, self_verify, verbose)
@@ -309,7 +363,7 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     """
     output_dict = {}
 
-    for _ in tqdm(range(num_persona)):
+    for idx in tqdm(range(num_persona)):
         persona = random.choice(all_personas)
         
         # Process single persona
@@ -319,7 +373,16 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
             persona_id = str(uuid4())
             output_dict[persona_id] = final_json
 
-    # Save the full dictionary with persona_id as keys
-    utils.save_json(output_dict, output_path, clean=clean)
-    print(f"Saved to {output_path}")
+        # Modify the output path to include timestamp
+        base_path = output_path
+        if base_path.endswith('.json'):
+            full_path = base_path.replace('.json', f'_persona{idx}.json')
+        elif base_path.endswith('.jsonl'):
+            full_path = base_path.replace('.jsonl', f'_persona{idx}.jsonl')
+        else:
+            full_path = f"{base_path}_persona{idx}"
+
+        # Save the full dictionary with persona_id as keys
+        utils.save_json(output_dict, full_path, clean=clean if idx == 0 else False)
+        print(f"Saved to {full_path}")
     return output_dict

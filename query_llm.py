@@ -85,6 +85,7 @@ class QueryLLM:
 
     @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
     def query_llm(self, prompt, use_history=False, image=None, verbose=False):
+        # print(f"Querying LLM with prompt: {prompt}\n\n")
         """
         Send a message to the LLM. If use_history is True,
         `prompt` should be a list of message dicts [{'role': ..., 'content': ...}, ...].
@@ -118,7 +119,6 @@ class QueryLLM:
         response = self.client.chat.completions.create(
             model=self.args['models']['llm_model'],
             messages=messages,
-            max_tokens=self.args['models']['max_tokens'],
         )
 
         # Extract content
