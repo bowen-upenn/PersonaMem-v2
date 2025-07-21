@@ -64,12 +64,13 @@ def extract_json_from_response(response_str):
     # Check if response_str is already a valid JSON or just a string
     if isinstance(response_str, str):
         # Match content inside ```json ... ```
-        match = re.search(r"```json\s*(.*?)\s*```", response_str, re.DOTALL)
-        if not match:
-            raise ValueError("No JSON content found in response.")
+        try:
+            match = re.search(r"```json\s*(.*?)\s*```", response_str, re.DOTALL)
+            json_str = match.group(1).strip()
+        except:
+            # If no match, assume the whole response is JSON
+            json_str = response_str.strip()
 
-        json_str = match.group(1).strip()
-    
         try:
             return json.loads(json_str)
         except json.JSONDecodeError as e:

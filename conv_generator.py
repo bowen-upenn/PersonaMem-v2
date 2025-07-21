@@ -23,22 +23,27 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
     # 2) stereotypical preferences
     prompt = prompts.generate_stereotypical_preferences()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done generating stereotypical preferences.")
 
     # 3) anti-stereotypical preferences
     prompt = prompts.generate_anti_stereotypical_preferences()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done generating anti-stereotypical preferences.")
 
     # 4) verify conflicts
     prompt = prompts.verify_conflicts()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done verifying conflicts in preferences.")
 
     # 5) additional therapy-related personal history
     prompt = prompts.generate_therapy_related_history()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done generating therapy-related personal history.")
 
     # 6) generate sensitive private information
     prompt = prompts.generate_sensitive_information()
     final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done generating sensitive private information.")
 
     # 7) find images if image_matcher is provided that match the persona
     if image_matcher:
@@ -46,6 +51,7 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
         matched_images = [img_path for img_path, _ in matched_images]  # Filter out low similarity images
         if verbose:
             print(f"Matched images: {matched_images}")
+        print("Done finding images that match the persona.")
 
     # Convert final json from a string to a JSON dictionary
     final_json = utils.extract_json_from_response(final_json)
@@ -228,6 +234,13 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         conversations[type] = []
     updates = {}
 
+    image_paths = final_json.get("matched_images", [])
+    for image_idx, image_path in enumerate(image_paths):
+        llm.reset_history()
+        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
+        # Generate preference and conversations as if the user is providing an image to the chatbot
+        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+
     sensitive_info = final_json['sensitive_information']
     # Add conversations with sensitive information
     if sensitive_info:
@@ -259,7 +272,7 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", []))
     ]:
-        for pref_idx, pref in tqdm(enumerate(pref_list)):
+        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
             llm.reset_history()
 
             try:
@@ -287,13 +300,6 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
                 continue
-
-    image_paths = final_json.get("matched_images", [])
-    for image_idx, image_path in enumerate(image_paths):
-        llm.reset_history()
-        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
-        # Generate preference and conversations as if the user is providing an image to the chatbot
-        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
 
     return conversations, updates
 
@@ -367,8 +373,12 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
         persona = random.choice(all_personas)
         
         # Process single persona
-        final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
-        
+        try:
+            final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+        except Exception as e:
+            print(f"Error processing persona {idx}: {e}")
+            continue
+
         if final_json is not None:
             persona_id = str(uuid4())
             output_dict[persona_id] = final_json
