@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--data_types', type=str, default="email", nargs="+", help='Conversation types for the user to implicitly express their preferences')
     parser.add_argument('--context_length', type=int, default=32000, help='Length of the total context to be generated, including irrelevant tokens')
     parser.add_argument('--self_verify', dest='self_verify', action='store_true', help='Set self_verify to True')
+    parser.add_argument('--rate_limit_per_min', type=int, default=50, help='Rate limit for API calls per minute')
     parser.add_argument('--clean', dest='clean', action='store_true', help='Remove existing data and start from scratch')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     cmd_args = parser.parse_args()
@@ -46,6 +47,7 @@ def main():
     args['data']['num_persona'] = cmd_args.num_persona if cmd_args.num_persona is not None else args['inference']['num_persona']
     args['data']['data_types'] = cmd_args.data_types if cmd_args.data_types is not None else args['data']['data_types']
     args['data']['context_length'] = cmd_args.context_length if cmd_args.context_length is not None else args['data']['context_length']
+    args['inference']['rate_limit_per_min'] = cmd_args.rate_limit_per_min if cmd_args.rate_limit_per_min is not None else args['inference']['rate_limit_per_min']
     args['data']['clean'] = cmd_args.clean if cmd_args.clean is not None else args['data']['clean']
     args['inference']['verbose'] = cmd_args.verbose if cmd_args.verbose is not None else args['inference']['verbose']
     args['data']['self_verify'] = cmd_args.self_verify if cmd_args.self_verify is not None else args['data']['self_verify']
@@ -59,7 +61,7 @@ def main():
     if isinstance(args['data']['data_types'], str):
         args['data']['data_types'] = [args['data']['data_types']]
 
-    llm = QueryLLM(args)
+    llm = QueryLLM(args, args['inference']['rate_limit_per_min'])
     image_matcher = ImageMatcher(llm)
     image_matcher.load_or_create_embeddings_cache()
 

@@ -1,11 +1,63 @@
+
 import json
 import random
 from uuid import uuid4
 from tqdm import tqdm
 from json_repair import repair_json
+import concurrent.futures
+import threading
+import math
+import os
+import re
+import glob
 
 import prompts
 import utils
+
+
+def find_max_persona_index(output_path, clean=False):
+    """
+    Find the maximum existing persona index from existing files to avoid overwriting.
+    
+    Args:
+        output_path: The base output path for persona files
+        clean: If True, ignore existing files and start from 0
+    
+    Returns:
+        int: The starting index for new personas (max_existing + 1, or 0 if clean or no files found)
+    """
+    if clean:
+        return 0
+    
+    # Extract directory and base filename pattern
+    output_dir = os.path.dirname(output_path)
+    base_name = os.path.basename(output_path)
+    
+    # Handle different file extensions
+    if base_name.endswith('.json'):
+        pattern = base_name.replace('.json', '_*_persona*.json')
+    elif base_name.endswith('.jsonl'):
+        pattern = base_name.replace('.jsonl', '_*_persona*.jsonl')
+    else:
+        pattern = f"{base_name}_*_persona*"
+    
+    # Search for existing persona files
+    search_pattern = os.path.join(output_dir, pattern)
+    existing_files = glob.glob(search_pattern)
+    
+    max_index = -1
+    
+    # Extract persona indices from filenames
+    for file_path in existing_files:
+        filename = os.path.basename(file_path)
+        # Look for pattern like "interactions_250721_120307_persona0.json"
+        match = re.search(r'_persona(\d+)(?:\.|$)', filename)
+        if match:
+            index = int(match.group(1))
+            max_index = max(max_index, index)
+    
+    # Return next available index
+    return max_index + 1 if max_index >= 0 else 0
 
 
 def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
@@ -37,13 +89,15 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
 
     # 5) additional therapy-related personal history
     prompt = prompts.generate_therapy_related_history()
-    llm.query_llm(prompt, use_history=True, verbose=verbose)
+    final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
     print("Done generating therapy-related personal history.")
 
     # 6) generate sensitive private information
     prompt = prompts.generate_sensitive_information()
     final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
     print("Done generating sensitive private information.")
+    if 'sorry' in final_json.lower():
+        final_json = final_json_temp
 
     # 7) find images if image_matcher is provided that match the persona
     if image_matcher:
@@ -188,17 +242,12 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
     """
     type = 'multimodal'
 
-    # Encode image to base64
-    base64_image = utils.encode_image_to_base64(image_path)
-    if not base64_image:
-        return None, conversations
-
     prompt = prompts.find_preference_from_image(persona_str, is_others_pref)
-    preference = llm.query_llm(prompt, image=base64_image, use_history=True, verbose=verbose)
+    preference = llm.query_llm(prompt, image_path=image_path, use_history=True, verbose=verbose)
     preference = utils.extract_after_token(preference, '####').strip()  # Extract the preference after the special token
 
     prompt = prompts.generate_conversations(persona_str, preference, type, is_others_pref)
-    conv_turns = llm.query_llm(prompt, image=base64_image, use_history=True, verbose=verbose)
+    conv_turns = llm.query_llm(prompt, image_path=image_path, use_history=True, verbose=verbose)
 
     try:
         conv_turns = utils.extract_json_from_response(conv_turns)
@@ -213,7 +262,7 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
     conv_turns = utils.merge_consecutive_roles(conv_turns)
 
     # add the image to the user query
-    if base64_image:
+    if image_path:
         conv_turns = utils.rewrite_user_query_to_add_image(conv_turns, image_path)
 
     who = 'others' if is_others_pref else 'self'
@@ -358,9 +407,46 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
     return final_json_response
 
 
+def process_single_persona_thread(args):
+    """
+    Thread-safe function to process a single persona.
+    
+    Args:
+        args: tuple containing (idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose)
+    
+    Returns:
+        tuple: (idx, persona_id, final_json, full_path) or (idx, None, None, None) if failed
+    """
+    idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
+    
+    try:
+        # Process single persona
+        final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+        
+        if final_json is not None:
+            persona_id = str(uuid4())
+            
+            # Modify the output path to include timestamp
+            base_path = output_path
+            if base_path.endswith('.json'):
+                full_path = base_path.replace('.json', f'_persona{idx}.json')
+            elif base_path.endswith('.jsonl'):
+                full_path = base_path.replace('.jsonl', f'_persona{idx}.jsonl')
+            else:
+                full_path = f"{base_path}_persona{idx}"
+            
+            return idx, persona_id, final_json, full_path
+        else:
+            return idx, None, None, None
+            
+    except Exception as e:
+        print(f"Error processing persona {idx}: {e}")
+        return idx, None, None, None
+
+
 def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, verbose=False):
     """
-    Load one random persona from the JSONL file, then sequentially query the Assistant API with three prompts:
+    Load personas and process them in parallel, then sequentially query the Assistant API with three prompts:
       1) Add name and demographic info in JSON for the persona
       2) Propose overly stereotypical and anti-stereotypical preferences
       3) Verify and replace any conflicts
@@ -368,31 +454,55 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     Save the final JSON to output_file.
     """
     output_dict = {}
-
-    for idx in tqdm(range(num_persona)):
+    
+    # Find the starting index to avoid overwriting existing personas
+    persona_start_idx = find_max_persona_index(output_path, clean)
+    if not clean and persona_start_idx > 0:
+        print(f"Found existing persona files. Starting from persona index {persona_start_idx}")
+    
+    # Prepare arguments for each persona
+    persona_args = []
+    for i in range(num_persona):
+        idx = persona_start_idx + i  # Use the adjusted index
         persona = random.choice(all_personas)
+        persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose))
+    
+    # Process personas in parallel batches
+    max_workers = min(llm.rate_limit_per_min, num_persona)
+    batch_size = max_workers
+    num_batches = math.ceil(num_persona / batch_size)
+    
+    for batch_idx in range(num_batches):
+        batch_start_idx = batch_idx * batch_size
+        batch_end_idx = min((batch_idx + 1) * batch_size, num_persona)
+        batch_args = persona_args[batch_start_idx:batch_end_idx]
         
-        # Process single persona
-        try:
-            final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
-        except Exception as e:
-            print(f"Error processing persona {idx}: {e}")
-            continue
-
-        if final_json is not None:
-            persona_id = str(uuid4())
-            output_dict[persona_id] = final_json
-
-        # Modify the output path to include timestamp
-        base_path = output_path
-        if base_path.endswith('.json'):
-            full_path = base_path.replace('.json', f'_persona{idx}.json')
-        elif base_path.endswith('.jsonl'):
-            full_path = base_path.replace('.jsonl', f'_persona{idx}.jsonl')
-        else:
-            full_path = f"{base_path}_persona{idx}"
-
-        # Save the full dictionary with persona_id as keys
-        utils.save_json(output_dict, full_path, clean=clean if idx == 0 else False)
-        print(f"Saved to {full_path}")
+        print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_args)} personas)")
+        
+        # Process batch in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(batch_args)) as executor:
+            # Submit all tasks for this batch
+            future_to_args = {executor.submit(process_single_persona_thread, args): args for args in batch_args}
+            
+            # Collect results with progress bar
+            for future in tqdm(concurrent.futures.as_completed(future_to_args), 
+                             desc=f"Batch {batch_idx + 1} personas", 
+                             total=len(batch_args)):
+                try:
+                    idx, persona_id, final_json, full_path = future.result()
+                    
+                    if final_json is not None:
+                        # Add to output dict
+                        output_dict[persona_id] = final_json
+                        
+                        # Save individual file - only clean on first file if clean=True
+                        should_clean = clean and idx == persona_start_idx
+                        utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                        print(f"Saved persona {idx} to {full_path}")
+                        
+                except Exception as e:
+                    args = future_to_args[future]
+                    idx = args[0]
+                    print(f"Error in future for persona {idx}: {e}")
+    
     return output_dict

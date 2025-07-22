@@ -1,11 +1,11 @@
 #!/bin/bash
 
 python main.py \
-  --model o4-mini \
+  --model gpt-4.1 \
   --step generate_data \
   --conv_output_path data/interactions.json \
-  --num_persona 100 \
+  --num_persona 90 \
   --data_types personal_email professional_email creative_writing professional_writing chat_message translation trouble_consult knowledge_query \
-  --clean
+  --rate_limit_per_min 10 \
 
   # --data_types personal_email professional_email creative_writing professional_writing chat_message translation trouble_consult knowledge_query \
