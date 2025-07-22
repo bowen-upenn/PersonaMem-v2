@@ -283,13 +283,6 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         conversations[type] = []
     updates = {}
 
-    image_paths = final_json.get("matched_images", [])
-    for image_idx, image_path in enumerate(image_paths):
-        llm.reset_history()
-        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
-        # Generate preference and conversations as if the user is providing an image to the chatbot
-        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
-
     sensitive_info = final_json['sensitive_information']
     # Add conversations with sensitive information
     if sensitive_info:
@@ -349,6 +342,13 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
                 continue
+
+    image_paths = final_json.get("matched_images", [])
+    for image_idx, image_path in enumerate(image_paths):
+        llm.reset_history()
+        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
+        # Generate preference and conversations as if the user is providing an image to the chatbot
+        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
 
     return conversations, updates
 

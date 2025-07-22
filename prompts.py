@@ -122,13 +122,15 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
         if is_others_pref:
             prompt += f"""
             Assume the user is sending this image to the chatbot as part of the image understanding or VQA dataset. Generate a random test question in the dataset.
-            The question is a standard test question and not related to the user themselves. Please write such test question and model response.
+            The question is a standard test question and not related to the user themselves, but related to the preference above. Please write such test question and model response.
             """
         else:
             prompt += f"""
             Assume the user is sending this image to the chatbot, because the user has a preference or interests in "{preference}" related to this image. Generate a random question that the user might ask a chatbot, related to this scenario. 
-            The question should reflect a request for explanation or clarification of some detailed or nuanced knowledge of this image and the preference above, which should indicate some hidden curiosity implicitly.".
-            Please write such user query and a high-quality, long, and detailed model response. The user query should be short, simple, and realistic.
+            The question should reflect a request for explanation or clarification of some detailed or nuanced knowledge of this image and the preference above, which should indicate some hidden curiosity.".
+            The user query should be short, simple, realistic, reflect the user preference above, and reflect that it is the user who took this image themselves.
+            Use first person's perspective such as "In this photo I took..." or "In this photo of mine..." (you need to rephrase it to make it diverse)
+            Please write such user query and a high-quality, long, and detailed model response.
             """
     else:
         raise ValueError(f"Unknown type {type}")
