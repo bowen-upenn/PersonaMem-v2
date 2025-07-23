@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
     parser.add_argument('--step', type=str, default='generate_data', help='Choose generate_data, generate_qa, build_context, or run_eval.')
-    parser.add_argument('--conv_output_path', type=str, default='data/interactions.jsonl', help='Set the path to the output directory')
+    parser.add_argument('--conv_output_path', type=str, default='data/raw_data/interactions.jsonl', help='Set the path to the output directory')
     parser.add_argument('--qa_output_path', type=str, default='data/qas.jsonl', help='Set the path to the output directory')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
     parser.add_argument('--num_persona', type=int, default=1, help='Number of personas to generate')

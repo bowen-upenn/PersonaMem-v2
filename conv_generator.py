@@ -13,6 +13,7 @@ import glob
 
 import prompts
 import utils
+from qa_generator import generate_qa_for_each_element
 
 
 def find_max_persona_index(output_path, clean=False):
@@ -145,6 +146,7 @@ def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, 
     """
     type = 'knowledge_query'
     repeat = random.randint(1, 6)
+
     for idx_repeat in range(repeat):
         llm.reset_history()
         prompt = prompts.generate_conversations(persona_str, pref, type, is_others_pref=False)   # Interests shown by repetitive knowledge queries shall always belong to the user's own interests
@@ -159,8 +161,12 @@ def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, 
             except json.JSONDecodeError as e:
                 print(f"Failed to parse knowledge query response: {e}")
                 continue
+
         if conv_turns:
-            conversations[type].append({pref_key: pref, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False})
+            element = {'preference': pref, 'pref_type': pref_key, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False}
+            conversations[type].append(element)
+    
+    return element
 
 
 def get_random_sensitive_info(sensitive_info, verbose=False):
@@ -203,7 +209,9 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
     who = 'others' if is_others_pref else 'self'
 
     if conv_turns:
-        conversations[type].append({pref_key: pref, 'who': who, 'conversations': conv_turns, 'updated': False})
+        element = {'preference': pref, 'pref_type': pref_key, 'who': who, 'conversations': conv_turns, 'updated': False}
+        conversations[type].append(element)
+        return element
 
 
 def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversations, updates, is_others_pref, verbose=False):
@@ -233,7 +241,38 @@ def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversa
 
     conv_turns = utils.merge_consecutive_roles(conv_turns)
     if conv_turns:
-        conversations[type].append({pref_key: updated_pref, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
+        conversations[type].append({'preference': updated_pref, 'pref_type': pref_key, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
+
+
+def user_ask_to_forget(llm, element, conversations, type, verbose):
+    """
+    Handle user requests to forget a specific preference.
+    """
+    llm.reset_history()
+
+    prev_pref = element['preference']
+    new_element = generate_qa_for_each_element(llm, element, verbose)
+    user_query = new_element['user_query']
+    correct_answer = new_element['correct_answer']
+
+    llm.reset_history()
+    prompt = prompts.user_ask_to_forget(user_query, prev_pref, correct_answer)
+    user_followup = llm.query_llm(prompt, use_history=False, verbose=verbose)
+    user_followup = utils.extract_after_token(user_followup, '####').strip()
+
+    conv_turns = [{
+        "role": "user",
+        "content": user_query
+    }, {
+        "role": "assistant",
+        "content": correct_answer
+    }, {
+        "role": "user",
+        "content": user_followup
+    }]
+
+    element = {'preference': f"Do not remember '{prev_pref}' in memory", 'pref_type': "ask_to_forget", 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': prev_pref}
+    conversations[type].append(element)
 
 
 def find_preference_from_image_and_generate_conversations(llm, persona_str, image_path, conversations, is_others_pref, verbose=False):
@@ -268,7 +307,7 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
     who = 'others' if is_others_pref else 'self'
 
     if conv_turns:
-        conversations[type].append({'multimodal': preference, 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path})
+        conversations[type].append({'preference': preference, 'pref_type': 'multimodal', 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path})
 
 
 def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, verbose=False):
@@ -283,7 +322,8 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         conversations[type] = []
     updates = {}
 
-    sensitive_info = final_json['sensitive_information']
+    # print(f"All keys in final_json: {list(final_json.keys())}")
+    sensitive_info = final_json.get('sensitive_information', {})
     # Add conversations with sensitive information
     if sensitive_info:
         random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
@@ -325,19 +365,24 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
                 if alignment == 'yes':
                     # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
                     is_others_pref = random.random() < 0.33
+                    random_type = random.choice(implicit_types)
 
                     # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
                     if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
-                        generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
+                        element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
                     else:
                         # Generate cross-domain conversations in random types
-                        type = random.choice(implicit_types)
-                        generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, verbose)
+                        element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, random_type, conversations, is_others_pref, verbose)
+
+                    has_asked_to_forget = False
+                    if random.random() < 0.33 and not is_others_pref and element:
+                        user_ask_to_forget(llm, element, conversations, random_type, verbose)
+                        has_asked_to_forget = True
 
                     # Generate preference updates
-                    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"]:
-                        type = random.choice(implicit_types) if pref_key == "therapy_background" or 'knowledge_query' not in implicit_types else 'knowledge_query'
-                        generate_preference_updates(llm, persona_str, pref, pref_key, type, conversations, updates, is_others_pref, verbose)
+                    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"] and not has_asked_to_forget:
+                        random_type = random.choice(implicit_types) if pref_key == "therapy_background" or 'knowledge_query' not in implicit_types else 'knowledge_query'
+                        generate_preference_updates(llm, persona_str, pref, pref_key, random_type, conversations, updates, is_others_pref, verbose)
 
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
@@ -388,8 +433,9 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
         try:
             final_json_response = repair_json(final_json_response)
             final_json_response = utils.extract_json_from_response(final_json_response)
+            if 'stereotypical_preferences' not in final_json_response:
+                return None
         except json.JSONDecodeError as e:
-            final_json_response['matched_images'] = matched_images
             print("Failed to parse JSON:", e)
             return None
 
@@ -499,7 +545,7 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                         should_clean = clean and idx == persona_start_idx
                         utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
                         print(f"Saved persona {idx} to {full_path}")
-                        
+                    
                 except Exception as e:
                     args = future_to_args[future]
                     idx = args[0]

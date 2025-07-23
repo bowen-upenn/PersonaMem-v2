@@ -273,7 +273,9 @@ def generate_sensitive_information():
     - LLM API key
     
     Add them to the JSON file under the key "sensitive_information", whose value should be a dictionary of these info. 
-    Do not mask or hide them out but use pseudo-random, seemly realistic values as our synthetic dataset. Output the full JSON in the end enclosed in ```json```.
+    Do not mask or hide them out but use pseudo-random, seemly realistic values as our synthetic dataset. 
+    Prefer just random numbers or letters when appropriate. Do not use consecutive or identical numbers. 
+    Output the full JSON in the end, with all previously generated keys and their contents, enclosed in ```json```.
     """
     return prompt
 
@@ -319,22 +321,49 @@ def find_preference_from_image(persona_str, is_others_pref):
     return prompt
 
 
+def user_ask_to_forget(user_query, prev_pref, correct_answer):
+    """
+    Generate a prompt for the user to ask the chatbot to forget a preference.
+    """
+    prompt = f"""
+    The user has a preference that the chatbot has remembered: "{prev_pref}".
+    The user has asked the following question:
+
+    "{user_query}".
+
+    and the chatbot has answered it with a personalized response:
+
+    "{correct_answer}".
+
+    However, the user does not want the chatbot to keep it in the memory. What would the user say to ask the chatbot to forget this in its memory?
+    Format the final user query after the special token #### in a single concise sentence.
+    """
+    return prompt
+
+
+def new_pref_from_asking_to_forget(prev_pref):
+    """
+    Generate a prompt for the user to provide a new preference after asking the chatbot to forget the previous one.
+    """
+    prompt = f"""
+    The user has just asked the chatbot not to remember their previous preference the chatbot recorded in its memory: "{prev_pref}".
+    Rewrite this as a a new sentence like 'do not remember xxx' and format this sentence after the special token ####.
+    """
+    return prompt
+
+
 def generate_user_question(element):
     """
     Generates a natural first-person user query that would *elicit* a personalized response
     based on the element's preference/background, but does NOT reference the preference/background.
     """
-    if "stereotypical_pref" in element or "anti_stereotypical_pref" in element:
-        if "stereotypical_pref" in element:
-            context = f"Given this hidden ground-truth user preference: {element['stereotypical_pref']}"
-        else:
-            context = f"Given this hidden ground-truth user preference: {element['anti_stereotypical_pref']}"
+    if element['pref_type'] == "stereotypical_pref" or element['pref_type'] == "anti_stereotypical_pref":
+        context = f"Given this hidden ground-truth user preference: {element['preference']}"
         if 'idx_repeat' in element:
             context += "This user has previously asked some detailed questions related to this topic, which indicates some hidden interests."
         instruct = (
             """
-            Write a first-person, natural question (for a chat with an assistant) 
-            that could plausibly be asked by this user. 
+            Write a first-person, natural question that could plausibly be asked by this user to the chatbot. 
             The question should invite recommendations, ideas, advice, or explanations. 
             It should be phrased so that a personalized answer would use this ground-truth preference specific to this user, 
             but the question itself should not mention or allude to it, so the preference remain hidden to the chatbot. 
@@ -344,7 +373,7 @@ def generate_user_question(element):
             Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
             """
         )
-    elif "therapy_background" in element:
+    elif element['pref_type'] == "therapy_background":
         context = f"The user has a hidden personal background: {element['therapy_background']}"
         instruct = (
             """
@@ -428,14 +457,7 @@ def generate_answer_options(element, user_query, who):
     and will adjust this assumption in qa_generator.py.
     """
     # Construct backgrounds for each answer type
-    if "stereotypical_pref" in element:
-        user_bg = element["stereotypical_pref"]
-    elif "anti_stereotypical_pref" in element:
-        user_bg = element["anti_stereotypical_pref"]
-    elif "therapy_background" in element:
-        user_bg = element["therapy_background"]
-    else:
-        raise NotImplementedError("Unknown scenarios")
+    user_bg = element["preference"]
 
     if who == 'self':
         prompt = (

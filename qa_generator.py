@@ -8,7 +8,7 @@ import prompts
 import utils
 
 
-def generate_qa_for_each_element(llm, element, conv_list, verbose=False):
+def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=False, verbose=False):
     """
     Generate a QA set for a single scenario element by adding:
     - user_query: a question that elicits personalization based on the element's preference/background.
@@ -35,25 +35,31 @@ def generate_qa_for_each_element(llm, element, conv_list, verbose=False):
 
     # For updated preference, we find its previous one and assign previous correct option as an incorrect one
     prev_correct = None
-    if element['updated']:
+    if element['updated'] and conv_list:
         prev_pref = element['prev_pref']
         for curr_element in conv_list:
-            if (('stereotypical_pref' in curr_element and curr_element['stereotypical_pref'] == prev_pref) or
-                    ('anti_stereotypical_pref' in curr_element and curr_element['anti_stereotypical_pref'] == prev_pref)):
+            if curr_element['preference'] == prev_pref:
                 # Previous preference must already have correct answers generated
                 prev_correct = curr_element['correct_answer']
             else:
                 continue
 
     if who == 'self':
-        element['correct_answer'] = answers.get('correct')
         incorrect = []
-        if prev_correct:    # only happen with who == self
+        if ask_to_forget:
+            element['correct_answer'] = answers.get('generic')
+            for key in ('random1', 'random2', 'correct'):
+                if key in answers:
+                    incorrect.append(answers[key])
+            incorrect.append(prev_correct)
+        elif prev_correct:    # only happen with who == self
+            element['correct_answer'] = answers.get('correct')
             for key in ('random1', 'generic'):
                 if key in answers:
                     incorrect.append(answers[key])
             incorrect.append(prev_correct)
         else:
+            element['correct_answer'] = answers.get('correct')
             for key in ('random1', 'random2', 'generic'):
                 if key in answers:
                     incorrect.append(answers[key])
@@ -83,13 +89,13 @@ def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
     answers = utils.extract_json_from_response(answers)
 
     # Attach new keys to element
-    element['user_query_sensitive_info'] = user_query
-    element['correct_answer_sensitive_info'] = answers.get('correct')
+    element['user_query'] = user_query
+    element['correct_answer'] = answers.get('correct')
     incorrect = []
     for key in ('leaked', 'incorrect', 'random'):
         if key in answers:
             incorrect.append(answers[key])
-    element['incorrect_answers_sensitive_info'] = incorrect
+    element['incorrect_answers'] = incorrect
 
     return element
 
@@ -120,7 +126,8 @@ def generate_qa(llm, input_path, output_path, verbose=False):
                         "incorrect_answers": qa_fields.get("incorrect_answers"),
                     })
                 else:
-                    qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, verbose=verbose)
+                    ask_to_forget = conv_elem['pref_type']=="ask_to_forget"
+                    qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
                     conv_elem.update({
                         "user_query": qa_fields.get("user_query"),
                         "correct_answer": qa_fields.get("correct_answer"),
