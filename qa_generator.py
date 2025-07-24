@@ -239,7 +239,7 @@ def process_single_file_qa_sequential(file_path, llm, verbose):
             for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
                 if i > 0:
                     continue
-                print(f'Processing conv_type: {conv_type} for {uuid} in {file_path}')
+                print(f'Processing conv_type: {conv_type} in {file_path}')
                 
                 for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type}", disable=not verbose, leave=False):
                     llm.reset_history()
