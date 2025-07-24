@@ -42,15 +42,17 @@ Generate question-answer pairs from the conversations:
 bash scripts/run_qa_gen.sh
 ```
 
-### � Script Configuration
+### 📋 Script Configuration
 
 - **`run_prepare_images.sh`**: Preprocesses images and creates embedding database
 - **`run_convo_gen.sh`**: Generates personas and conversations with configurable parameters:
   - `--num_persona`: Number of personas to generate
   - `--data_types`: Conversation types (email, chat, writing, etc.)
+  - `--rate_limit_per_min`: API rate limit (default: 10 requests/minute)
   - `--parallel`: Enable parallel processing for faster generation
 - **`run_qa_gen.sh`**: Generates Q&A pairs with persona range support:
   - `--persona_start_idx` / `--persona_end_idx`: Process specific persona ranges
+  - `--rate_limit_per_min`: API rate limit (default: 10 requests/minute)
   - `--parallel`: Enable parallel processing
 
-For detailed parameter customization, edit the scripts or run `python main.py --help`.
+For detailed parameter customization, edit the scripts or run `python main.py --help`. 🌟
