@@ -213,7 +213,7 @@ def get_persona_files_in_range(base_dir, base_name, start_idx=-1, end_idx=-1):
     import glob
     
     # Create pattern to match persona files
-    pattern = os.path.join(base_dir, f"{base_name}_*_persona*.json")
+    pattern = os.path.join(base_dir, f"{base_name}_*persona*.json")
     all_files = glob.glob(pattern)
     
     if start_idx == -1 and end_idx == -1:
@@ -223,6 +223,7 @@ def get_persona_files_in_range(base_dir, base_name, start_idx=-1, end_idx=-1):
         end_idx = len(all_files)
     
     # Filter files by persona index
+    print('start_idx', start_idx, 'end_idx', end_idx)
     filtered_files = []
     for file_path in all_files:
         # Extract persona index from filename

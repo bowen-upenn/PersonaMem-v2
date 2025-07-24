@@ -160,9 +160,7 @@ def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False):
         # Prepare arguments for each file
         file_args = []
         for file_path in input_path:
-            # Create a separate LLM instance for each worker to avoid conflicts
-            worker_llm = QueryLLM(llm.args, llm.rate_limit_per_min)
-            file_args.append((file_path, worker_llm, verbose))
+            file_args.append((file_path, llm, verbose))
         
         # Process files in parallel batches
         max_workers = min(llm.rate_limit_per_min, len(file_args))
@@ -241,8 +239,7 @@ def process_single_file_qa_sequential(file_path, llm, verbose):
             for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
                 if i > 0:
                     continue
-                if verbose:
-                    print(f'Processing conv_type: {conv_type} for {uuid} in {file_path}')
+                print(f'Processing conv_type: {conv_type} for {uuid} in {file_path}')
                 
                 for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type}", disable=not verbose, leave=False):
                     llm.reset_history()
