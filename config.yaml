@@ -3,8 +3,8 @@ models:
   max_tokens: 4096
 data:
   persona_path: 'data/Persona_Hub_200000.jsonl'
-  conv_output_path: 'data/interactions.jsonl'
-  qa_output_path: 'data/qas.jsonl'
+  conv_output_dir: 'data/raw_data/'
+  qa_output_dir: 'data/raw_data/'
   result_path: 'results/'
   irrelevant_context_path: 'data/irrelevant_contexts.json'
   data_types: 'email'
@@ -14,4 +14,5 @@ data:
   num_persona: 1
 inference:
   verbose: False
+  parallel: False
   rate_limit_per_min: 50

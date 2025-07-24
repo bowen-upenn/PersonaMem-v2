@@ -30,20 +30,18 @@ def find_max_persona_index(output_path, clean=False):
     if clean:
         return 0
     
-    # Extract directory and base filename pattern
+    # Extract directory and extract base name from timestamped path
     output_dir = os.path.dirname(output_path)
     base_name = os.path.basename(output_path)
     
-    # Handle different file extensions
-    if base_name.endswith('.json'):
-        pattern = base_name.replace('.json', '_*_persona*.json')
-    elif base_name.endswith('.jsonl'):
-        pattern = base_name.replace('.jsonl', '_*_persona*.jsonl')
-    else:
-        pattern = f"{base_name}_*_persona*"
+    # Remove timestamp and extension to get the clean base name
+    timestamp_pattern = r'_\d{6}_\d{6}'
+    clean_base_name = re.sub(timestamp_pattern, '', base_name)
+    if clean_base_name.endswith('.json'):
+        clean_base_name = clean_base_name[:-5]  # Remove .json
     
-    # Search for existing persona files
-    search_pattern = os.path.join(output_dir, pattern)
+    # Search for existing persona files with pattern: {clean_base_name}_persona*.json
+    search_pattern = os.path.join(output_dir, f"{clean_base_name}_persona*.json")
     existing_files = glob.glob(search_pattern)
     
     max_index = -1
@@ -51,13 +49,14 @@ def find_max_persona_index(output_path, clean=False):
     # Extract persona indices from filenames
     for file_path in existing_files:
         filename = os.path.basename(file_path)
-        # Look for pattern like "interactions_250721_120307_persona0.json"
-        match = re.search(r'_persona(\d+)(?:\.|$)', filename)
+        # Look for pattern like "interactions_persona0.json"
+        match = re.search(r'_persona(\d+)\.json$', filename)
         if match:
             index = int(match.group(1))
             max_index = max(max_index, index)
     
     # Return next available index
+    return max_index + 1
     return max_index + 1 if max_index >= 0 else 0
 
 
@@ -251,7 +250,7 @@ def user_ask_to_forget(llm, element, conversations, type, verbose):
     llm.reset_history()
 
     prev_pref = element['preference']
-    new_element = generate_qa_for_each_element(llm, element, verbose)
+    new_element = generate_qa_for_each_element(llm, element.copy(), verbose)
     user_query = new_element['user_query']
     correct_answer = new_element['correct_answer']
 
@@ -403,8 +402,8 @@ def update_aligned_preferences(final_json, conversations, updates):
     Update final_json to only include aligned preferences.
     """
     # Update final_json to only include aligned preferences
-    aligned_stereo = [c['stereotypical_pref'] for convs in conversations.values() for c in convs if 'stereotypical_pref' in c]
-    aligned_anti = [c['anti_stereotypical_pref'] for convs in conversations.values() for c in convs if 'anti_stereotypical_pref' in c]
+    aligned_stereo = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'stereotypical_pref']
+    aligned_anti = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'anti_stereotypical_pref']
 
     final_json['stereotypical_preferences'] = list(set(aligned_stereo))     # the repeated calls on knowledge_query may introduce repeated preferences in the previous step
     final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
@@ -472,14 +471,18 @@ def process_single_persona_thread(args):
         if final_json is not None:
             persona_id = str(uuid4())
             
-            # Modify the output path to include timestamp
-            base_path = output_path
-            if base_path.endswith('.json'):
-                full_path = base_path.replace('.json', f'_persona{idx}.json')
-            elif base_path.endswith('.jsonl'):
-                full_path = base_path.replace('.jsonl', f'_persona{idx}.jsonl')
-            else:
-                full_path = f"{base_path}_persona{idx}"
+            # Create individual persona file path
+            output_dir = os.path.dirname(output_path)
+            base_name = os.path.basename(output_path)
+            
+            # Remove timestamp and extension from base name to get clean name
+            import re
+            timestamp_pattern = r'_\d{6}_\d{6}'
+            clean_base_name = re.sub(timestamp_pattern, '', base_name)
+            if clean_base_name.endswith('.json'):
+                clean_base_name = clean_base_name[:-5]  # Remove .json
+            
+            full_path = os.path.join(output_dir, f"{clean_base_name}_persona{idx}.json")
             
             return idx, persona_id, final_json, full_path
         else:
@@ -490,9 +493,9 @@ def process_single_persona_thread(args):
         return idx, None, None, None
 
 
-def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, verbose=False):
+def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, parallel=False, verbose=False):
     """
-    Load personas and process them in parallel, then sequentially query the Assistant API with three prompts:
+    Load personas and process them in parallel or sequentially, then query the Assistant API with three prompts:
       1) Add name and demographic info in JSON for the persona
       2) Propose overly stereotypical and anti-stereotypical preferences
       3) Verify and replace any conflicts
@@ -506,49 +509,86 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     if not clean and persona_start_idx > 0:
         print(f"Found existing persona files. Starting from persona index {persona_start_idx}")
     
-    # Prepare arguments for each persona
-    persona_args = []
-    for i in range(num_persona):
-        idx = persona_start_idx + i  # Use the adjusted index
-        persona = random.choice(all_personas)
-        persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose))
-    
-    # Process personas in parallel batches
-    max_workers = min(llm.rate_limit_per_min, num_persona)
-    batch_size = max_workers
-    num_batches = math.ceil(num_persona / batch_size)
-    
-    for batch_idx in range(num_batches):
-        batch_start_idx = batch_idx * batch_size
-        batch_end_idx = min((batch_idx + 1) * batch_size, num_persona)
-        batch_args = persona_args[batch_start_idx:batch_end_idx]
+    if parallel:
+        # Parallel processing
+        # Prepare arguments for each persona
+        persona_args = []
+        for i in range(num_persona):
+            idx = persona_start_idx + i  # Use the adjusted index
+            persona = random.choice(all_personas)
+            persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose))
         
-        print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_args)} personas)")
+        # Process personas in parallel batches
+        max_workers = min(llm.rate_limit_per_min, num_persona)
+        batch_size = max_workers
+        num_batches = math.ceil(num_persona / batch_size)
         
-        # Process batch in parallel
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(batch_args)) as executor:
-            # Submit all tasks for this batch
-            future_to_args = {executor.submit(process_single_persona_thread, args): args for args in batch_args}
+        for batch_idx in range(num_batches):
+            batch_start_idx = batch_idx * batch_size
+            batch_end_idx = min((batch_idx + 1) * batch_size, num_persona)
+            batch_args = persona_args[batch_start_idx:batch_end_idx]
             
-            # Collect results with progress bar
-            for future in tqdm(concurrent.futures.as_completed(future_to_args), 
-                             desc=f"Batch {batch_idx + 1} personas", 
-                             total=len(batch_args)):
-                try:
-                    idx, persona_id, final_json, full_path = future.result()
-                    
-                    if final_json is not None:
-                        # Add to output dict
-                        output_dict[persona_id] = final_json
+            print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_args)} personas)")
+            
+            # Process batch in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(batch_args)) as executor:
+                # Submit all tasks for this batch
+                future_to_args = {executor.submit(process_single_persona_thread, args): args for args in batch_args}
+                
+                # Collect results with progress bar
+                for future in tqdm(concurrent.futures.as_completed(future_to_args), 
+                                 desc=f"Batch {batch_idx + 1} personas", 
+                                 total=len(batch_args)):
+                    try:
+                        idx, persona_id, final_json, full_path = future.result()
                         
-                        # Save individual file - only clean on first file if clean=True
-                        should_clean = clean and idx == persona_start_idx
-                        utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
-                        print(f"Saved persona {idx} to {full_path}")
+                        if final_json is not None:
+                            # Add to output dict
+                            output_dict[persona_id] = final_json
+                            
+                            # Save individual file - only clean on first file if clean=True
+                            should_clean = clean and idx == persona_start_idx
+                            utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                            print(f"Saved persona {idx} to {full_path}")
+                        
+                    except Exception as e:
+                        args = future_to_args[future]
+                        idx = args[0]
+                        print(f"Error in future for persona {idx}: {e}")
+    else:
+        # Sequential processing
+        for i in tqdm(range(num_persona), desc="Processing personas sequentially"):
+            idx = persona_start_idx + i  # Use the adjusted index
+            persona = random.choice(all_personas)
+            
+            try:
+                # Process single persona
+                final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+                
+                if final_json is not None:
+                    persona_id = str(uuid4())
                     
-                except Exception as e:
-                    args = future_to_args[future]
-                    idx = args[0]
-                    print(f"Error in future for persona {idx}: {e}")
+                    # Create individual persona file path
+                    output_dir = os.path.dirname(output_path)
+                    base_name = os.path.basename(output_path)
+                    
+                    # Remove timestamp and extension from base name to get clean name
+                    timestamp_pattern = r'_\d{6}_\d{6}'
+                    clean_base_name = re.sub(timestamp_pattern, '', base_name)
+                    if clean_base_name.endswith('.json'):
+                        clean_base_name = clean_base_name[:-5]  # Remove .json
+                    
+                    full_path = os.path.join(output_dir, f"{clean_base_name}_persona{idx}.json")
+                    
+                    # Add to output dict
+                    output_dict[persona_id] = final_json
+                    
+                    # Save individual file - only clean on first file if clean=True
+                    should_clean = clean and idx == persona_start_idx
+                    utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                    print(f"Saved persona {idx} to {full_path}")
+                    
+            except Exception as e:
+                print(f"Error processing persona {idx}: {e}")
     
     return output_dict

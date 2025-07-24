@@ -357,7 +357,20 @@ def generate_user_question(element):
     Generates a natural first-person user query that would *elicit* a personalized response
     based on the element's preference/background, but does NOT reference the preference/background.
     """
-    if element['pref_type'] == "stereotypical_pref" or element['pref_type'] == "anti_stereotypical_pref":
+    if element['pref_type'] == "therapy_background":
+        context = f"The user has a hidden personal background: {element['therapy_background']}"
+        instruct = (
+            """
+            Write a first-person, natural question seeking therapeutic advice, coping strategies, or support.
+            The question should be influenced by the user's background, but not mention or reference it, so the preference remain hidden to the chatbot.
+            Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar,
+            since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences.
+            and therefore, give this user unexpected personalized responses to enhance user engagement.
+            The user query must be short without details, as if the user has never mentioned the hidden personal background above.
+            Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
+            """
+        )
+    else:
         context = f"Given this hidden ground-truth user preference: {element['preference']}"
         if 'idx_repeat' in element:
             context += "This user has previously asked some detailed questions related to this topic, which indicates some hidden interests."
@@ -373,22 +386,6 @@ def generate_user_question(element):
             Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
             """
         )
-    elif element['pref_type'] == "therapy_background":
-        context = f"The user has a hidden personal background: {element['therapy_background']}"
-        instruct = (
-            """
-            Write a first-person, natural question seeking therapeutic advice, coping strategies, or support.
-            The question should be influenced by the user's background, but not mention or reference it, so the preference remain hidden to the chatbot.
-            Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar,
-            since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences.
-            and therefore, give this user unexpected personalized responses to enhance user engagement.
-            The user query must be short without details, as if the user has never mentioned the hidden personal background above.
-            Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
-            """
-        )
-    else:
-        raise NotImplementedError("Unknown scenarios")
-
     return (
         f"{context}\n"
         f"{instruct}\n"

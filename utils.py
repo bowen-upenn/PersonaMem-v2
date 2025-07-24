@@ -170,3 +170,67 @@ def rewrite_user_query_to_add_image(conv_turns, image_path):
             ]
         rewritten.append(turn)
     return rewritten
+
+
+def create_timestamped_filename(base_dir, base_name, extension='.json', timestamp=None):
+    """
+    Create a timestamped filename in the format: {base_dir}/{base_name}_{timestamp}.{extension}
+    
+    Args:
+        base_dir (str): Base directory path
+        base_name (str): Base filename without extension
+        extension (str): File extension (including the dot)
+        timestamp (str, optional): Timestamp string. If None, generates Pacific time timestamp
+    
+    Returns:
+        str: Full timestamped file path
+    """
+    import pytz
+    from datetime import datetime
+    
+    if timestamp is None:
+        pacific_tz = pytz.timezone('US/Pacific')
+        now = datetime.now(pacific_tz)
+        timestamp = now.strftime('%y%m%d_%H%M%S')
+    
+    timestamped_name = f"{base_name}_{timestamp}{extension}"
+    return os.path.join(base_dir, timestamped_name)
+
+
+def get_persona_files_in_range(base_dir, base_name, start_idx=-1, end_idx=-1):
+    """
+    Get persona files within a specified index range.
+    
+    Args:
+        base_dir (str): Directory containing persona files
+        base_name (str): Base filename pattern
+        start_idx (int): Starting persona index (-1 means all)
+        end_idx (int): Ending persona index (-1 means all)
+    
+    Returns:
+        list: List of matching file paths
+    """
+    import glob
+    
+    # Create pattern to match persona files
+    pattern = os.path.join(base_dir, f"{base_name}_*_persona*.json")
+    all_files = glob.glob(pattern)
+    
+    if start_idx == -1 and end_idx == -1:
+        return sorted(all_files)
+
+    if end_idx == -1:
+        end_idx = len(all_files)
+    
+    # Filter files by persona index
+    filtered_files = []
+    for file_path in all_files:
+        # Extract persona index from filename
+        filename = os.path.basename(file_path)
+        match = re.search(r'_persona(\d+)\.json', filename)
+        if match:
+            persona_idx = int(match.group(1))
+            if start_idx <= persona_idx <= end_idx:
+                filtered_files.append(file_path)
+    
+    return sorted(filtered_files)

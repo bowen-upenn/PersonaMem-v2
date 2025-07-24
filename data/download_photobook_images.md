@@ -1,0 +1,1 @@
+Please download image data from Google Drive at https://drive.google.com/drive/folders/14_pENtMYdvySewG2pEhnRuUEL1KG4ose?usp=sharing and put them under the path data/photobook_images.
