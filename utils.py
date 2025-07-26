@@ -114,7 +114,7 @@ def extract_after_token(text: str, token: str) -> str:
         start = text.index(token) + len(token)
         # Return everything after the token, stripped of whitespace
         return text[start:].strip()
-    except ValueError:
+    except Exception as e:
         # Token not found
         return ""
 

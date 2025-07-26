@@ -22,14 +22,19 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
     """
     # Generate user query prompt and get the question
     prompt = prompts.generate_user_question(element)
-    user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
-    user_query = utils.extract_after_token(user_query, '###Output')
+    try:
+        user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
+        user_query = utils.extract_after_token(user_query, '###Output')
 
-    # Generate answer options prompt and get JSON with labeled answers
-    who = element['who']
-    prompt = prompts.generate_answer_options(element, user_query, who)
-    answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    answers = utils.extract_json_from_response(answers)
+        # Generate answer options prompt and get JSON with labeled answers
+        who = element['who']
+        prompt = prompts.generate_answer_options(element, user_query, who)
+
+        answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        answers = utils.extract_json_from_response(answers)
+    except Exception as e:
+        print(f"Error generating qa for element {element}: {e}")
+        return None 
 
     # Set up correct and incorrect answers based on whether the preference belongs to the user themselves or others
     who = element.get("who", [])
@@ -83,14 +88,19 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
 def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
     # Generate user query prompt and get the question
     prompt = prompts.generate_user_question_sensitive_info(element, persona)
-    user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
-    user_query = utils.extract_after_token(user_query, '###Output')
+    try:
+        user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
+        user_query = utils.extract_after_token(user_query, '###Output')
 
-    # Generate answer options prompt and get JSON with labeled answers
-    who = element['who']
-    prompt = prompts.generate_answer_options_sensitive_info(element, user_query)
-    answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    answers = utils.extract_json_from_response(answers)
+        # Generate answer options prompt and get JSON with labeled answers
+        who = element['who']
+        prompt = prompts.generate_answer_options_sensitive_info(element, user_query)
+        # try:
+        answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        answers = utils.extract_json_from_response(answers)
+    except Exception as e:
+        print(f"Error generating qa for element {element}: {e} with and sensitive info {element.get('sensitive_info')}")
+        return None 
 
     # Attach new keys to element
     element['user_query'] = user_query
@@ -108,43 +118,43 @@ def generate_qa_for_single_persona(args):
     """Helper function to process QA for a single persona in parallel."""
     uuid, persona, llm, verbose = args
     
-    try:
-        processed_persona = persona.copy()
-        conversations_by_type = persona.get("conversations", {})
+    # try:
+    processed_persona = persona.copy()
+    conversations_by_type = persona.get("conversations", {})
+    
+    for conv_type, conv_list in conversations_by_type.items():
+        if verbose:
+            print(f'Processing conv_type: {conv_type} for {uuid}')
         
-        for conv_type, conv_list in conversations_by_type.items():
-            if verbose:
-                print(f'Processing conv_type: {conv_type} for {uuid}')
-            
-            for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} for {uuid}", disable=not verbose):
-                llm.reset_history()
-                curr_persona = persona.get("persona", "")
+        for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} for {uuid}", disable=not verbose):
+            llm.reset_history()
+            curr_persona = persona.get("persona", "")
 
-                if conv_type == 'knowledge_query':
-                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
-                        continue  # Skip if user didn't ask topic >= 3 times
+            if conv_type == 'knowledge_query':
+                if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                    continue  # Skip if user didn't ask topic >= 3 times
 
-                if "sensitive_info" in conv_elem:
-                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
-                    conv_elem.update({
-                        "user_query": qa_fields.get("user_query"),
-                        "correct_answer": qa_fields.get("correct_answer"),
-                        "incorrect_answers": qa_fields.get("incorrect_answers"),
-                    })
-                else:
-                    ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
-                    qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
-                    conv_elem.update({
-                        "user_query": qa_fields.get("user_query"),
-                        "correct_answer": qa_fields.get("correct_answer"),
-                        "incorrect_answers": qa_fields.get("incorrect_answers"),
-                    })
+            if "sensitive_info" in conv_elem:
+                qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
+                conv_elem.update({
+                    "user_query": qa_fields.get("user_query"),
+                    "correct_answer": qa_fields.get("correct_answer"),
+                    "incorrect_answers": qa_fields.get("incorrect_answers"),
+                })
+            else:
+                ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
+                conv_elem.update({
+                    "user_query": qa_fields.get("user_query"),
+                    "correct_answer": qa_fields.get("correct_answer"),
+                    "incorrect_answers": qa_fields.get("incorrect_answers"),
+                })
+    
+    return uuid, processed_persona
         
-        return uuid, processed_persona
-        
-    except Exception as e:
-        print(f"Error processing persona {uuid}: {e}")
-        return uuid, None
+    # except Exception as e:
+    #     print(f"Error processing persona {uuid}: {e}")
+    #     return uuid, None
 
 
 def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False):
@@ -218,58 +228,57 @@ def process_single_file_qa(args):
     """Process QA for a single persona file in parallel."""
     file_path, llm, verbose = args
     
-    try:
-        return file_path, process_single_file_qa_sequential(file_path, llm, verbose)
-    except Exception as e:
-        print(f"Error processing file {file_path}: {e}")
-        return file_path, False
+    # try:
+    return file_path, process_single_file_qa_sequential(file_path, llm, verbose)
+    # except Exception as e:
+    #     print(f"Error processing file {file_path}: {e}")
+    #     return file_path, False
 
 
 def process_single_file_qa_sequential(file_path, llm, verbose):
     """Process QA for a single persona file sequentially."""
-    try:
-        # Load the persona file
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+    # Load the persona file
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    # Process each persona in the file
+    for uuid, persona in data.items():
+        conversations_by_type = persona.get("conversations", {})
         
-        # Process each persona in the file
-        for uuid, persona in data.items():
-            conversations_by_type = persona.get("conversations", {})
+        for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
+            print(f'Processing conv_type: {conv_type} in {file_path}')
             
-            for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
-                if i > 0:
-                    continue
-                print(f'Processing conv_type: {conv_type} in {file_path}')
-                
-                for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type}", disable=not verbose, leave=False):
-                    llm.reset_history()
-                    curr_persona = persona.get("persona", "")
+            for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type}", disable=not verbose, leave=False):
+                # try:
+                llm.reset_history()
+                curr_persona = persona.get("persona", "")
 
-                    if conv_type == 'knowledge_query':
-                        if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
-                            continue  # Skip if user didn't ask topic >= 3 times
+                if conv_type == 'knowledge_query':
+                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                        continue  # Skip if user didn't ask topic >= 3 times
 
-                    if "sensitive_info" in conv_elem:
-                        qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
-                        conv_elem.update({
-                            "user_query": qa_fields.get("user_query"),
-                            "correct_answer": qa_fields.get("correct_answer"),
-                            "incorrect_answers": qa_fields.get("incorrect_answers"),
-                        })
-                    else:
-                        ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
-                        qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
-                        conv_elem.update({
-                            "user_query": qa_fields.get("user_query"),
-                            "correct_answer": qa_fields.get("correct_answer"),
-                            "incorrect_answers": qa_fields.get("incorrect_answers"),
-                        })
-        
-        # Save the updated data back to the same file
-        utils.save_json(data, file_path, clean=True)  # Use clean=True to overwrite
-        return True
-        
-    except Exception as e:
-        print(f"Error processing file {file_path}: {e}")
-        return False
+                if "sensitive_info" in conv_elem:
+                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
+                    conv_elem.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
+                else:
+                    ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
+                    qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
+                    conv_elem.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
+                # except Exception as e:
+                #     if "sensitive_info" in conv_elem:
+                #         print(f"Error processing persona conv_type {conv_elem}: {e} with sensitive info {conv_elem['sensitive_info']}")
+                #     else:
+                #         print(f"Error processing persona conv_type {conv_elem}: {e}")
+                #     continue
 
+    # Save the updated data back to the same file
+    utils.save_json(data, file_path, clean=True)  # Use clean=True to overwrite
+    return True

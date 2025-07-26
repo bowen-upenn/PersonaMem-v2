@@ -139,6 +139,22 @@ def verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=False)
     return alignment
 
 
+def extend_to_multiturns(llm, conv_turns, verbose):
+    prompt = prompts.extend_to_multiturns(str(conv_turns))
+    conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
+
+    try:
+        conv_turns = utils.extract_json_from_response(conv_turns)
+    except json.JSONDecodeError as e:
+        try:
+            conv_turns = repair_json(conv_turns)
+            conv_turns = utils.extract_json_from_response(conv_turns)
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse multi-turn response: {e}")
+            return
+    return conv_turns
+
+
 def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose=False):
     """
     Generate repetitive user knowledge queries to the chatbot.
@@ -160,6 +176,13 @@ def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, 
             except json.JSONDecodeError as e:
                 print(f"Failed to parse knowledge query response: {e}")
                 continue
+
+        if random.random() < 0.33:
+            conv_turns_temp = extend_to_multiturns(llm, conv_turns, verbose)
+            if conv_turns_temp:
+                conv_turns = conv_turns_temp
+
+        conv_turns = utils.merge_consecutive_roles(conv_turns)
 
         if conv_turns:
             element = {'preference': pref, 'pref_type': pref_key, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False}
@@ -204,6 +227,11 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
             print(f"Failed to parse knowledge query response: {e}")
             return
 
+    if random.random() < 0.33:
+        conv_turns_temp = extend_to_multiturns(llm, conv_turns, verbose)
+        if conv_turns_temp:
+            conv_turns = conv_turns_temp
+
     conv_turns = utils.merge_consecutive_roles(conv_turns)
     who = 'others' if is_others_pref else 'self'
 
@@ -237,6 +265,11 @@ def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversa
         except json.JSONDecodeError as e:
             print(f"Failed to parse knowledge query response: {e}")
             return
+
+    if random.random() < 0.33:
+        conv_turns_temp = extend_to_multiturns(llm, conv_turns, verbose)
+        if conv_turns_temp:
+            conv_turns = conv_turns_temp
 
     conv_turns = utils.merge_consecutive_roles(conv_turns)
     if conv_turns:
@@ -296,6 +329,11 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
         except json.JSONDecodeError as e:
             print(f"Failed to parse knowledge query response: {e}")
             return None, conversations
+
+    if random.random() < 0.33:
+        conv_turns_temp = extend_to_multiturns(llm, conv_turns, verbose)
+        if conv_turns_temp:
+            conv_turns = conv_turns_temp
         
     conv_turns = utils.merge_consecutive_roles(conv_turns)
 
@@ -475,14 +513,13 @@ def process_single_persona_thread(args):
             output_dir = os.path.dirname(output_path)
             base_name = os.path.basename(output_path)
             
-            # Remove timestamp and extension from base name to get clean name
-            import re
-            timestamp_pattern = r'_\d{6}_\d{6}'
-            clean_base_name = re.sub(timestamp_pattern, '', base_name)
-            if clean_base_name.endswith('.json'):
-                clean_base_name = clean_base_name[:-5]  # Remove .json
+            # Keep timestamp but remove extension from base name
+            if base_name.endswith('.json'):
+                base_name_no_ext = base_name[:-5]  # Remove .json
+            else:
+                base_name_no_ext = base_name
             
-            full_path = os.path.join(output_dir, f"{clean_base_name}_persona{idx}.json")
+            full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
             
             return idx, persona_id, final_json, full_path
         else:
@@ -572,13 +609,13 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                     output_dir = os.path.dirname(output_path)
                     base_name = os.path.basename(output_path)
                     
-                    # Remove timestamp and extension from base name to get clean name
-                    timestamp_pattern = r'_\d{6}_\d{6}'
-                    clean_base_name = re.sub(timestamp_pattern, '', base_name)
-                    if clean_base_name.endswith('.json'):
-                        clean_base_name = clean_base_name[:-5]  # Remove .json
+                    # Keep timestamp but remove extension from base name
+                    if base_name.endswith('.json'):
+                        base_name_no_ext = base_name[:-5]  # Remove .json
+                    else:
+                        base_name_no_ext = base_name
                     
-                    full_path = os.path.join(output_dir, f"{clean_base_name}_persona{idx}.json")
+                    full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
                     
                     # Add to output dict
                     output_dict[persona_id] = final_json

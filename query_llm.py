@@ -34,12 +34,10 @@ class QueryLLM:
         azure_key = os.getenv("AZURE_OPENAI_KEY")
         azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-        azure_deployment_with_image_input = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_WITH_IMAGE_INPUT")
 
         print(f"Debug - Environment variables:")
         print(f"  AZURE_OPENAI_ENDPOINT: {azure_endpoint}")
         print(f"  AZURE_OPENAI_DEPLOYMENT_NAME: {azure_deployment}")
-        print(f"  AZURE_OPENAI_DEPLOYMENT_NAME_WITH_IMAGE_INPUT: {azure_deployment_with_image_input}")
         print(f"  AZURE_OPENAI_API_VERSION: {azure_api_version}")
 
         if azure_endpoint and azure_key and azure_deployment:
@@ -50,7 +48,6 @@ class QueryLLM:
                 api_version=azure_api_version,
             )
             self.model = azure_deployment
-            self.model_with_image_input = azure_deployment_with_image_input
         else:
             try:
                 print("Using OpenAI configuration")
@@ -143,7 +140,7 @@ class QueryLLM:
 
         # Call the Chat Completions API
         response = self.client.chat.completions.create(
-            model=self.model_with_image_input if base64_image else self.model,
+            model=self.model,
             messages=messages,
         )
 
@@ -234,7 +231,7 @@ class QueryLLM:
 
             # Call the Chat Completions API
             response = self.client.chat.completions.create(
-                model=self.model_with_image_input if image else self.model,
+                model=self.model,
                 messages=messages,
             )
 
