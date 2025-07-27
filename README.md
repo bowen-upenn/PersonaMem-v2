@@ -12,6 +12,24 @@ source myenv/bin/activate
 pip install -r requirements.txt
 ```
 
+### � API Keys Setup
+
+Configure your API credentials in the `.env` file, following examples in `.env.example`.
+
+**Option 1: OpenAI Configuration**
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=o4-mini
+```
+
+**Option 2: Microsoft Azure OpenAI Configuration**
+```bash
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_KEY=your_azure_openai_key_here
+AZURE_OPENAI_DEPLOYMENT_NAME=o4-mini
+AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
+```
+
 ### 📁 Data Setup
 
 1. **Download image data**: Follow the instructions in `data/download_phptobook_imges.md` to download the required image dataset.
