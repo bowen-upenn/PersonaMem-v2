@@ -12,7 +12,7 @@ source myenv/bin/activate
 pip install -r requirements.txt
 ```
 
-### � API Keys Setup
+### ⚙️ API Keys Setup
 
 Configure your API credentials in the `.env` file, following examples in `.env.example`.
 
@@ -38,7 +38,7 @@ AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
 
 3. **Output directory**: Generated persona files will be saved to `data/raw_data/`.
 
-### ⚙️ Usage
+### 🚀 Usage
 
 Run the following scripts in order to generate personalized conversation data:
 
