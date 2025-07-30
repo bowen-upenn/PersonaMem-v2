@@ -30,8 +30,11 @@ def find_max_persona_index(output_path, clean=False):
     if clean:
         return 0
     
-    # Extract directory and extract base name from timestamped path
-    output_dir = os.path.dirname(output_path)
+    # Look for existing persona files in data/raw_data directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    raw_data_dir = os.path.join(current_dir, "data", "raw_data")
+    
+    # Extract base name from timestamped path
     base_name = os.path.basename(output_path)
     
     # Remove timestamp and extension to get the clean base name
@@ -40,8 +43,8 @@ def find_max_persona_index(output_path, clean=False):
     if clean_base_name.endswith('.json'):
         clean_base_name = clean_base_name[:-5]  # Remove .json
     
-    # Search for existing persona files with pattern: {clean_base_name}_persona*.json
-    search_pattern = os.path.join(output_dir, f"{clean_base_name}_persona*.json")
+    # Search for existing persona files in raw_data directory with pattern: {clean_base_name}_*_persona*.json
+    search_pattern = os.path.join(raw_data_dir, f"{clean_base_name}*_persona*.json")
     existing_files = glob.glob(search_pattern)
     
     max_index = -1
@@ -49,14 +52,13 @@ def find_max_persona_index(output_path, clean=False):
     # Extract persona indices from filenames
     for file_path in existing_files:
         filename = os.path.basename(file_path)
-        # Look for pattern like "interactions_persona0.json"
+        # Look for pattern like "interactions_250727_201452_persona607.json"
         match = re.search(r'_persona(\d+)\.json$', filename)
         if match:
             index = int(match.group(1))
             max_index = max(max_index, index)
     
     # Return next available index
-    return max_index + 1
     return max_index + 1 if max_index >= 0 else 0
 
 
@@ -430,8 +432,11 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         llm.reset_history()
         is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
         # Generate preference and conversations as if the user is providing an image to the chatbot
-        find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
-
+        try:
+            find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+        except Exception as e:
+            continue
+        
     return conversations, updates
 
 
@@ -502,32 +507,32 @@ def process_single_persona_thread(args):
     """
     idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
     
-    try:
-        # Process single persona
-        final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+    # try:
+    # Process single persona
+    final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+    
+    if final_json is not None:
+        persona_id = str(uuid4())
         
-        if final_json is not None:
-            persona_id = str(uuid4())
-            
-            # Create individual persona file path
-            output_dir = os.path.dirname(output_path)
-            base_name = os.path.basename(output_path)
-            
-            # Keep timestamp but remove extension from base name
-            if base_name.endswith('.json'):
-                base_name_no_ext = base_name[:-5]  # Remove .json
-            else:
-                base_name_no_ext = base_name
-            
-            full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
-            
-            return idx, persona_id, final_json, full_path
+        # Create individual persona file path
+        output_dir = os.path.dirname(output_path)
+        base_name = os.path.basename(output_path)
+        
+        # Keep timestamp but remove extension from base name
+        if base_name.endswith('.json'):
+            base_name_no_ext = base_name[:-5]  # Remove .json
         else:
-            return idx, None, None, None
-            
-    except Exception as e:
-        print(f"Error processing persona {idx}: {e}")
+            base_name_no_ext = base_name
+        
+        full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
+        
+        return idx, persona_id, final_json, full_path
+    else:
         return idx, None, None, None
+            
+    # except Exception as e:
+    #     print(f"Error processing persona {idx}: {e}")
+    #     return idx, None, None, None
 
 
 def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, parallel=False, verbose=False):
@@ -543,8 +548,10 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     
     # Find the starting index to avoid overwriting existing personas
     persona_start_idx = find_max_persona_index(output_path, clean)
-    if not clean and persona_start_idx > 0:
-        print(f"Found existing persona files. Starting from persona index {persona_start_idx}")
+    if persona_start_idx > 0:
+        print(f"Found existing persona files. Starting from persona index {persona_start_idx}.")
+    else:
+        print(f"Starting from persona index 0.")
     
     if parallel:
         # Parallel processing
@@ -576,22 +583,22 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                 for future in tqdm(concurrent.futures.as_completed(future_to_args), 
                                  desc=f"Batch {batch_idx + 1} personas", 
                                  total=len(batch_args)):
-                    try:
-                        idx, persona_id, final_json, full_path = future.result()
+                    # try:
+                    idx, persona_id, final_json, full_path = future.result()
+                    
+                    if final_json is not None:
+                        # Add to output dict
+                        output_dict[persona_id] = final_json
                         
-                        if final_json is not None:
-                            # Add to output dict
-                            output_dict[persona_id] = final_json
-                            
-                            # Save individual file - only clean on first file if clean=True
-                            should_clean = clean and idx == persona_start_idx
-                            utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
-                            print(f"Saved persona {idx} to {full_path}")
+                        # Save individual file - only clean on first file if clean=True
+                        should_clean = clean and idx == persona_start_idx
+                        utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                        print(f"Saved persona {idx} to {full_path}")
                         
-                    except Exception as e:
-                        args = future_to_args[future]
-                        idx = args[0]
-                        print(f"Error in future for persona {idx}: {e}")
+                    # except Exception as e:
+                    #     args = future_to_args[future]
+                    #     idx = args[0]
+                    #     print(f"Error in future for persona {idx}: {e}")
     else:
         # Sequential processing
         for i in tqdm(range(num_persona), desc="Processing personas sequentially"):
