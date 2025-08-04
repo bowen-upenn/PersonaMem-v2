@@ -203,7 +203,237 @@
       "Chooses popular tourist spots and commercial locations for photos rather than abandoned or offbeat sites": "Chooses abandoned or offbeat sites for photos rather than popular tourist spots and commercial locations."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user prefers interactive, motion-controlled video games like Wii Sports for social, active play.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I snapped while playing Wii Boxing, how does the Wii Remote’s accelerometer and sensor bar data combine to register our punch speed and direction so precisely?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000160102.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Your question touches on an elegant blend of hardware and software that Nintendo engineered for the Wii.\n\n1. Accelerometer Basics\nInside each Wii Remote is a three-axis linear accelerometer. This tiny sensor continuously measures acceleration along three perpendicular axes:\n  • X-axis: left and right movements or tilts\n  • Y-axis: forward and backward thrusts (like a punch)\n  • Z-axis: up and down motions\n\nWhen you punch, the change in velocity along the Y-axis produces a distinct spike in acceleration. The accelerometer captures both the magnitude (how fast you move) and the direction (forward vs. backward).\n\n2. Sensor Bar & IR Camera\nAbove the screen, the “sensor bar” actually houses two infrared LEDs spaced a fixed distance apart. The Wii Remote contains a small infrared camera that tracks those two IR points, providing:\n  • Orientation: how the controller is tilted or rotated\n  • Position reference: general pointer location on the screen\n\nWhile the sensor bar doesn’t measure your punch directly, its IR signals establish a stable coordinate system so the console knows the remote’s orientation relative to the TV.\n\n3. Data Fusion & Software Interpretation\n  a. Sampling & Transmission: The Wii Remote samples acceleration data around 100 times per second and sends these readings (plus IR data when in pointer mode) to the console via Bluetooth.\n  b. Filtering: The console applies filters to ignore small jitters and highlight sudden spikes—these spikes correspond to intentional punches.\n  c. Punch Detection:\n     • Direction: a strong positive Y-axis spike is interpreted as a forward punch; a negative spike could be a pullback or block.\n     • Speed/Power: the size of the acceleration spike maps to punch strength in the game.\n     • Angle Refinement: IR orientation data helps distinguish different punch types (e.g., a jab versus an uppercut) by detecting how you tilt the remote during the motion.\n\n4. On-Screen Animation & Feedback\nOnce the system classifies the motion, it instantly triggers the corresponding boxer animation and sound effect. Because the entire cycle—from sensing motion to playing the animation—takes less than about 50 milliseconds, the response feels fluid and in sync with your real-world punches.\n\nIn summary, by fusing accelerometer spikes with IR-based orientation data and running them through real-time filtering and classification algorithms, the Wii Remote reliably translates your physical punches into accurate, responsive on-screen actions."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "That makes sense! Can you go deeper into the filtering step? What specific filtering techniques does the Wii use to suppress random jitters and detect true punch spikes in the accelerometer data?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000160102.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Absolutely—filtering is key to accurate motion detection. Here’s a closer look:\n\n1. Gravity Removal (High-Pass Filtering)\n   • Goal: Separate dynamic motion from the constant gravitational acceleration (≈1 g).\n   • Method: A simple high-pass filter subtracts a slow-moving average (low-pass estimate) from the raw signal, leaving only rapid changes (your punches).\n\n2. Noise Reduction (Low-Pass / Moving Average)\n   • Goal: Smooth out high-frequency electrical noise or tiny hand tremors.\n   • Method: A short-window moving average (or finite impulse response filter) over 5–10 samples reduces spikes below a few Hz, which are unlikely to be intentional punches.\n\n3. Band-Pass Tuning\n   • Goal: Focus on the frequency band where human punch motions occur (roughly 1–8 Hz).\n   • Method: By cascading the high-pass and low-pass stages, the system effectively creates a band-pass filter that passes only mid-range frequencies.\n\n4. Threshold-Based Spike Detection\n   • Adaptive Thresholds: Rather than a fixed value, the Wii uses a dynamic threshold that tracks the recent baseline noise level plus a margin (e.g., baseline + 0.3 g). This adapts to different users’ hand steadiness.\n   • Peak Finding: The software looks for local maxima above the threshold within a short time window (e.g., 50 ms) and marks the first significant peak as the punch event.\n\n5. Dead Zone & Refractory Period\n   • After a strike is detected, further peaks are ignored for a brief refractory period (≈100–150 ms) to prevent double-counting a single punch.\n\n6. IR Orientation Check\n   • Finally, once a punch spike is confirmed in the Y axis, the system cross-checks the controller’s tilt (pitch and roll from IR data). If the tilt matches a punch gesture (e.g., roughly horizontal for a jab), the motion is classified accordingly.\n\nBy stacking these filtering stages—high-pass to remove gravity, low-pass to cut noise, dynamic thresholds to catch real spikes, plus timing logic to avoid false positives—the Wii reliably extracts your intentional punches from the raw accelerometer stream."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000160102.jpg",
+          "user_query": "I’m planning a game night with friends and want something that gets everyone up and moving instead of just sitting around—what video games or setups would you recommend?",
+          "correct_answer": "For a lively game night that keeps everyone on their feet, set up motion-controlled titles like Wii Sports or Nintendo Switch Sports alongside Just Dance for dance-offs. Rotating through bowling, tennis, and rhythm challenges will get friends laughing, moving, and competing every round.",
+          "incorrect_answers": [
+            "For a strategic game night that keeps everyone on their toes, set up modern board games like Settlers of Catan or Ticket to Ride alongside digital strategy apps like Carcassonne on tablets. Rotating through resource-trading and tile-placement rounds will spark negotiation, planning, and healthy competition.",
+            "For a nostalgic game night that brings back classic fun, set up retro arcade titles like Pac-Man or Street Fighter II on a mini-console alongside vintage console compilations. Rotating through single- and multiplayer modes will spark friendly rivalries as everyone chases high scores and reminiscent victories.",
+            "For a lively game night that can get everyone active, choose interactive party games like Just Dance or Mario Party with its motion mini-games. Rotating through competitive challenges and group activities ensures a fun, high-energy evening for all."
+          ]
+        },
+        {
+          "preference": "The user enjoys frosted cakes.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my homemade cake, what tips can you give me to smooth out the meringue frosting for a cleaner, glossier finish?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/cake_dining_table/COCO_train2014_000000134599.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve done a beautiful job whipping up that tall, cloud-like meringue. To achieve an even smoother, glossy surface next time, consider these detailed steps:\n\n1. Choose the right meringue method:\n   • Swiss meringue: Gently heat your egg whites and sugar over a double boiler until the sugar fully dissolves and the mixture reaches about 140°F (60°C). Then transfer to a stand mixer and whip until stiff peaks form and the exterior of the bowl feels cool. This method gives you a silky-smooth, somewhat stable frosting that glides on easily.\n   • Italian meringue: Prepare a hot sugar syrup (240°F/115°C) and slowly pour it into whipped egg whites while the mixer is running. The gradual incorporation of hot syrup cooks the whites and yields an extra-shiny, super-stable frosting. It’s ideal if you want that perfect glassy sheen.\n\n2. Temperature and consistency:\n   • Make sure your bowl and whisk are completely grease-free and cool before starting. Any trace of fat will prevent full foaming and lead to a grainy texture.\n   • Whip the meringue until it holds very firm, satiny peaks. Under-whipped meringue will slump and show drips rather than a smooth surface.\n\n3. Application technique:\n   • Crumb coat first: Thinly cover the cake with a quick layer of meringue, then chill it for 10–15 minutes. This seals in crumbs and gives you a stable base for the final coat.\n   • Warm the spatula: Dip your offset spatula or bench scraper in hot water, wipe off excess, then run it gently along the frosting. The heat helps melt tiny ridges and creates that flawless, glass-like finish.\n   • Turntable control: Place the cake on a revolving stand. Hold your spatula at a slight angle and rotate the turntable slowly, smoothing the frosting in one continuous motion. Avoid stopping and starting, as that can leave lines.\n\n4. Finishing touches:\n   • Torch lightly: For that signature Italian-meringue gloss, gently pass a small kitchen torch over the surface to melt the outer sugar crystals and enhance shine. Keep the flame moving to prevent scorching.\n   • Chill before slicing: Once smoothed, refrigerate for at least 20 minutes. The cold firm meringue holds its shape and gloss when you cut or transport the cake.\n\n5. Troubleshooting common issues:\n   • Grainy texture? You may have undissolved sugar. Always rub a bit of frosting between your fingers before whipping—if you feel grit, continue heating the mixture.\n   • Weeping or pooling liquid? Over-beating can break down the foam. Stop whipping as soon as you reach firm, glossy peaks.\n   • Frosting sliding off? Ensure your cake layers are well chilled and that you’ve applied a solid crumb coat.\n\nBy selecting the Italian or Swiss method, closely monitoring temperatures, and using the hot-spatula smoothing trick on a turntable, you’ll transform those charming peaks into a mirror-like, professional finish. Happy baking!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/cake_dining_table/COCO_train2014_000000134599.jpg",
+          "user_query": "I’m planning to bake a cake for a small get-together next week—what flavors and decorating ideas would make it really stand out?",
+          "correct_answer": "For a small get-together, try a light lemon-vanilla sponge coated in Swiss buttercream frosting, pipe delicate rosettes around the edge, and top with fresh berries and edible flowers to accentuate that beautiful frosted look you enjoy.",
+          "incorrect_answers": [
+            "For a small get-together, try a honey-almond cake covered in matcha buttercream, pipe tiny succulents with green-tinted icing around the top, and finish with crushed pistachios for a garden-inspired centerpiece.",
+            "For a small get-together, try a spiced chai chocolate cake with salted caramel frosting, swirl on neon icing ribbons, and add edible glitter and mini fondant vinyl records for a playful, festival-inspired twist.",
+            "For a small get-together, try a classic vanilla sponge with silky chocolate ganache, garnish with piped buttercream swirls, fresh fruit, and a sprinkle of toasted nuts to create an elegant, crowd-pleasing centerpiece."
+          ]
+        },
+        {
+          "preference": "The user likely enjoys baking homemade treats in their kitchen.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my oven loaded with three pans of homemade bars, what’s the best way to arrange racks, select pan materials, and tweak temperature or timing so everything bakes evenly without hot spots?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_oven/COCO_train2014_000000277990.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Baking multiple pans at once can be tricky, but with a few key adjustments you can achieve consistent results across all trays. Here’s a step-by-step guide:\n\n1. Pan Material and Color\n  • Choose light-colored, aluminized steel or heavy-gauge aluminum pans. They conduct heat quickly and evenly, whereas dark nonstick pans tend to absorb extra heat and can over-brown edges.\n  • If you only have dark pans, reduce your oven temperature by 10–15 °F (5–10 °C) to prevent excessive browning.\n\n2. Rack Positions and Spacing\n  • Preheat your oven fully (at least 15 minutes beyond the indicator) and use an oven thermometer to confirm true temperature.\n  • Place your pans on two racks set in the upper and lower thirds of the oven rather than top and bottom extremes. For example, rack positions 2 and 4 in a five-rack oven.\n  • If you have three pans, use the two middle racks and stagger the pans front-to-back: rack 2 holds one pan nearer the back, rack 4 holds two pans — one toward the front and one toward the back. This offset placement encourages air flow around each pan.\n\n3. Convection vs. Conventional Baking\n  • If your oven has a convection (fan-assisted) mode, switch to convection and lower the recipe temperature by about 25 °F (15 °C). The circulating air helps even out hot spots and makes multi-rack baking much more reliable.\n  • For conventional ovens without a fan, rotate pans halfway through baking: swap the top and bottom racks and also turn each pan 180° so its front edge goes to the back.\n\n4. Temperature and Timing\n  • When baking two or three trays at once in a conventional oven, lower the temperature by 15 °F (10 °C) compared to the recipe’s single-pan setting. This gives the heat a little more time to penetrate evenly.\n  • Add 5–10 minutes to the total bake time, but start checking doneness at the original time. Use a toothpick or clean knife to test the center of each pan — you want just a few moist crumbs clinging, not raw batter.\n\n5. Additional Tips\n  • Invest in an oven thermometer to monitor temperature accuracy.\n  • If you bake multi-rack frequently, consider placing a preheated baking stone or unglazed ceramic tile on the floor of the oven. It absorbs and redistributes heat, smoothing out spikes.\n  • Avoid opening the door too often; every peek drops oven temperature by 25–50 °F, which can lead to uneven rise and texture.\n\nBy combining these strategies – proper pans, thoughtful rack arrangement, temperature tweaks, and controlled rotation – you’ll minimize hot spots and end up with uniformly baked bars or brownies no matter how many trays you run at once."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_oven/COCO_train2014_000000277990.jpg",
+          "user_query": "I’m planning to bake a homemade dessert to surprise some friends—could you recommend a few simple yet impressive recipes and share any tips to make them really stand out?",
+          "correct_answer": "Since you enjoy baking homemade treats in your kitchen, try simple but impressive recipes like molten chocolate lava cakes, rustic berry galettes, and classic lemon bars; use high-quality chocolate, fresh seasonal fruit, and finish each with a dusting of powdered sugar and a sprig of mint for extra flair.",
+          "incorrect_answers": [
+            "Since you enjoy exploring farmer’s markets on weekends, try simple but impressive recipes like molten chocolate lava cakes, rustic berry galettes, and classic lemon bars; use the freshest market produce, premium chocolate, and finish each with a dusting of powdered sugar and a sprig of mint for extra flair.",
+            "Since you love attending indie music and art festivals, try simple but impressive recipes like molten chocolate lava cakes, rustic berry galettes, and classic lemon bars; use vibrant fresh fruit, quality chocolate, and finish each with a dusting of powdered sugar and a sprig of mint for extra flair.",
+            "Try simple but impressive recipes like molten chocolate lava cakes, rustic berry galettes, and classic lemon bars; use high-quality chocolate, fresh fruit, and finish each with a dusting of powdered sugar and a sprig of mint for extra flair."
+          ]
+        },
+        {
+          "preference": "The user prefers cooking with professional-grade kitchen equipment.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my restaurant’s combi oven, what steps should I follow to calibrate its temperature gauge and maintain consistent heat distribution?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_oven/COCO_train2014_000000481144.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Calibrating and maintaining a professional combi oven is essential to ensuring reliable performance and consistent cooking results. Here’s a step-by-step guide you can follow:\n\n1. Gather Your Tools\n   • A high-accuracy oven thermometer or probe (preferably traceable to a standards lab)  \n   • Soft cloth or non-abrasive cleaning pad  \n   • Manufacturer’s calibration manual or service documentation  \n   • Food-safe lubricant for gaskets and hinges (if recommended by the manufacturer)\n\n2. Warm the Oven to a Stable Baseline  \n   • Preheat the oven to a common working temperature (e.g., 175 °C / 350 °F).  \n   • Allow at least 15–20 minutes for the oven to reach equilibrium—this ensures the heating elements and internal sensors have stabilized.\n\n3. Verify the Temperature  \n   • Place your calibrated oven thermometer in the center of the cooking chamber, ideally on a rack where you normally roast or bake.  \n   • Close the door and let it sit for another 5–10 minutes.  \n   • Read the thermometer and compare it to the display on the oven’s control panel.\n\n4. Adjust the Oven’s Calibration  \n   • Consult your oven’s settings menu or calibration dial—many combi ovens allow ±5 °C (±10 °F) adjustments in small increments.  \n   • If your thermometer reads higher or lower than the setpoint by more than 5 °C, enter the calibration menu and adjust accordingly.  \n   • Repeat the verification test (step 3) until the internal thermometer and your external probe agree within an acceptable tolerance (usually ±2 °C).\n\n5. Check Heat Distribution  \n   • Place multiple thermometers in different corners of the oven cavity.  \n   • Run a short bake cycle at your normal working temperature.  \n   • Compare readings—if you see a temperature difference greater than 10 °C (18 °F) between zones, you may need to:\n     – Clean or inspect the fans and vents to ensure proper airflow.  \n     – Verify that racks and pans are not blocking air circulation.  \n     – Rotate pans halfway through cooking to even out hotspots.\n\n6. Perform Routine Cleaning and Maintenance  \n   • Daily: Wipe down the chamber walls, door gaskets, and racks with a damp cloth or approved cleaner to prevent residue buildup.  \n   • Weekly: Run the oven’s self-clean or steam-clean program (if equipped) to dissolve grease and scale.  \n   • Monthly: Inspect the door gasket for cracks or compression damage; replace if it no longer seals tightly. Lubricate hinges and latches with a food-safe lubricant if recommended.\n\n7. Schedule Professional Service  \n   • Every 3–6 months (depending on usage), arrange for a qualified technician to inspect internal components such as heating elements, steam injectors, and electrical connections.  \n   • Ask the technician to perform a full recalibration and airflow balancing as part of their preventive maintenance checklist.\n\n8. Keep Records  \n   • Log each calibration check, noting date, set temperature, measured temperature, and any adjustments made.  \n   • Record cleaning and gasket inspections. This documentation helps you spot trends—such as a gradual drift in readings—that may signal the need for deeper service.\n\nBy following these steps—verifying with a trusted thermometer, making small calibration adjustments, keeping the chamber and airflow pathways clean, and scheduling professional tune-ups—you’ll ensure your combi oven delivers accurate temperatures and uniform heat distribution every day. Consistency like this is exactly what sets professional kitchens apart and allows you to produce repeatable, high-quality results on every service."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_oven/COCO_train2014_000000481144.jpg",
+          "user_query": "I’m planning a three-course dinner for friends and want everything to run smoothly from prep to plating. What kitchen tools and gadgets would you recommend to help me achieve precise timing and consistent results?",
+          "correct_answer": "Given your preference for professional-grade kitchen equipment, I’d recommend a multi-channel digital kitchen timer, a high-precision sous-vide immersion circulator for exact doneness, and a reliable instant-read thermometer to ensure perfect temperatures.",
+          "incorrect_answers": [
+            "Given your enjoyment of collecting inspirational quotes, I’d recommend a multi-channel digital kitchen timer, a high-precision sous-vide immersion circulator for exact doneness, and a reliable instant-read thermometer to ensure perfect temperatures.",
+            "Given your passion for conceptual and experimental photography, I’d recommend a multi-channel digital kitchen timer, a high-precision sous-vide immersion circulator for exact doneness, and a reliable instant-read thermometer to ensure perfect temperatures.",
+            "To keep everything on track, consider a multi-channel digital kitchen timer, a precision sous-vide immersion circulator for exact doneness, and a reliable instant-read thermometer to ensure perfect temperatures."
+          ]
+        },
+        {
+          "preference": "The user enjoys relaxing at home playing video games while cuddling their dog.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, I’ve strapped a Wii Nunchuk motion sensor to my dog’s harness and am using her movements to play along with my gaming. Could you explain how the accelerometer in these controllers detects and translates motion into game input, and advise on calibrating sensitivity to pick up deliberate motions like tail wags without registering every little twitch—and how to keep the setup comfortable for my pup?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000344597.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Your experiment of using your dog’s movements as a game controller is a creative mash-up of two favorite hobbies: gaming and cuddling with your dog. Behind the scenes, a motion controller like the Wii Nunchuk houses a three-axis MEMS accelerometer (and in some models a gyroscope) that measures acceleration along the X, Y, and Z axes. Here’s how it works, step by step:\n\n1. Static vs. Dynamic Acceleration\n  • Static acceleration is the constant pull of gravity (9.81 m/s²) on each axis; it tells you orientation (e.g., whether the sensor is level or tilted).\n  • Dynamic acceleration is the quick changes caused by movement—like a wag or a twitch. The accelerometer captures both simultaneously in its raw data.\n\n2. Data Sampling & Filtering\n  • The controller samples its accelerometer data dozens to hundreds of times per second.\n  • Raw readings often contain high-frequency noise (small jitters) and low-frequency drift (slow changes in orientation). To isolate intentional motions:\n    – Apply a high-pass filter to remove the slow gravity component when you only want fast wags.\n    – Apply a low-pass filter to smooth out rapid, tiny jitters that aren’t meaningful.\n\n3. Threshold & Sensitivity Calibration\n  • Collect “rest” samples when your dog is perfectly still to establish a neutral baseline for each axis.\n  • Define a cut-off threshold above baseline noise (e.g., ±0.3 g on the horizontal axis) to count as a tail wag.\n  • Adjust the threshold up or down to reduce false positives or increase detection sensitivity, respectively.\n\n4. Mapping Movements to Game Actions\n  • Assign specific axes or directional changes to commands (e.g., X-axis swings as \"left\", Y-axis thrusts as \"right\").\n  • Implement a brief cooldown (e.g., 200 ms) after each detected motion to prevent one wag from triggering multiple signals.\n\n5. Ensuring Canine Comfort & Safety\n  • Use a padded harness or wrap to distribute the sensor’s weight evenly and avoid pressure points.\n  • Secure cables away from your dog’s legs and mouth with Velcro straps or soft sleeves.\n  • Limit gaming sessions to short bursts (10–15 minutes) with regular breaks to let your dog move naturally.\n  • Watch your dog’s body language—if she shows irritation, loosen the straps or remove the device immediately.\n\nBy combining proper filtering, clear baselines, and adjustable thresholds, you’ll pick up deliberate tail wags while ignoring minor twitches. And by paying attention to fit and timing, your furry co-player will stay comfortable, so you can both enjoy gaming together without stress."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000344597.jpg",
+          "user_query": "I’m trying to mix up my quiet nights at home—what are some fun, relaxing activities I could do to unwind?",
+          "correct_answer": "If you enjoy playing video games and cuddling your dog, consider setting up a cozy co-op gaming session where your pup lounges by your side as you dive into a new title. You could also whip up some homemade popcorn and alternate between puzzle games and laid-back soundtracks for a perfect chill night in.",
+          "incorrect_answers": [
+            "If you enjoy cooking up themed dinners at home, consider hosting a virtual dinner club where you cook the same recipe with friends while streaming a playlist that matches the cuisine. You could also try plating your creations creatively and sharing photos with the group to add a fun competitive twist.",
+            "If you enjoy reading sci-fi novels in the evening, consider pairing your next book with an immersive audiobook version that you can listen to aloud while you relax. You could also create a themed snack inspired by the story’s setting to deepen the experience.",
+            "If you enjoy relaxing at home, consider setting up a cozy board game night or a puzzle marathon with soft lighting. You could also brew a warm drink and snack on something you love to complete the soothing vibe."
+          ]
+        },
+        {
+          "preference": "The user prefers traveling by train and using public transportation.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What mode of public transportation is depicted in this image?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_train/COCO_train2014_000000085179.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The image shows passengers standing on a subway or train platform, so it depicts a metro/subway train station."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_train/COCO_train2014_000000085179.jpg",
+          "user_query": "I’m planning a week-long trip through several Italian cities and really want to enjoy the journey itself as much as the destinations. What travel options would you recommend to help me relax, take in the scenery, and move smoothly between each stop?",
+          "correct_answer": "You could rent a car for full flexibility, take short domestic flights between major cities, or hop on intercity coaches for budget-friendly travel—this lets you set your own pace, stop whenever you like, and manage your time efficiently.",
+          "incorrect_answers": [
+            "Given your love of public transit, I’d recommend using Italy’s high-speed and regional trains—grab a Trenitalia rail pass for city-to-city hops on Frecciarossa or Italo, then switch to the scenic local lines through Tuscany and Cinque Terre so you can relax and soak up the countryside.",
+            "Since you enjoy traveling by train, consider an Italy rail pass to ride Frecciarossa or Italo for faster legs and charming regional services for the scenic stretches—this lets you unwind, admire rolling vineyards, and skip the stress of airports or car rentals.",
+            "Because you prefer train travel, plan your week around Italy’s extensive rail network—use a Eurail or Interrail pass for swift connections between Rome, Florence, and Venice, and hop on local lines for slower, picturesque routes that let you sit back and enjoy the view."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Do not remember 'Always wearing bohemian and eco-friendly fashion' in memory",

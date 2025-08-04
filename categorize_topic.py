@@ -64,7 +64,7 @@ def categorize_topics_sequential(file_path, llm, global_topics, verbose=False):
         data = json.load(f)
     
     # Keep track of categorization statistics
-    total_preferences = 0
+    total_elements = 0
     new_topics_added = 0
     file_topics = set()
     
@@ -78,40 +78,67 @@ def categorize_topics_sequential(file_path, llm, global_topics, verbose=False):
             
             for conv_elem in tqdm(conv_list, desc=f"Categorizing {conv_type}", disable=not verbose, leave=False):
                 try:
-                    # Extract preference from the element
+                    # Extract preference and user_query from the element
                     preference = conv_elem.get('preference')
-                    if not preference:
-                        continue  # Skip elements without preferences
+                    user_query = conv_elem.get('user_query')
                     
-                    total_preferences += 1
+                    # Skip elements that have neither preference nor user_query
+                    if not preference and not user_query:
+                        continue
                     
-                    # Categorize the preference
-                    topic = categorize_single_preference(llm, preference, list(global_topics), verbose=verbose)
+                    total_elements += 1
                     
-                    # Add topic to the element
-                    conv_elem["topic"] = topic
+                    # Categorize the preference if it exists
+                    if preference:
+                        topic_preference = categorize_single_preference(llm, preference, list(global_topics), verbose=verbose)
+                        conv_elem["topic_preference"] = topic_preference
+                        
+                        # Update global topics if this is a new topic
+                        if topic_preference not in global_topics:
+                            global_topics.add(topic_preference)
+                            new_topics_added += 1
+                            if verbose:
+                                print(f"✓ New preference topic added: '{topic_preference}'")
+                        else:
+                            if verbose:
+                                print(f"✓ Preference assigned to existing topic: '{topic_preference}'")
+                        
+                        # Track topics in this file
+                        file_topics.add(topic_preference)
                     
-                    # Update global topics if this is a new topic
-                    if topic not in global_topics:
-                        global_topics.add(topic)
-                        new_topics_added += 1
-                        if verbose:
-                            print(f"✓ New topic added: '{topic}'")
-                    else:
-                        if verbose:
-                            print(f"✓ Assigned to existing topic: '{topic}'")
+                    # Categorize the user_query if it exists
+                    if user_query:
+                        topic_query = categorize_single_preference(llm, user_query, list(global_topics), verbose=verbose)
+                        conv_elem["topic_query"] = topic_query
+                        
+                        # Update global topics if this is a new topic
+                        if topic_query not in global_topics:
+                            global_topics.add(topic_query)
+                            new_topics_added += 1
+                            if verbose:
+                                print(f"✓ New query topic added: '{topic_query}'")
+                        else:
+                            if verbose:
+                                print(f"✓ Query assigned to existing topic: '{topic_query}'")
+                        
+                        # Track topics in this file
+                        file_topics.add(topic_query)
                     
-                    # Track topics in this file
-                    file_topics.add(topic)
+                    # Keep backward compatibility - set "topic" field to preference topic if available, otherwise query topic
+                    if preference:
+                        conv_elem["topic"] = conv_elem["topic_preference"]
+                    elif user_query:
+                        conv_elem["topic"] = conv_elem["topic_query"]
                 
                 except Exception as e:
                     pref_info = conv_elem.get('preference', 'Unknown preference')
-                    print(f"Error categorizing preference '{pref_info}': {e}")
+                    query_info = conv_elem.get('user_query', 'Unknown query')
+                    print(f"Error categorizing preference '{pref_info}' or query '{query_info}': {e}")
                     continue
     
     # Print categorization statistics
     print(f"Topic Categorization Summary for {os.path.basename(file_path)}:")
-    print(f"  Total preferences categorized: {total_preferences}")
+    print(f"  Total elements categorized: {total_elements}")
     print(f"  New topics created: {new_topics_added}")
     print(f"  Unique topics in this file: {len(file_topics)}")
     if verbose and file_topics:

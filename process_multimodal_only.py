@@ -16,12 +16,24 @@ from tqdm import tqdm
 import random
 import concurrent.futures
 import math
+import re
 
 import utils
 import prompts
 from query_llm import QueryLLM
 from qa_generator import generate_qa_for_each_element
 from conv_generator import find_preference_from_image_and_generate_conversations
+
+
+def natural_sort_key(text):
+    """
+    Generate a key for natural sorting that treats numbers numerically.
+    This ensures proper ordering like: 1, 2, 9, 10, 11, 100 instead of 1, 10, 100, 11, 2, 9
+    """
+    def convert(text_part):
+        return int(text_part) if text_part.isdigit() else text_part.lower()
+    
+    return [convert(c) for c in re.split('([0-9]+)', text)]
 
 
 def process_multimodal_for_single_file_thread(args):
@@ -176,7 +188,7 @@ def process_multimodal_batch(input_pattern, llm_config, verbose=False, generate_
     """
     # Find all matching files
     files = glob.glob(input_pattern)
-    files = sorted(files)
+    files = sorted(files, key=natural_sort_key)
     
     if not files:
         print(f"No files found matching pattern: {input_pattern}")
@@ -274,9 +286,6 @@ def main():
     llm_config = {
         "rate_limit_per_min": args.rate_limit
     }
-    
-    if args.base_url:
-        llm_config["base_url"] = args.base_url
     
     # Process files
     successful, total = process_multimodal_batch(
