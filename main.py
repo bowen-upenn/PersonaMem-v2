@@ -6,6 +6,7 @@ import json
 
 from contexts_builder import build_context
 from qa_generator import generate_qa
+from categorize_topic import categorize_topics
 from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
 from query_llm import QueryLLM
@@ -24,7 +25,7 @@ def main():
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
-    parser.add_argument('--step', type=str, default='generate_data', help='Choose generate_data, generate_qa, build_context, or run_eval.')
+    parser.add_argument('--step', type=str, default='generate_data', help='Choose generate_data, generate_qa, categorize_topics, build_context, or run_eval.')
     parser.add_argument('--conv_output_dir', type=str, default='data/raw_data/', help='Set the directory for conversation data output')
     parser.add_argument('--qa_output_dir', type=str, default='data/raw_data/', help='Set the directory for QA data output')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
@@ -38,6 +39,7 @@ def main():
     parser.add_argument('--parallel', dest='parallel', action='store_true', help='Enable parallel processing')
     parser.add_argument('--clean', dest='clean', action='store_true', help='Remove existing data and start from scratch')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
+    parser.add_argument('--validate_qa', dest='validate_qa', action='store_true', help='Enable QA validation to filter out problematic pairs')
     cmd_args = parser.parse_args()
 
     # Override args from config.yaml with command-line arguments if provided
@@ -54,6 +56,7 @@ def main():
     args['data']['clean'] = cmd_args.clean if cmd_args.clean is not None else args['data']['clean']
     args['inference']['verbose'] = cmd_args.verbose if cmd_args.verbose is not None else args['inference']['verbose']
     args['data']['self_verify'] = cmd_args.self_verify if cmd_args.self_verify is not None else args['data']['self_verify']
+    args['inference']['validate_qa'] = cmd_args.validate_qa if cmd_args.validate_qa is not None else args['inference'].get('validate_qa', False)
     args['data']['persona_start_idx'] = cmd_args.persona_start_idx if cmd_args.persona_start_idx is not None else -1
     args['data']['persona_end_idx'] = cmd_args.persona_end_idx if cmd_args.persona_end_idx is not None else -1
     print(args)
@@ -102,7 +105,27 @@ def main():
         qa_output_path = args['data']['conv_output_dir']
         
         # Generate Q&A using the updated generate_qa function that supports parallel processing
-        generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], verbose=args['inference']['verbose'])
+        generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], 
+                   verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
+
+    elif args['inference']['step'] == 'categorize_topics':
+        # Get persona files within the specified range
+        persona_files = utils.get_persona_files_in_range(
+            args['data']['conv_output_dir'],
+            'interactions',
+            args['data']['persona_start_idx'],
+            args['data']['persona_end_idx']
+        )
+        
+        if not persona_files:
+            print("No persona files found in the specified range.")
+            return
+        
+        print(f"Found {len(persona_files)} persona files to categorize topics")
+        
+        # Categorize topics using the categorize_topics function
+        categorize_topics(llm, persona_files, output_dir=None, parallel=args['inference']['parallel'], 
+                         verbose=args['inference']['verbose'])
 
     # Build long context
     elif args['inference']['step'] == 'build_context':
