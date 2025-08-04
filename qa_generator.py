@@ -355,10 +355,13 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
     
     # Check if QA has already been generated for this file
     # Since there should be only 1 persona per file, check if any conversation has correct_answer
+    # Skip multimodal conversations as they may have different QA generation requirements
     for uuid, persona in data.items():
         conversations_by_type = persona.get("conversations", {})
         
         for conv_type, conv_list in conversations_by_type.items():
+            if conv_type == "multimodal":
+                continue  # Skip multimodal conversations
             for conv_elem in conv_list:
                 if "correct_answer" in conv_elem:
                     print(f"QA already exists for {file_path}, skipping...")
@@ -374,6 +377,8 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
         conversations_by_type = persona.get("conversations", {})
         
         for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
+            if conv_type == "multimodal":
+                continue  # Skip multimodal conversations
             print(f'Processing conv_type: {conv_type} in {os.path.basename(file_path)}')
             
             # Create a new list to store only valid QA pairs

@@ -175,7 +175,256 @@
       "Is unconcerned with reducing her carbon footprint or waste production": "Is concerned with reducing her carbon footprint or waste production."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user enjoys working remotely in cafés with their laptop and smartphone.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took at my favorite café, I’ve got my laptop and phone both plugged in to stay powered all day. How can I tell if the café’s outlet and my USB-C charger can safely deliver enough wattage for both devices, and what key specs should I look for in a portable charger so I don’t end up with painfully slow charging when I’m working remotely?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000468357.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! When you’re setting up a café workstation and relying on the house power to keep both a laptop and a phone running, it’s wise to check a few things:\n\n1. Outlet Rating and Adapter Capacity\n   • Standard Café Outlets: Most café outlets in North America are rated at 15 A/120 V (roughly 1,800 W). In Europe or other regions you’ll often see 10 A/230 V (about 2,300 W). Because a typical laptop charger draws between 45 W and 100 W, and your phone charger usually pulls 18 W–30 W, a single café outlet has more than enough headroom to power both devices without tripping the breaker.  \n   • Check the Adapter: Your USB-C charger should list its maximum output—often in watts (W). For example, a “65 W” charger can safely deliver up to 65 W total. If you plug in both your laptop and phone, the charger will split that power between the two ports. If your laptop demands 45 W, that leaves 20 W for the phone (assuming the charger supports dual-port operation at full capacity).\n\n2. Power Delivery (PD) Profile and Port Allocation\n   • USB-C PD Profiles: Look for a charger that supports USB Power Delivery (PD) with multiple PD profiles—commonly 5 V@3 A, 9 V@3 A, 15 V@3 A, and 20 V@3.25 A (65 W). True PD chargers negotiate voltage and current to match your device’s needs.  \n   • Multi-port Distribution: Some chargers advertise, for instance, “65 W total” or “65 W per port.” Always choose one that specifies “65 W total” and then check a second spec: e.g. “45 W + 20 W” when two ports are used simultaneously. This ensures you won’t unintentionally starve your laptop of power.\n\n3. Portable Charger (Power Bank) Specs\n   • Capacity: For a full day of remote work, you’ll want at least a 20 000 mAh power bank. At 5 V that’s about 100 Wh (watt-hours), which can re-charge a 50 Wh laptop once and charge your phone 3–4 times.  \n   • Output Wattage: Choose a power bank that can deliver 45 W or higher via USB-C PD for the laptop port, and 18–30 W for the phone port. Many newer banks have dedicated “high-power” ports labeled PD 45 W or PD 60 W.  \n   • Simultaneous Outputs: Verify the power bank’s spec sheet for “simultaneous output” capabilities. For example: “USB-C1: 60 W, USB-C2: 30 W, total output: 60 W when both used,” or “30 W + 30 W.” That tells you how devices will share the load.\n\n4. Practical Tips at the Café\n   • Bring Your Own Multi-Port Charger: Relying on the café’s single-port USB outlet (if they have one) can mean slow “only 5 W” phone charging. Instead bring a compact multi-port USB-C PD charger (65 W or 100 W) plus a short, sturdy USB-C to C cable for your laptop and a separate USB-C to Lightning or USB-A cable for your phone.  \n   • Cable Quality: Use rated cables that match the PD profile (e.g. USB-C cables certified for 100 W). Poor cables can reduce charging efficiency or trigger “cable not supported” warnings.  \n   • Outlet Positioning and Power Strips: If the café only has wall outlets at floor level, pack a small, high-quality power strip with built-in surge protection. That prevents cable tugs on your laptop adapter and gives you extra ports—just be mindful not to block aisles.\n\nBy checking the outlet’s rating, matching it to a multi-port USB-C PD charger with clear “simultaneous output” specs, and choosing a power bank with sufficient capacity and per-port wattage, you’ll ensure both your laptop and phone get the power they need without slowdowns. This way, you stay productive all day, anywhere your favorite café takes you!"
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Thanks for the detailed advice! If I arrive at a café and don’t see any labeling on the outlet, how can I quickly verify its actual voltage and current capacity? Are there simple tools or techniques I can use on the spot to avoid guesswork?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000468357.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You can use a few handy tools and methods to check an outlet’s specs on the fly:\n\n• Portable Outlet Tester (Plug-In Meter)\n  – Devices like the Kill A Watt or similar plug-in energy meters display real-time voltage, amperage, and wattage. Just plug the meter into the wall and then plug your charger into the meter. You’ll instantly see the outlet voltage (e.g. 120 V or 230 V) and how much current your charger is drawing.\n\n• Clamp Meter with Outlet Adaptor\n  – A mini clamp meter paired with a short adapter lets you measure current without breaking the circuit. You clip around one conductor in the adapter and get a direct amps reading. Combine that with a cheap multimeter in voltage mode to verify voltage.\n\n• USB-C Charger Load Test\n  – If you carry a USB-C PD meter (a small in-line tester), plug it between your charger and device. It reports negotiated voltage, current, and power draw. If you push the charger at full load (laptop + phone), you’ll see the peak wattage—confirming the charger (and thus outlet) can handle it.\n\n• Visual and Physical Clues\n  – Outlet type often correlates with rating: North American NEMA 5-15 are 15 A/120 V; CEE 7/4 Schuko are 16 A/230 V. Heavy-duty metal faceplates or outlets in high-traffic areas sometimes indicate a higher amperage circuit, though tools are more reliable.\n\nBy keeping a small plug-in meter or inline PD tester in your bag, you’ll avoid power-range guesswork and ensure your devices are getting the proper voltage and current every time."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000468357.jpg",
+          "user_query": "I’m planning to spend a workday out with just my laptop and smartphone—do you have recommendations for the types of places or routines that help me stay productive, comfortable, and connected when I’m not in my usual home office?",
+          "correct_answer": "Try cafés with reliable Wi-Fi and plenty of power outlets; claim a corner seat with good natural light and minimal background noise; use time-blocking on your smartphone and take short strolls or coffee breaks every hour to reset your focus.",
+          "incorrect_answers": [
+            "Try co-working spaces with flexible day passes and high-speed internet; book a desk near the window for natural light and community energy; set interval timers for focused work and step into the lounge for quick networking breaks to keep motivation high.",
+            "Try public parks or plazas with strong cellular coverage and sturdy benches; pack a portable battery pack and weather-resistant laptop sleeve; alternate sprint-work sessions on your phone with brief walking meetings to stay productive and refreshed.",
+            "Try public libraries with free Wi-Fi and quiet study areas; reserve a desk by a window for ample daylight; set clear work intervals on your phone and stand up for brief stretches every hour to maintain concentration."
+          ]
+        },
+        {
+          "preference": "The user enjoys sweet, artisanal donuts with unique, colorful toppings.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I snapped of my pink-glazed donut topped with dried hibiscus petals, I'm wondering how pastry chefs manage to preserve the petals' vibrant color and tangy flavor in the glaze without it turning dull—and what tweaks they make to balance that tartness with the donut's sweetness?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_donut/COCO_train2014_000000117884.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! Keeping that bright magenta hue and floral bite intact comes down to controlling pH, temperature, and timing:\n\n1. pH and Color Stability  \n   • Hibiscus gets its vivid pink/red color from anthocyanins, which shift hue based on acidity. Aim for a glaze pH around 3.5–4.0 by adding just enough citric or lemon juice. Too alkaline, and the color goes muddy; too acidic, and it tastes sour.  \n   • Test your infusion with pH strips. If it drifts toward purple, add a drop more acid; if it’s too bright red and puckery, whisk in a pinch of baking soda to nudge the pH upward.  \n\n2. Hibiscus Infusion  \n   • Steep the dried petals in just-off-boil water for 5–7 minutes—long enough to extract color and tartness, but not so long that you pull out bitter tannins.  \n   • Strain thoroughly to remove sediment, then reduce the liquid over low heat (below 180°F) until it’s intensely flavored but still vibrant.  \n\n3. Glaze Formulation  \n   • Replace part of the liquid in your standard powdered-sugar glaze recipe with this concentrated hibiscus tea. A good starting ratio is 1 cup powdered sugar to ¼ cup infusion. Adjust sugar upward or downward to hit the sweetness you prefer.  \n   • Add a teaspoon of light corn syrup to prevent crystallization and give the glaze a silky sheen.  \n\n4. Temperature Control  \n   • Keep the glaze warm (but below 200°F) when applying, since heat degrades anthocyanins. If it cools too much and thickens, whisk in a splash of warm infusion before dipping.  \n\n5. Balancing Flavors  \n   • Taste as you go: start with the glaze on the tarter side, then sweeten until it complements the donut’s richness without overwhelming it.  \n   • Consider a hint of warm spice—like a drop of vanilla extract or a pinch of ground cardamom—to round out the hibiscus’s brightness and harmonize with the dough’s buttery notes.  \n\n6. Final Finish  \n   • After dipping, immediately scatter the extra petals on top. They’ll adhere before the glaze sets, and their color remains intense because they stay dry on the surface.  \n\nBy carefully managing acidity, infusion time, and heat—and by fine-tuning sweetness and aromatic accents—you’ll preserve that eye-catching color and crisp floral tang in every bite."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_donut/COCO_train2014_000000117884.jpg",
+          "user_query": "I'm planning a small brunch with friends and I’d love to surprise them with a dessert that’s as fun to look at as it is delicious—what would you recommend I make or pick up?",
+          "correct_answer": "Why not pick up a batch of mini artisanal donuts dipped in vibrant glazes—like blush-pink strawberry or lavender—and topped with edible flowers, crushed pistachios, and sugar confetti for a dessert that’s as fun to look at as it is delicious?",
+          "incorrect_answers": [
+            "Why not pick up a batch of mini artisanal macarons dipped in jewel-toned glazes—like ruby-red raspberry or emerald-matcha—and topped with gold leaf, toasted coconut, and crushed pistachios for a dessert that’s as fun to look at as it is delicious?",
+            "Why not pick up a batch of mini artisanal cake pops dipped in pastel-colored chocolate—like lavender or mint—and topped with sprinkles, crushed cookie crumbs, and edible glitter for a dessert that’s as fun to look at as it is delicious?",
+            "Why not pick up a batch of glazed donuts in bright colors—like pink, yellow, or blue—and top them with sprinkles and edible flowers for a dessert that’s as fun to look at as it is delicious?"
+          ]
+        },
+        {
+          "preference": "The user prefers nutritious, portable snacks like fresh fruits, vegetables, and nuts.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In the snack box photo I took before heading out for a two-hour hike, I packed baby carrots, celery sticks, peanuts, dried berries, and blood orange slices. Does that combination give me the right balance of energy and nutrients to stay fueled and satisfied? Should I tweak the proportions or swap in anything else for better sustained energy?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/bowl_dining_table/COCO_train2014_000000161846.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Your snack box is off to a great start—fresh vegetables, citrus, nuts, and dried fruit all play an important role in keeping you energized and nourished on the trail. Let’s break down how each component contributes and where you might make small adjustments for an even better balance:\n\n1. Baby Carrots & Celery (High Water, Low Calorie, Good Fiber)  \n   • Benefits: These vegetables provide hydration, fiber, and volume without a lot of calories. The fiber helps slow digestion, keeping you feeling full, and the high water content can help offset fluid loss if you’re sweating.  \n   • Tip: Because they’re low in calories, you could double the portion of carrots and celery if you want extra crunch and hydration, but you’ll still need denser calories elsewhere for sustained energy.\n\n2. Peanuts (Healthy Fats & Plant Protein)  \n   • Benefits: Peanuts supply monounsaturated fats and about 7 g of protein per ounce, helping to stabilize blood sugar and extend satiety.  \n   • Tip: Aim for roughly 1–2 ounces (a small handful) of nuts. If you only have a tablespoon or two in your box now, consider bumping up to closer to 1 oz to ensure you get 100–150 calories from fats and protein.\n\n3. Dried Berries (Concentrated Carbs & Antioxidants)  \n   • Benefits: Dried berries give you a quick carbohydrate boost—great for topping up your energy bank when you start to feel a dip. They also contain polyphenols, which support recovery.  \n   • Tip: Because dried fruit is calorie‐dense, 1–2 tablespoons (about ½ oz) is usually enough. If you plan on a strenuous route, you can increase that a bit, but watch portion size to avoid a sugar spike.\n\n4. Blood Orange Slices (Vitamin C & Natural Sugars)  \n   • Benefits: Blood oranges are rich in vitamin C and simple sugars for a rapid energy lift. They also contribute extra water.  \n   • Tip: Two or three large slices are ideal. If you can pack them in a small container or wrap so they stay juicy, they’ll help you stay refreshed without adding too much bulk.\n\nPutting It All Together:  \n– Calorie Target: For a two-hour moderate hike, you’ll likely need an extra 200–300 kcal on top of your normal meals.  \n– Protein/Fat: Aim for at least 7–10 g of protein and 10–15 g of healthy fat (roughly 1 oz of peanuts).  \n– Carbs: Shoot for 20–30 g of carbohydrates from the blood orange and dried berries combined.  \n– Fiber & Hydration: Your veggies cover fiber and water needs nicely—just be sure to drink water alongside.\n\nSuggested Tweaks:  \n• Increase the peanut portion to about a small handful (1 oz).  \n• Keep dried berries to around 1 tablespoon if you’re also relying on the orange for quick carbs.  \n• Consider adding a small whole-grain cracker or a few squares of dark chocolate if you want a little more sustained carbohydrate without too much bulk.  \n• If you anticipate very hot weather, pack extra water or include an electrolyte tablet rather than upping dried fruit.\n\nStorage & Packing Tips:  \n– Separate wet fruit (blood orange) in a sealed small container or use a silicone pouch to prevent sogginess.  \n– Keep nuts and dried fruit in their own compartment to preserve texture.  \n– If possible, pack the veggies in a vented container or wrap so they don’t sweat and become limp.\n\nWith these tweaks—boosting nuts for protein and fats, dialing in dried fruit, and possibly adding a small grain element—you’ll have a well-rounded, portable snack that keeps your energy steady from trailhead to peak and back. Enjoy your hike!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/bowl_dining_table/COCO_train2014_000000161846.jpg",
+          "user_query": "I’m often rushing between appointments and need a few snacks I can just toss into my bag without worrying about spills or spoilage—what are some convenient options I could prepare ahead of time?",
+          "correct_answer": "To keep things nutritious and spill-free, pack pre-portioned snack boxes with carrot and celery sticks paired with individual hummus cups, small bags of mixed nuts, or homemade energy balls made from dates and almond butter. You can also freeze grapes or sliced apples ahead of time so they stay cool without getting mushy. These options travel well and deliver steady energy between appointments.",
+          "incorrect_answers": [
+            "To satisfy your savory cravings without the mess, pack small resealable pouches of gourmet pretzels, seasoned roasted chickpeas, or individual bags of crispy pita chips. You can also pre-portion snack packs of salted edamame or cheese crisps for extra crunch. These treats travel well and won’t crumble into your bag between stops.",
+            "To keep things gluten- and dairy-free on the go, pack individual portions of roasted chickpeas, rice cakes topped with almond butter, or dried mango slices. You can also prepare small jars of coconut yogurt parfait with berries sealed tightly to prevent spills. These lightweight snacks are easy to toss in your bag and safe for your dietary needs.",
+            "To keep snacks easy and spill-free, pre-portion items like dried fruit, mixed nuts, or whole-grain crackers into small resealable bags. You can also pack single-serve hummus cups with baby carrots or celery sticks in travel containers. These options stay fresh and fit neatly into any bag for busy days."
+          ]
+        },
+        {
+          "preference": "The user prefers hearty savory breakfast sandwiches, such as a sausage and egg English muffin, paired with coffee.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this snap from my kitchen, I made a sausage-and-egg English muffin that tastes great, but by the time I sat down the tomato slice had soaked through the muffin and turned it soggy. How can I keep the muffin crisp without giving up fresh tomato? And what’s the best technique to get a deeply browned sausage patty while still cooking the egg just right so it stays tender?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/cup_dining_table/COCO_train2014_000000038305.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve captured exactly the two balancing acts that make a breakfast sandwich satisfying—crisp muffin plus juicy tomato, and a perfectly seared sausage patty with a tender egg. Here’s how you can address each in turn:\n\n1. Keeping the Muffin Crisp with Fresh Tomato  \n   • Slice and Drain: Cut your tomato into relatively thin slices (⅓-inch or less). Lay them on a paper towel or mesh strainer for 5–10 minutes before assembly to wick away excess juice.  \n   • Apply a Barrier Layer: Spread a thin layer of butter, mayonnaise, or a swipe of pesto on the cut side of each muffin half immediately after toasting. That fat barrier helps repel moisture.  \n   • Toast Properly: Toast the muffin halves until they’re golden brown and have a firm outer shell. A dry skillet or a toaster oven on a medium setting (about 350°F) works well—toast for 2–3 minutes per side.  \n   • Layer Strategically: Place your tomato on top of the egg rather than directly on the muffin. The egg white holds moisture a bit better than the muffin crumb. Then top with the sausage patty. This sandwich architecture keeps the bottom muffin drier longer.\n\n2. Achieving a Deep Browning on the Sausage Patty  \n   • Start Cold or Room Temperature: Let your formed patties rest at room temperature for 10 minutes before cooking. Cold metal on a cold patty causes steaming rather than searing.  \n   • Choose the Right Pan and Heat: Use a heavy skillet or cast iron over medium–medium-high heat. Add a teaspoon of neutral oil (canola or avocado) just before the patty goes in. You want the fat to shimmer—but not smoke—so you get a Maillard reaction (that golden crust) without burning.  \n   • Don’t Move It Around: Once you set the patty in the pan, give it 3–4 minutes undisturbed so a crust can form. Flip once and cook another 3–4 minutes until internal temperature reaches about 160°F.\n\n3. Cooking the Egg Tenderly  \n   • Gentle Heat: After you remove the sausage, turn the burner down to medium–low and add a small pat of butter or a teaspoon of oil. Crack in your egg and let it cook slowly to keep the whites soft and avoid rubberiness.  \n   • Basting or Covering: For a tender top on the yolk, spoon hot fat over the white for 30–60 seconds, or cover the pan with a lid for the same amount of time—this traps steam and gently finishes the egg without flipping.\n\nPutting It All Together  \n   1. Toast and butter your muffin halves.  \n   2. Cook sausage first, then set aside.  \n   3. Lower heat, cook egg gently in the same pan.  \n   4. Pat the drained tomato dry, then layer it onto the egg, followed by sausage.  \n   5. Cap with the top muffin and wrap lightly in parchment or foil to hold everything in place.\n\nWith these steps, you’ll preserve a crunchier base, still enjoy the bright freshness of tomato, and have that ideal contrast of crisp sausage exterior with a soft, runny-edged egg. Enjoy your sandwich — and your coffee — even more knowing each component was built with both technique and flavor in mind!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/cup_dining_table/COCO_train2014_000000038305.jpg",
+          "user_query": "I’m stuck in a breakfast rut—what are some hearty, savory breakfast sandwich recipes I can whip up quickly on weekday mornings, and what hot beverage would pair best with them?",
+          "correct_answer": "On busy mornings, try layering a fried egg, spiced breakfast sausage, and melting pepper jack on a toasted English muffin, or assemble a ham, egg, and Swiss cheese bagel—all of these pair beautifully with a strong cup of freshly brewed coffee.",
+          "incorrect_answers": [
+            "On rushed mornings, try filling a spinach wrap with scrambled egg whites, smashed avocado, and feta, or build a roasted veggie and goat cheese croissant sandwich—all of these go wonderfully with a soothing cup of matcha green tea.",
+            "On hurried mornings, try stacking smoked salmon, cream cheese, and a soft-poached egg on a toasted bagel, or whip up a crab-cake and egg English muffin—all of these complement a warm mug of Earl Grey tea.",
+            "On hectic mornings, try making a bacon, egg, and cheddar English muffin or scramble an egg with cheese and tuck it into a toasted bagel—all of these are delicious with any hot beverage like coffee or tea."
+          ]
+        },
+        {
+          "preference": "The user enjoys pairing coffee with sweet and savory treats like bacon-topped donuts.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, I’m enjoying a mug of black coffee next to a bacon-topped donut. How does the salt and fat from the bacon change the way I taste the coffee, and are there any brewing tweaks I could try to make this combo even more delicious?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/cup_dining_table/COCO_train2014_000000304858.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Pairing coffee with a bacon-topped donut is a great example of sweet, savory, and bitter flavors converging. Here’s how the bacon’s salt and fat play with your coffee, as well as a few simple adjustments you can test:\n\n1. Salt Suppresses Bitterness and Boosts Sweetness\n  • Salt from the bacon rub suppresses the coffee’s perceived bitterness, making the brew seem smoother.  \n  • At the same time, salt enhances sweetness and brightens delicate fruit or caramel notes in your coffee. \n  • Tip: If your coffee still tastes harsh, a tiny pinch of salt in the brew water (around 0.1 – 0.2 g per 250 mL) can mimic the bacon effect and tame bitterness further.\n\n2. Fat Coats the Palate and Mutates Aromas\n  • The bacon fat leaves a thin oily film on your tongue, which can mute some of the coffee’s more volatile aromatic compounds—especially floral and citrus notes.  \n  • That coating tends to amplify deeper, roasted, and smoky flavors in the coffee.  \n  • Tip: To balance this, try a slightly cooler brew temperature (88 – 91 °C instead of 94 °C). A lower temperature preserves more of the coffee’s bright, high-notes so they aren’t completely masked by the fat.\n\n3. Balancing Roast Level\n  • Medium-roasted coffees with a pronounced caramel sweetness and light fruit acidity pair beautifully with smoky bacon.  \n  • If you choose a dark roast, the roast flavor can compete with your donut. Instead, pick a roast that retains nuanced sweetness without heavy charcoal notes.  \n\n4. Tweak Coffee:Water Ratio and Grind\n  • A slightly higher ratio—say 1:15 (coffee : water)—will yield a more concentrated brew that stands up to the donut’s richness.  \n  • A coarser grind can help prevent over-extraction and excessive bitterness when combined with the salt in the donut.  \n\n5. Experiment with Brew Methods\n  • Pour-over (Hario V60, Chemex) gives you fine control over temperature and extraction, letting you dial in brightness and clarity.  \n  • Immersion methods (French press, Aeropress) yield a fuller-bodied cup that can hold up to the fat and savoriness of the bacon.  \n\nPractical Test\n  1. Use a medium-roast coffee and grind it coarser than usual.  \n  2. Brew at about 90 °C with a 1:15 ratio, and perform a 30 s bloom.  \n  3. Taste the coffee neat, then with a bite of your bacon-topped donut. Note if the acidity cuts through the fat.\n  4. If needed, lower the brew temperature slightly or add a tiny pinch of salt to the brew water to further soften any remaining bitterness.\n\nBy tweaking temperature, grind, and ratio, you’ll highlight the coffee’s brightness and sweetness while letting the smokiness of the bacon-topped donut shine. Enjoy your next pairing experiment!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/cup_dining_table/COCO_train2014_000000304858.jpg",
+          "user_query": "I’m planning a coffee-themed brunch and want to offer snacks that balance sweet and savory flavors. What creative bite-sized treats would work well with different coffee brews?",
+          "correct_answer": "For a coffee-themed brunch, pair bold espresso with mini bacon-cheddar quiches, medium-roast drip coffee with salted caramel donut holes, and light pour-overs with honey-drizzled goat-cheese crostini to highlight the sweet-and-savory interplay you love.",
+          "incorrect_answers": [
+            "For a coffee-themed brunch, pair bold espresso with mini salmon-avocado sushi bites, medium-roast drip coffee with soy-glazed edamame skewers, and light pour-overs with yuzu-miso cucumber rounds to reflect your passion for sushi-inspired flavors.",
+            "For a coffee-themed brunch, pair bold espresso with bite-sized samosa chaat cups, medium-roast drip coffee with masala chickpea bruschetta, and light pour-overs with cardamom-infused honey baklava cups to echo your favorite Indian street-food tastes.",
+            "For a coffee-themed brunch, pair bold espresso with mini quiches, medium-roast drip coffee with salted caramel cookies, and light pour-overs with fresh fruit skewers to complement each brew’s flavor profile."
+          ]
+        },
+        {
+          "preference": "The user likely enjoys and cares for small puppies.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Looking at the puppy’s posture in the image, what can you infer about how it feels?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The puppy is lying on its back in the person’s arms with its limbs relaxed and eyes closed, which suggests it feels safe, secure, and very comfortable."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Could you explain why the puppy’s limbs being relaxed is significant in understanding its emotional state?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "When a puppy is tense or stressed, it holds its limbs close to its body or in a stiff posture to protect itself. The fact that this puppy’s limbs are loose and stretched out indicates that it's not feeling any fear or threat. This complete relaxation shows deep trust in the person holding it and a sense of total safety."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "I recently welcomed a small, energetic new companion into my home, and I want to set up a healthy routine from day one. What daily schedule, types of play, and basic training should I focus on to keep them happy and well-adjusted?",
+          "correct_answer": "With a puppy, keep a regular schedule of feeding, potty breaks, and playtime throughout the day. Active games like fetch and tug-of-war help expend energy, while puzzle toys stimulate their mind. Teach basic commands like “sit,” “stay,” and “come” to ensure good behavior.",
+          "incorrect_answers": [
+            "With a small, energetic puppy, aim for a consistent morning and evening potty break, midday naptime, and short training games before meals. Gentle play like indoor fetch and puzzle toys helps burn energy without overworking tiny joints. Focus on basic cues like “sit,” “come,” and crate training so your little puppy feels secure and well-adjusted.",
+            "For your little furball, set feeding and potty breaks every three hours with short walks and play sessions in between. Use gentle games like soft toy fetch or treat puzzles to channel that puppy energy safely. Introduce simple commands like “sit,” “down,” and crate time to build confidence and good habits from day one.",
+            "For your adorable pocket pup, maintain a steady routine of morning cuddle time, midday play, and evening potty breaks. Gentle indoor activities like chase-around with soft balls and food-dispensing toys keep your tiny buddy entertained. Reinforce simple commands such as “sit,” “come,” and crate etiquette to help your little pup grow confident and well-behaved."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Prefers 100% organic and non-GMO foods",

@@ -212,7 +212,256 @@
       "Opts for group coaching sessions with standardized content instead of personalized, holistic therapy": "Opts for personalized, holistic therapy instead of group coaching sessions with standardized content."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user likely enjoys vintage-style photography featuring classic cars.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took of a friend leaning on that weathered pickup in the rain, I’m trying to capture a mid-century cinematic vibe—what camera settings and editing steps would you suggest to emphasize the truck’s patina and create a nostalgic color palette?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/car_truck/COCO_train2014_000000237372.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "To evoke that classic, mid-century automotive advertisement look, you’ll want to combine thoughtful in-camera choices with a carefully calibrated post-processing workflow. Here’s a step-by-step approach:\n\n1. In-Camera Settings\n • Shoot in RAW or on film: If you have access to 35 mm film, Kodak Portra 400 is ideal for soft skin tones and muted color saturation. For digital, set your camera to a flat or Log picture profile and use RAW capture.  \n • ISO: Keep it between 200–400 to retain fine detail in the truck’s rusty patina and avoid excessive noise.  \n • Aperture: Aim for f/2.8–f/4.0. This will give you enough shallow depth of field to slightly blur the background while keeping the truck’s grille and textures sharp.  \n • Shutter Speed: Around 1/125 – 1/250 s. Fast enough to freeze raindrops on the hood but slow enough to let that overcast light feel soft and atmospheric.  \n • Lens Choice: A 35 mm or 50 mm prime lens will render a natural perspective and gentle fall-off at the edges. If you have a vintage lens, its subtle imperfections (vignetting, slight flare) actually help sell the nostalgic feel.\n\n2. Lighting Considerations\n • Overcast Light: Cloudy skies act like a giant softbox—perfect for evenly lit metal surfaces. Position your subject so you capture the diffuse light bouncing off the truck’s patina.  \n • Polarizer (optional): If you want to tame distracting glare on the wet surfaces, a circular polarizer can help—but don’t overdo it; you still want some natural reflections to accentuate texture.\n\n3. Post-Processing Workflow (e.g., Lightroom or Capture One)\n • Tone Curve & Contrast: Apply a gentle S-curve. Lift the shadows just a bit to create a matte finish in the blacks, then add subtle contrast in the midtones to retain depth in the metal textures.  \n • White Balance & Tint: Dial in around 5500 K, then nudge the green/magenta tint slightly toward green to mimic cross-processed film.  \n • Split Toning / Color Grading:  \n   – Highlights: Cool them down with a touch of teal or cyan (hue ~200°, saturation 5–8%).  \n   – Shadows: Warm them up with a subtle amber or orange (hue ~40°, saturation 10–12%).  \n • HSL Adjustments:  \n   – Reds & Oranges: Boost saturation +10 to bring out rust and worn paint.  \n   – Greens & Aquas: Desaturate by –5 to –8 to mute the industrial background and keep focus on the truck.  \n • Grain & Texture: Add 15–20% grain at size 35–40 to simulate analog film. Increase texture/clarity slightly (+5 to +10) around the grille to emphasize the truck’s weathered surface.  \n • Vignetting: Apply a subtle dark vignette (–10 to –15) to draw the eye inward, centering on your subject and the truck’s front end.  \n • Final Touches: Use a radial filter over the umbrella area to lift exposure +0.5 EV and add a hint of warmth, ensuring your friend remains the focal point against the cool-toned metal.\n\n4. Optional Film Emulation LUTs\n • If you work in a color-graded environment (DaVinci, Photoshop, etc.), try a Kodak Portra or CineStill 800T LUT. Lower the LUT’s strength to ~40–50% so it complements your custom adjustments rather than overpowering them.\n\nBy combining these in-camera techniques with a nuanced color-grading process—lifting shadows, balancing warm/cool tones, and adding film-style grain—you’ll accentuate the truck’s patina, preserve the rainy-day mood, and achieve that timeless, nostalgic look you’re after."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Thanks for that thorough workflow! I’m wondering, for emphasizing the raindrops and adding more texture, should I apply local sharpening or texture adjustments in Lightroom, or would that lead to unwanted noise? And do you recommend any special brush settings for selective edits on the droplets?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/car_truck/COCO_train2014_000000237372.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! Isolating and accentuating raindrops can really enhance that tactile, rainy-day mood without introducing distracting noise. Here’s how to approach it:\n\n1. Create a Local Mask for the Droplets\n • Brush Selection: Use the Adjustment Brush in Lightroom (or local layer in Capture One). Choose a medium-sized soft brush (around 40–60 px) and lower the feather to ~70% so your edges blend smoothly.  \n • Mask Scope: Zoom in on the hood and windshield areas where droplets accumulate, then paint over the individual drops and wet patches.\n\n2. Texture & Clarity Boost\n • Texture +15 to +20: This enhances mid-frequency detail—perfect for the subtle ridges on each droplet.  \n • Clarity +10: Adds punch to the highlights within the drops without sharpening the entire frame. \n\n3. Sharpening Settings\n • Sharpening Amount +25: Keep this conservative to prevent haloing.  \n • Radius ~0.8 px: A tighter radius focuses sharpening on fine edges (the droplet outlines) rather than broader transitions.  \n • Detail +35: Emphasizes the tiny specular highlights in the water.  \n • Masking ~60: Hold Alt/Option while dragging Masking—this restricts sharpening to the brightest points and edges, minimizing noise in midtones.\n\n4. Noise Reduction\n • Luminance NR: Use +15–20 to smooth any noise introduced by clarity or sharpening in the masked area.  \n • Detail and Contrast: Keep these low (around 20 each) so you don’t smudge droplet detail.\n\n5. Final Refinements\n • Exposure +0.2 EV (optional): Slightly brighten the droplets for extra pop.  \n • Highlights +10: Bring up the specular glints on the water without blowing out the patina beneath.  \n\nBy isolating the droplets with a targeted brush mask, gently boosting texture and clarity, and fine-tuning sharpening and noise reduction, you’ll make those raindrops stand out crisply without introducing unwanted grain across the rest of the image."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/car_truck/COCO_train2014_000000237372.jpg",
+          "user_query": "I’m planning a photo shoot featuring automobiles and I want the final images to feel like they’re straight out of the 1950s. What lighting setups, composition tricks, and editing techniques could I use to evoke an authentic retro atmosphere?",
+          "correct_answer": "To evoke a ’50s automotive ad vibe, shoot your classic cars at golden hour with tungsten gels or warm reflectors to mimic mid-century studio lighting, use low angles and generous negative space with classic rule-of-thirds framing, and in post introduce a soft S-curve, teal/orange split-tone, subtle film grain, and a light vignette to simulate vintage film stock.",
+          "incorrect_answers": [
+            "To emphasize minimalist interior design, shoot rooms in soft, diffused daylight with simple, symmetrical compositions, frame key furnishings against ample negative space, and in post apply a neutral, desaturated palette, lifted shadows, minimal contrast, and a fine film grain to evoke a refined analog aesthetic.",
+            "To achieve a moody landscape look, shoot dramatic skies during overcast or twilight light with a wide-angle lens, compose low horizons and leading lines toward distant clouds, and in post deepen the blues and greens, add a cool/warm split-tone, pronounced grain, and a soft vignette for gritty, analog atmosphere.",
+            "To create a retro feel, shoot in warm, directional light at golden hour, compose with low angles and strong leading lines, and in post apply a gentle S-curve, muted color grading, film grain, and a subtle vignette to mimic classic vintage film."
+          ]
+        },
+        {
+          "preference": "The user enjoys drinking craft beer during relaxed social gatherings.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took at a relaxed get-together, I poured two craft beers into a variety of vessels—a short glass tumbler, a small shot glass, and even a stainless-steel cup. Could you explain how the shape and material of each container influence head retention, aroma concentration, and overall flavor perception of the beer?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Absolutely—glassware and vessel material play a surprisingly large role in how we experience beer. Here’s a breakdown of the key factors:\n\n1. Head Retention & Bubble Structure\n   • Narrow, tapered shapes (like a shot glass) concentrate carbonation into a tight column of rising bubbles. This can produce a brief but intense burst of aroma, though the head collapses quickly.   \n   • A wider-mouthed tumbler encourages a broader, thinner head layer. You’ll get more surface foam, which can mellow bitterness more rapidly and soften carbonation.   \n   • Metal cups (stainless steel, pewter) tend to suppress head formation altogether—small dents and seams can cause uneven bubble nucleation. The foam dissipates almost immediately, making the beer feel smoother but less aromatic on the nose.\n\n2. Aroma Concentration\n   • Beer aromas are volatile compounds that linger in the foam and just above the liquid. Narrow-necked glasses (tulip or shot-glass style) channel aroma into a compact space, directing it straight-up to your nose. This makes hop character, esters, and spice notes much more pronounced.   \n   • Open tumblers allow aromas to disperse laterally. You’ll catch more subtle background notes—malt sweetness, dark fruit, caramel—at a gentler intensity.   \n   • Metal containers lack transparency, preventing you from visually gauging head health. They also conduct heat differently, warming the beer faster and altering volatile release patterns (warmer beer releases more aroma compounds, but can also smell “flat” if the head is gone).\n\n3. Flavor Perception & Mouthfeel\n   • The inside surface finish matters: polished glass is inert and won’t interact with the beer. Rough or etched glass can spark extra nucleation sites, keeping carbonation brisk and accentuating a crisp bite.   \n   • Tumblers with thicker walls insulate slightly, keeping your beer colder for a longer stretch—cold temperatures suppress sweetness and emphasize bitterness.   \n   • Thin-walled shot glasses let the beer warm quickly, unfolding the fuller body and richer malt profiles in styles like barleywines or porters.   \n\n4. Style-Specific Recommendations\n   • Hoppy IPAs & Aromatic Ales: Opt for a tulip or IPA-specific glass with a flared lip to trap and focus hop volatiles.   \n   • Wheat Beers & Belgian Styles: A weizen or chalice glass with a narrow stem will enhance yeast-driven esters and banana/clove notes.   \n   • Stouts & Porters: A wide-bottomed snifter helps capture roasty, coffee-like aromas and encourages a robust, lasting head.   \n   • Session & Pale Ales: A classic American pint glass works well for balance—ample head but still open enough to enjoy subtle malt nuances.   \n\n5. Practical Tips for Your Next Gathering\n   • Match glassware to beer style whenever possible—ideally invest in a few tulips, snifters, and pint glasses.   \n   • Pre-chill glassware in the freezer for lighter lagers—just don’t overdo it, or you’ll end up with icy condensation that dilutes flavor.   \n   • Avoid metal cups for aroma-forward beers; save those for simple, low-aroma styles (lagers, ciders).   \n   • Keep a clean rim—any residual oils, detergent, or salt will kill the head and mute aromatics.\n\nBy paying attention to vessel shape, material, and temperature, you’ll unlock new layers of complexity in your craft beers—turning an informal hangout into a truly sensory tasting experience. Cheers to discovering how a simple glass can transform every sip!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg",
+          "user_query": "I’m hosting a low-key get-together at my place next weekend—what drink suggestions or presentation ideas could help create a friendly, laid-back vibe?",
+          "correct_answer": "For a laid-back craft beer gathering, set up a tasting flight of 4–5 local brews on a wooden paddle with a chalkboard sign listing each style, pair them with easy snacks like pretzel bites and cheese cubes, and drape some fairy lights to keep the vibe warm and casual.",
+          "incorrect_answers": [
+            "For a relaxed specialty coffee morning, set up a pour-over station featuring single-origin beans with a chalkboard menu listing each roast, arrange biscotti and fresh pastries on a wooden tray, and string fairy lights around the seating area to keep things cozy and casual.",
+            "For an effortless wine tasting evening, lay out a flight of 4–5 varietals on a wooden board with a chalkboard menu describing each pour, pair them with simple nibbles like olives and baguette slices, and drape a string of fairy lights to set an inviting, casual mood.",
+            "For a friendly, laid-back get-together, offer a variety of bottled and canned drinks displayed on a wooden tray with a chalkboard sign noting each one, pair with easy snacks like chips and dip, and hang some fairy lights to create a warm, casual atmosphere."
+          ]
+        },
+        {
+          "preference": "The user likely prefers using the subway for urban commuting.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took on my morning commute, you can see the yellow tactile paving at the platform edge. What are the design standards behind those tiles, and how do they enhance passenger safety and accessibility in subway systems?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_train/COCO_train2014_000000313709.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The yellow strips you’re seeing along the platform edge are known as tactile warning surfaces or truncated‐dome warning tiles. They’re an almost universal safety feature in subway systems, and they must meet very specific design and installation criteria to ensure they provide consistent protection and accessibility for all riders, especially those who are visually impaired. Below is an overview of the key standards and how the tiles work:\n\n1. Geometry and Layout\n • Dome Shape & Size: Most standards—such as the Americans with Disabilities Act (ADA) in the U.S. or ISO 23599 in Europe—specify a raised truncated‐dome pattern. Each dome typically measures about 0.9 cm in height, with a base diameter of roughly 0.9 cm and a top diameter of 50–60% of the base. This profile enables a white cane to detect the edge reliably and provides foot traction underfoot.\n • Spacing & Alignment: The domes are arranged in a grid with center‐to‐center spacing of approximately 2.4 cm. This consistent spacing prevents tripping hazards while remaining unmistakable underfoot or cane tip.\n • Width of the Warning Zone: Guidelines usually call for a minimum 61 cm (24 in) deep band of tactile warning tiles set back from the track edge. This depth gives passengers a clear buffer zone before reaching the drop-off.\n\n2. Color & Contrast\n • High-Visibility Hue: Bright yellow (or occasionally red in some older systems) is chosen because it creates strong visual contrast against typical platform finishes—gray concrete or dark stone—helping low-vision riders to see the edge more easily.\n • Reflectance & Gloss: The surface is often matte or lightly textured to reduce glare under station lighting, so color contrast remains effective in bright or dim conditions.\n\n3. Material & Durability\n • Composition: Most transit agencies use polymer concrete, ceramic, or high-strength polymer. These materials resist wear from heavy foot traffic, resist slipping when wet, and withstand temperature fluctuations underground or at outdoor stations.\n • Installation Method: Tiles are either cast in place (integral with the platform surface) or set in adhesive onto the finished platform. Proper bonding and sealing prevent water infiltration or tile displacement.\n\n4. Accessibility & Safety Benefits\n • Cane Detection: The raised dome pattern is easily located by a white cane. A continuous band of these domes signals “STOP—you’re at the platform edge.”\n • Underfoot Feedback: Riders feel a textural change underfoot, prompting them to step back or remain alert.\n • Consistent Standardization: Because the dimensions and layout are standardized across a transit network, riders learn to trust the same warning cues from station to station.\n • Edge Protection: By clearly marking the hazard zone, tactile paving reduces accidental falls onto the tracks, particularly during rush hours or when visibility is limited.\n\n5. Regulatory References\n • Americans with Disabilities Act (ADA) Accessibility Guidelines (Chapter 4 – “Accessible Routes”): ADA specifies dome dimensions, spacing, material qualities, and installation parameters.\n • ISO 23599 “Assistive products for blind and vision-impaired persons — Tactile walking surface indicators”: International standard harmonizing dome shape, spacing, and performance requirements.\n • Local Transit Authority Standards: Many subway operators publish their own technical manuals or engineering guidelines that mirror ADA/ISO rules but may include additional tests (e.g., skid resistance, fire rating).\n\nIn summary, those bright yellow tiles are far more than decorative—they’re the product of carefully engineered safety standards designed to provide sensory warnings, prevent accidents, and ensure that passengers of all abilities can navigate the platform edge with confidence."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_train/COCO_train2014_000000313709.jpg",
+          "user_query": "I just started a new job in the city center and want to make my daily commute as quick, reliable, and cost-effective as possible. What transportation options and strategies would you recommend for getting around a busy urban area?",
+          "correct_answer": "Since you prefer using the subway, grab a monthly metro card for unlimited rides, use a transit app to time your departures outside rush-hour peaks, and transfer at less crowded stations to skip bottlenecks. You could also combine short bike-share hops for first- and last-mile connections to shave minutes off your overall commute.",
+          "incorrect_answers": [
+            "Since you prefer ride-sharing, sign up for a carpool subscription to split costs, schedule pickups outside peak-hour windows to avoid surge pricing, and invite coworkers to share trips. You could also alternate with short subway rides during busy stretches to keep your travel reliable and cost-effective.",
+            "Since you prefer cycling, invest in a lightweight commuter bike, map dedicated bike lanes that bypass congested roads, and secure your bike at station racks to avoid theft. You could also hop on the subway for longer segments when the weather turns to ensure consistency and save time.",
+            "Consider getting a monthly transit pass for unlimited rides, use a real-time app to time departures outside peak-hour periods, and plan transfers at less crowded stations to avoid delays. You could also combine bike-share or short rides for the first and last mile to make your commute both faster and more economical."
+          ]
+        },
+        {
+          "preference": "The user enjoys gourmet grilled cheese sandwiches from food trucks.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took at a weekend food truck meetup, I noticed the vendor using a heavy sandwich press on the griddle—how do mobile kitchens achieve that perfect, gooey cheese melt and extra-crispy bread every time despite the cramped, constantly moving setup?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/bus_truck/COCO_train2014_000000349931.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Achieving a reliably gooey interior and crisply seared exterior in a food truck environment is really a matter of precise heat management, smart equipment choices, and a bit of culinary planning. Here’s how most gourmet grilled-cheese trucks make it happen:\n\n1. Temperature-Controlled Griddles  \n   • Many food trucks invest in professional, thermostatically controlled flat-top griddles with multiple heat zones. Setting the surface to around 350–375°F allows the bread to brown evenly without scorching, while still providing enough residual heat to melt cheese gently.  \n   • Propane burners in mobile kitchens can fluctuate, so chefs often use cast-iron griddles or add thermal diffuser plates underneath to stabilize temperature swings.\n\n2. Dedicated Sandwich Presses  \n   • A separate, heavy sandwich press (often made of cast iron or chrome-plated steel) is preheated to a consistent temperature. When clamped down, it applies uniform pressure and seals the edges, locking in steam and accelerating cheese melt.  \n   • Presses are usually cleaned and reheated between batches to prevent residual crumbs from disrupting heat transfer.\n\n3. Butter/Oil Application  \n   • Trucks typically brush or spread room-temperature butter (or a clarified-butter/oil blend) generously on the outside of each slice of bread. This not only promotes uniform browning via the Maillard reaction but also acts as a thin thermal barrier, preventing the bread from becoming soggy under pressure.  \n   • Some chefs use a combination of butter and a high-smoke-point oil to handle quick temperature peaks without burning.\n\n4. Cheese Selection & Layering  \n   • The magic is often in the cheese blend: a combination of a sharp cheddar (for strong flavor), a melting cheese like fontina or Gruyère (for creaminess), and sometimes a stretchy component such as mozzarella.  \n   • Chefs pre-slice their cheese uniformly or use a fine shred to ensure it heats and melts at the same rate, avoiding cold spots or overcooked edges.\n\n5. Staggered Assembly & Pre-Melt Techniques  \n   • During peak service, many trucks assemble sandwiches ahead of griddling—stacking bread, cheese, and any add-ins on sheet trays that sit under warm lights or in a low-temperature holding drawer.  \n   • This pre-warming step lets the cheese soften slightly, so when it hits the hot griddle with the press, it transitions into a perfect gooey state in under 90 seconds.\n\n6. Workflow & Cleanup  \n   • Keeping the griddle clean is crucial. Regular scraping and wiping between batches ensures even contact and eliminates cold spots caused by lingering crumbs or oil pools.  \n   • Chefs often work in assembly-line fashion—one station butters and stacks, the next grills, and a third plates—so that each sandwich moves quickly under the press without delaying service or risking temperature loss.\n\nBy combining consistent heat, the right equipment, ingredient prep, and a streamlined service flow, food trucks can produce reliably perfect grilled-cheese sandwiches, even in the tight confines and jostling conditions of a mobile kitchen."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Thanks, that breakdown is super helpful. You mentioned thermal diffuser plates and cast-iron griddles for temperature stability—how exactly do those diffuser plates work under propane burners, and how do chefs calibrate them to avoid hot or cold spots during a busy service?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/bus_truck/COCO_train2014_000000349931.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Thermal diffuser plates, typically forged from thick steel or aluminum, act as a heat buffer between the open flame of a propane burner and the cooking surface. Here’s how they function and how vendors ensure even heating:\n\n- Heat Distribution: The plate’s high thermal mass absorbs intense, direct flame energy and redistributes it evenly across its entire surface. This smooths out any localized hot spots that would otherwise occur where individual burner jets hit.\n\n- Preheating & Calibration: Chefs preheat the griddle with the diffuser in place for at least 10–15 minutes. During this time, they monitor surface temperature with an infrared thermometer or perform the classic water-drop “sizzle test” at multiple points. If some areas run cooler, they’ll tweak the burner flanges or adjust the gas flow via the regulator.\n\n- Burner Adjustment: Many trucks install multi-stage or two-stage propane regulators to prevent sudden pressure spikes. By dialing down the primary regulator to a slightly lower PSI and letting the secondary regulator fine-tune the flow, they maintain a rock-steady flame, even as the tank empties.\n\n- Shim & Plate Positioning: Diffuser plates often sit on small stainless-steel shims or legs that allow for airflow underneath. By sliding the plate slightly forward or backward, or by rotating it 180°, chefs can identify and neutralize stubborn cold zones. Some even stack a second, thinner plate in peak periods to increase thermal inertia.\n\n- Maintenance: A well-seasoned cast-iron diffuser conducts heat best. After each service, operators scrape off carbon builds, wipe with a light oil coating, and occasionally run a vinegar-water rinse to remove mineral deposits. Keeping the bottom and sides clean ensures the flame pattern stays consistent.\n\nBy combining the diffuser’s thermal buffering with precise regulator settings, routine temperature checks, and strategic plate placement, mobile kitchens achieve the kind of even, dependable griddle heat that’s essential for perfectly melted cheese and golden-crisp bread—even on the move."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/bus_truck/COCO_train2014_000000349931.jpg",
+          "user_query": "Hey, I’m looking to switch up my usual lunch this weekend—could you suggest some creative sandwich options I might find at local street food trucks?",
+          "correct_answer": "If you love gourmet grilled cheese from food trucks, you might seek out the Korean kimchi melt—sharp cheddar and gooey Swiss layered with spicy kimchi on sourdough—or the truffle mushroom sandwich with melted raclette, marinated wild mushrooms, and a drizzle of truffle oil on ciabatta.",
+          "incorrect_answers": [
+            "If you love artisanal coffee from independent cafés, you might sample the lavender honey latte on nitro tap or the single-origin Ethiopian cold brew with oat milk swirl at the mobile espresso bar.",
+            "If you love craft beer from neighborhood breweries, you might try the hazy IPA flight truck offering local hop blends or the sour beer pop-up featuring fruited kettle sours served fresh from the keg.",
+            "If you love bold street-food flavors, you might try the bánh mì slider stand serving lemongrass chicken with pickled veggies and sriracha aioli or the lobster roll truck offering buttery New England–style lobster on toasted brioche."
+          ]
+        },
+        {
+          "preference": "The user enjoys cuddling their pug while playing video games.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, my pug is draped across my lap while I’m gaming with a vibrating Wii controller—could those controller vibrations or my posture be causing her discomfort or stress, and how might I adjust my setup to keep her more comfortable on longer play sessions?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000344597.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "It’s wonderful that you’re thinking about your pug’s comfort during your gaming sessions. Let’s look at the two main factors—vibrations and posture—and then go over some practical adjustments you can make:\n\n1. Controller Vibrations\n- Canines & Tactile Sensitivity: Small breeds like pugs have thinner skin and can be more sensitive to unusual sensations. The rumble from the Wii remote travels through your hand into your lap, and your pug may feel it as a buzzing or tickling. Over time, repeated vibrations—even mild ones—can startle her or cause mild anxiety.\n- Watch Her Body Language: Look for signs such as shifting away, flattening her ears, lip licking, or light trembling when the controller buzzes. If she tenses up or tries to move off your lap at these moments, it’s a cue to reduce vibration intensity or switch controllers.\n\n2. Lap Posture and Pressure Points\n- Abdomen Comfort: Lying fully across your thighs can put pressure on her belly, which may make it harder for her to breathe comfortably, especially since pugs already have shorter snouts. Extended pressure can lead to discomfort or shallow breathing.\n- Joint Alignment: If your knees are higher than your hips or your legs are spread too far, it can twist her spine and strain her shoulders and hips.\n\nErgonomic Adjustments\n• Cushion Barrier: Place a plush cushion or folded blanket between your thighs and your pug. This not only dampens the vibration but also spreads her weight more evenly, reducing direct pressure on her belly and joints.  \n• Turn Down Rumble: Check the Wii system or in-game settings for vibration controls. If possible, lower the rumble intensity or use a non-rumble controller for longer sessions.  \n• Seating Angle: Sit so your thighs are level or slightly raised with a footstool. A flatter surface reduces belly compression and keeps her spine in a more natural position.  \n• Scheduled Breaks: Every 20–30 minutes, pause your game and let your pug hop down for a stretch. Then encourage her back up or have her cuddle beside you—this relieves any stagnant pressure and gives her a chance to adjust.  \n• Side-by-Side Arrangement: If she loves closeness but a full lap is too much, set up a small dog bed or plush mat next to your gaming chair. She can still snuggle up without all her weight on your legs.\n\nMonitoring & Follow-Up\n- Observe Changes: Pay attention over several gaming sessions—if she seems more relaxed with these tweaks, you’re on the right track.  \n- Veterinary Check: If she still appears restless, excessively panting, or reluctant to lie on your lap, a vet visit can rule out any underlying physical issues.\n\nBy adding a soft barrier, reducing vibration intensity, and allowing regular position shifts, you can keep your pug cozy and stress-free—so you both enjoy those marathon gaming nights together!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000344597.jpg",
+          "user_query": "I’m trying to transform my living room into a pet-friendly gaming zone. What ideas do you have for keeping both me and my furry friend cozy and happy during long play sessions?",
+          "correct_answer": "Place an extra-wide, washable throw on your gaming couch so your pug can curl up comfortably next to you, and add a small side table with a water bowl and chew toys within paw’s reach. Consider installing a low ottoman at your feet so your furry friend can stretch out and still enjoy your company during those marathon play sessions.",
+          "incorrect_answers": [
+            "Place an overstuffed, washable pillow on your favorite armchair so your cat can curl up comfortably next to you, and add a small side table with a treat jar and feather toy within paw’s reach. Consider installing a low shelf by the window so your feline friend can stretch out and still enjoy the sunshine during those marathon reading sessions.",
+            "Place a soft, washable desk pad on your writing table so your journal can rest comfortably next to you, and add a small tray with your coffee mug and favorite pen within arm’s reach. Consider adding an underdesk shelf so your notebook can lie open and still inspire you during those marathon journaling sessions.",
+            "Place a cozy, washable throw on your seating area so your pet can curl up comfortably next to you, and add a small side table with water and treats within reach. Consider positioning a low ottoman or pet bed at your feet so your companion can stretch out and still stay close to you during longer sessions."
+          ]
+        },
+        {
+          "preference": "The user enjoys cycling along sunny coastal streets.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Based on the scene shown, what feature of this setting likely contributes most to the cyclist’s enjoyment?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The bright, sunny coastal street with ocean views and a gentle sea breeze, creating an ideal and pleasant environment for a bike ride."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg",
+          "user_query": "",
+          "correct_answer": "A friendly option is the city’s network of bike-friendly streets that traverse parks and green spaces, offering a comfortable ride through varied scenery. These well-maintained paths are clearly marked and ideal for cyclists of all levels.",
+          "incorrect_answers": [
+            "I’d suggest biking the Newport to Yachats stretch on the Oregon Coast, where sun-drenched roads edge the Pacific, offering endless ocean views and gentle sea breezes. This route’s wide coastal lanes and bright sunshine create an idyllic seaside cycling experience.",
+            "The Santa Barbara beachfront path is another excellent choice, with sunlit shorelines, palm-tree-lined promenades, and smooth pavement perfect for a leisurely coastal ride. You’ll pedal past sandy coves and wharf views with the sea breeze keeping you refreshed.",
+            "You might also love the Cape Kiwanda loop in Pacific City, featuring sun-bathed coastal roads and panoramic ocean vistas that suit a relaxed seaside bike outing. The warm coastal air and open horizon make every mile along the shore a delight."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Prefers natural and organic skincare products",

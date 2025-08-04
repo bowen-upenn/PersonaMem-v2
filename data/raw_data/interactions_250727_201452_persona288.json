@@ -188,7 +188,237 @@
       "Prefers an unstructured, spontaneous lifestyle without a strong emphasis on mindfulness or meditation": "Prefers a structured, mindful lifestyle with a strong emphasis on meditation."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user prefers working or reading in a cozy home environment with their pet dog by their side.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my living room setup—with my laptop on a low coffee table and my dog snoozing on the couch behind me—what ergonomic tweaks or accessories could I add to ease my neck and back strain when working here, without disturbing my pup’s cozy spot?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_laptop/COCO_train2014_000000166853.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That’s a great question—finding the balance between comfort and ergonomics in a pet-friendly space can really boost productivity and well-being. Here are a few ideas:\n\n1. Laptop Riser or Adjustable Stand  \n   • Use a portable laptop stand or riser to raise your screen closer to eye level. This reduces neck flexion and helps you maintain a neutral spine. Choose a lightweight model you can fold away so it doesn’t encroach on your dog’s area.  \n\n2. External Keyboard and Mouse  \n   • Pair your raised laptop with a compact wireless keyboard and mouse. This lets you keep your elbows at about a 90° angle, preventing shoulder tension. You can store them on the coffee table when you’re done, preserving that homey look.  \n\n3. Floor Cushion or Low Footrest  \n   • Since the table is low, your knees may be higher than your hips, which can introduce lumbar strain. Slip a firm floor cushion or a small ottoman under your feet. This supports your lower back and helps distribute your weight evenly.  \n\n4. Back Support Pillow  \n   • Prop a small lumbar pillow or rolled towel against the back of your sofa or chair. That extra support encourages you to sit upright without slouching, and it won’t take up much room behind you—your dog’s blanket remains the star of the couch.  \n\n5. Portable Lap Desk  \n   • If you’d rather work from the couch itself, a lap desk with adjustable legs can give you a stable typing surface at the right height. Look for one with a cushioned underside that conforms to your lap comfortably.  \n\n6. Warm, Indirect Lighting  \n   • Swap overhead harsh lighting for a soft LED floor or table lamp behind your work area. A warm-white bulb (2700–3000 K) reduces eye fatigue and preserves a cozy vibe for both you and your dog.  \n\n7. Pet-Safe Materials  \n   • If you add any mats or cushions, choose washable covers made of natural fibers like cotton or bamboo. These resist odors and pet dander, keeping the space fresh for you and gentle on your dog’s fur.  \n\n8. Short Stretch Breaks  \n   • Finally, set a reminder every 30–45 minutes to stand up, stretch, and let your pup know you’re still there (a gentle pat or quick walk around the couch). This simple routine eases muscle tension and reinforces your bond with your dog.  \n\nBy combining a few of these adjustments—raising your screen, supporting your back and feet, and adding soft lighting—you’ll reduce physical strain and maintain the warm, relaxed atmosphere your dog loves. Enjoy your cozy, healthier home office setup!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_laptop/COCO_train2014_000000166853.jpg",
+          "user_query": "I’m looking to turn a corner of my home into a really cozy spot where I can read or work for hours—what furniture, lighting, and décor ideas would you recommend to create a warm, inviting atmosphere that keeps me focused and comfortable?",
+          "correct_answer": "Choose a plush armchair or chaise upholstered in soft fabric and place it near a low coffee table where your dog’s favorite blanket can rest. Add a warm-toned floor lamp with a dimmer, a thick wool rug, and some textured throw pillows for extra coziness. Finally, install a floating shelf for your go-to reads and hang a few framed prints to make the corner feel personal and inviting.",
+          "incorrect_answers": [
+            "Choose a sleek metal-framed armchair with clean lines and place it beside a glass-top table to keep the look uncluttered. Add a black-and-white adjustable task lamp, a simple jute rug, and a single monochrome cushion for a touch of comfort. Finally, mount minimalist floating shelves for your books and display a single geometric wall sculpture to maintain an airy, streamlined vibe.",
+            "Choose an oversized velvet armchair in a bold jewel tone and place it next to a vintage side table filled with curiosities. Add a mid-century modern arc lamp with a colorful shade, an oriental-patterned rug, and plenty of velvet and silk pillows in mixed prints. Finally, install a gallery wall of vibrant art pieces and hang a tapestry to complete the vibrant, eclectic atmosphere.",
+            "Choose a comfortable armchair and position it next to a small side table for your books and cup of tea. Add a soft floor lamp, a plush area rug, and a couple of throw pillows to enhance coziness. Finally, hang a shelf for your favorite reads and display a few art prints to make the space feel warm and welcoming."
+          ]
+        },
+        {
+          "preference": "The user prefers using Apple MacBook laptops.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, I’ve got two MacBooks open on my couch—can you explain how the tiny sensor next to the camera measures ambient light and automatically adjusts the screen brightness? What’s going on under the hood?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_couch/COCO_train2014_000000133384.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Absolutely. The small circle you see next to the FaceTime camera on MacBooks is the ambient light sensor (ALS). Under the hood, it’s typically a photodiode or phototransistor calibrated to approximate the CIE photopic response curve, which is how the human eye perceives brightness.\n\nHere’s how it works step by step:\n\n1. Light Detection\n   • The photodiode sits behind the bezel, sampling light falling on the display area. \n   • It converts incident photons into a small electrical current proportional to the light intensity.\n\n2. Signal Conditioning\n   • That current is fed into a transimpedance amplifier inside a dedicated light-sensing IC (for instance, an Avago APDS series or similar). \n   • The amplifier produces a voltage that’s then digitized by an analog-to-digital converter (ADC).\n\n3. Data Interpretation\n   • The MacBook’s SMC (System Management Controller) reads the digital value, which represents the ambient luminance in lux. \n   • An algorithm in macOS maps that lux value to a corresponding display backlight intensity. Apple calibrates this mapping to ensure smooth transitions and natural brightness levels.\n\n4. Backlight Adjustment\n   • The display is an LED-backlit panel. The SMC adjusts the current driving the LEDs to increase or decrease backlight brightness. \n   • Changes happen gradually (often in 100–200 ms increments) to avoid sudden flicker and give a smooth user experience.\n\n5. Fine-tuning and Filters\n   • macOS can also apply a slight gamma adjustment to preserve color accuracy at lower brightness levels. \n   • In low-light conditions, the system may also dim the keyboard backlight proportionally to save power and prevent eye strain.\n\nKey Points:\n   • Spectral Response: The sensor’s spectral sensitivity is engineered to mimic human vision rather than simply measure raw light. \n   • Calibration: Each MacBook goes through factory calibration so that the ALS reading translates reliably to on-screen brightness. \n   • Power Saving: Because the ALS is low-power, it can remain active continuously without significantly impacting battery life.\n\nIn short, that tiny sensor is a sophisticated photoreceptor feeding a feedback loop that keeps your screen comfortably legible—whether you’re in bright daylight or a dimly lit room."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_couch/COCO_train2014_000000133384.jpg",
+          "user_query": "I’m looking for a new laptop that’s light enough to carry around all day but still powerful enough for video editing, coding, and general productivity. What models or specs should I consider?",
+          "correct_answer": "Since you already favor MacBooks, consider the 14-inch MacBook Pro with an M2 Pro chip, 16 GB of RAM, and a 512 GB SSD to keep things lightweight while delivering top-notch video editing and coding performance.",
+          "incorrect_answers": [
+            "Since you prefer Windows ultraportables, consider the Dell XPS 13 with an Intel Core i7, 16 GB of RAM, and a 512 GB SSD for snappy performance and all-day portability.",
+            "Since you prefer gaming-style laptops, consider the Razer Blade Stealth 13 with an Intel Core i7, 16 GB of RAM, and a 512 GB SSD for a compact form factor that still handles video editing and development smoothly.",
+            "You might look for an ultrathin laptop featuring at least a quad-core Core i7 processor, 16 GB of RAM, and a 512 GB SSD to balance portability and power for video editing, coding, and everyday productivity."
+          ]
+        },
+        {
+          "preference": "The user enjoys sharing and viewing images of small, cute puppies.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my tiny Chihuahua puppy sleeping in my arms, I noticed her ears are flattened against her head—what does this say about her comfort and emotional state, and what other subtle body language cues should I watch for to keep her truly relaxed?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve captured a precious moment—and your observation about the ear position is spot on. In small breeds like Chihuahuas, ears flattened gently against the head usually indicate deep trust and contentment. Here’s a closer look at what that and other subtle signals can tell you:\n\n1. Ears Flat = Safety and Trust  \n   • When your puppy rests her ears back or flat, she’s not bracing for anything; she feels secure in your arms.  \n   • In a stressed or fearful puppy you’d see ears pinned tightly back against the skull, often accompanied by other signs of anxiety, but a relaxed flattening is very different—it shows she’s surrendered to sleep.\n\n2. Soft, Even Breathing  \n   • Watch for slow, rhythmic inhales and exhales. Rapid panting or gulping breaths can indicate overheating or stress, but a steady, soft pattern means she’s comfortable and temperature-regulated.\n\n3. Limb Position and Muscle Tone  \n   • A limp, floppy posture—legs draped loosely rather than tucked tensely under the body—points to full muscle relaxation.  \n   • If you ever see her twitching paws or whiskers, that can signify a dream state, which is a healthy part of sleep.\n\n4. Tail and Body Alignment  \n   • A relaxed tail, either loosely wrapped around her body or gently extended, reinforces her sense of calm.  \n   • Look for a straight spine rather than a hunched or stiff back—this suggests no hidden discomfort.\n\n5. Closed Eyes and Facial Expression  \n   • Softly closed eyelids with no furrowing of the brow area are a reassuring sign.  \n   • If she occasionally lifts an eyelid to check on you, that’s a sweet nod to her curiosity even during rest.\n\nTips for Maintaining That Calm:  \n• Temperature Control: Small pups lose heat quickly, so keeping a cozy blanket or soft cushion in your lap helps.  \n• Gentle Soundscape: A low-volume white-noise machine or soft classical music can deepen her rest without startling her.  \n• Consistent Routine: Puppies thrive on predictability—try to pair cuddle times with naps so she learns to wind down with you.\n\nBy tuning in to these nuanced signals—ears, breathing, posture, tail carriage, and facial muscle tone—you’ll have a reliable window into her comfort and well-being. Enjoy these snuggly moments; your puppy clearly feels safe and cherished in your care!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "I’m putting together a digital scrapbook to share with friends and family, and I want the images to be absolutely adorable. What theme ideas would you suggest, and do you have any tips for capturing their cuteness on camera?",
+          "correct_answer": "For your puppy scrapbook, try a seasonal theme like “puppies in bloom” or “snow day snuggles,” arranging images by color or mood to create visual continuity. To capture their natural cuteness, shoot at their eye level in soft natural light, use a fast shutter speed to freeze playful moments, and have toys or treats on hand to grab their attention.",
+          "incorrect_answers": [
+            "If you’re passionate about macro flower photography, consider a “petal portraits” theme that groups blooms by hue or shape for a cohesive look. To nail those crisp details, work in gentle diffused light, use a tripod for stability, and experiment with a shallow depth of field to make each flower pop.",
+            "If you love birdwatching, set up a “feathered friends” scrapbook with pages dedicated to different species or habitats for a structured flow. Capture them at dawn with a telephoto lens, boost your ISO for quick exposures, and move quietly to get close enough for sharp, intimate portraits.",
+            "Choose a cohesive look like pastel backgrounds or black-and-white frames and group your pictures into mini-stories such as “playtime” and “quiet moments” for consistency. For standout shots, rely on natural light, shoot at subject level, and be ready with candid bursts to catch those genuine expressions."
+          ]
+        },
+        {
+          "preference": "The user enjoys healthy home-cooked meals featuring grilled meat and quinoa-based salad.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I snapped of tonight’s meal prep—grilled chicken paired with a lemon-herb quinoa salad—I noticed my quinoa grains stuck together and the flavors of the herbs didn’t spread evenly. What adjustments should I make when cooking and fluffing quinoa to keep the grains light and separate, and how can I balance the acidity of my chicken marinade so it complements rather than overpowers the salad?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve got a wonderful foundation—a lean grilled protein and a bright quinoa salad—but both components need a little technique tuning to shine in harmony. Let’s break it down into two parts: perfecting the quinoa’s texture and refining your marinade-to-salad flavor balance.\n\n1. Cooking and Fluffing Quinoa for Light, Separate Grains\n\n  • Rinse Thoroughly\n    – Place your quinoa in a fine-mesh sieve and rinse under cold running water for 30–45 seconds. This removes the natural saponin coating, which can otherwise make grains gummy.\n  • Use the Right Ratio\n    – Aim for a 1 : 1.5 ratio of quinoa to water (for example, 1 cup quinoa to 1½ cups water or low-sodium broth). Too much liquid leads to soggy grains.\n  • Bring to a Boil, Then Simmer\n    – Cover and bring the pot to a rolling boil, then immediately reduce to the gentlest simmer. Cook, covered, for 12–15 minutes—just until the water is absorbed.\n  • Rest and Steam\n    – Turn off the heat and leave the lid on for another 5–7 minutes. This steaming step lets excess moisture redistribute without direct heat, preventing clumping.\n  • Fluff with a Fork\n    – Finally, remove the lid and gently fluff with a fork rather than stirring vigorously with a spoon. A fork teases grains apart, keeping them light and airy.\n  • Add Herbs Off Heat\n    – Toss in chopped herbs (parsley, mint, dill) only when the quinoa is off the stove. Residual warmth will gently wilt but not bruise the herbs, giving better distribution.\n\n2. Balancing Marinade Acidity and Salad Brightness\n\n  • Check Your Acid Levels\n    – If your chicken marinade uses lemon juice, vinegar, or yogurt, ensure the proportion of acid isn’t too high. A good target is 1 part acid to 3 parts oil (e.g., 1 tbsp lemon juice : 3 tbsp olive oil) plus aromatics. This softer acid level will flavor the meat without dominating your quinoa dressing.\n  • Complementary Flavors\n    – Mirror one of the salad herbs in your marinade—if the quinoa salad features parsley and mint, add a handful of chopped mint or parsley to the chicken marinade. This shared note creates cohesion on the plate.\n  • Finish with Separate Dressings\n    – Instead of using leftover chicken marinade to dress the quinoa, whisk together a fresh quinoa vinaigrette: olive oil, lemon juice, a touch of honey or Dijon mustard, salt, and pepper. Drizzle it over the fluffed quinoa just before serving. In this way, both the meat and the salad get their own tailored glaze.\n\nPutting it all together, rinse and steam-rest your quinoa properly for a fluffy base, add herbs gently off heat, and marry your meat and grain with parallel—but not identical—acid/oil ratios and shared herbal accents. These tweaks will keep each element vibrant and let the grilled chicken and lemon-herb quinoa truly complement each other."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Great, thanks for those detailed steps! I’d also like to deepen the quinoa’s nuttiness and get even better herb distribution. If I toast the dry quinoa seeds before cooking, how long and at what heat should I do so to avoid burning? And for the mint and parsley, would a quick herb oil infusion or chiffonade enhance the flavor without bruising the leaves? Any tips on timing or method?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Toasting Quinoa:\n\n• Use a dry skillet over medium heat.\n• Add the rinsed (and thoroughly drained) quinoa in a single layer.\n• Stir or shake the pan constantly for 4–5 minutes, until the grains become fragrant and turn a pale golden hue. Watch carefully and transfer them to your cooking pot as soon as you see color change to avoid any burnt edges.\n\nProceed with your usual 1:1.5 quinoa-to-water ratio and cooking method.\n\nHerb Distribution Enhancements:\n\n• Chiffonade Technique: Stack and roll your washed mint and parsley leaves into a tight cylinder, then slice very thinly. This fine cut melds seamlessly into the warm quinoa without bruising the leaves.\n• Herb-Infused Oil: In a small saucepan, warm ¼ cup olive oil over low heat and add your herbs. As soon as you see the first tiny bubbles (about 20–30 seconds), remove from heat and let steep for 10–15 minutes. Strain out the solids and reserve this aromatic oil.\n• Timing Tips: Add chiffonade herbs immediately after you have fluffed and rested the quinoa—residual heat will gently wilt the ribbons and help release essential oils. Right before serving, drizzle the herb-infused oil over the salad to coat grains evenly and boost flavor without sogginess.\n\nBy toasting the seeds and using chiffonade cuts or an herb-infused oil, you’ll achieve a deeper nuttiness in your quinoa and a uniform, vibrant herb profile throughout your salad."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg",
+          "user_query": "I’m planning quick, balanced dinners for the week that don’t take too long to prepare. Do you have any satisfying, easy-to-make recipe suggestions?",
+          "correct_answer": "Try marinating skinless chicken breasts in lemon juice, garlic, and fresh herbs, then grill alongside zucchini and bell peppers; serve over quick-cooking quinoa tossed with parsley and cherry tomatoes for a balanced dinner in under 30 minutes. Rinse the quinoa ahead of time and mix the marinade in the morning to cut total cook time after work.",
+          "incorrect_answers": [
+            "If you love bold Mexican flavors, roast spiced black beans with chili powder and cumin, then combine with corn, avocado, and cilantro over quick-cooking quinoa for a zesty dinner in about 20 minutes. You can prepare the bean spice mix and chop your veggies earlier in the day to streamline the final assembly.",
+            "If you’re drawn to spicy Thai cuisine, stir-fry chicken strips with red curry paste, coconut milk, and bell peppers, then serve over a bed of jasmine rice or quinoa for a fragrant meal ready in 20 minutes. Prep the veggies and measure out the curry paste earlier in the day to save even more time.",
+            "For a quick balanced dinner, grill any lean protein like chicken or turkey while steaming quick-cooking grains and roasting mixed vegetables; season with olive oil, salt, and pepper for simple flavor. Chop your veggies and measure out seasonings in advance so you can pull everything together in under half an hour."
+          ]
+        },
+        {
+          "preference": "The user enjoys pickled vegetables, particularly beets.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In the photo I took of my homemade pickled beets, what brine adjustments or spice additions would you recommend to balance their earthy sweetness with a brighter, tangier flavor?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/bowl_dining_table/COCO_train2014_000000395097.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve captured the deep, jewel-red color beautifully—let’s talk about tuning that brine so the natural earthiness of the beets shines through while adding livelier tang and complexity. Here are several levers you can pull:\n\n1. Vinegar-to-Sugar Ratio\n   • Bright & Tangy: Increase the vinegar component slightly. If you’re using a 1:1 ratio of vinegar to water and sugar equal to half the vinegar volume, try moving to 1½ parts vinegar : 1 part water : ½ part sugar.  \n   • Mellow Sweetness: Keep the sugar at ½ part but swap part of the white sugar for honey or maple syrup, which have deeper flavor notes that complement beet earthiness without being cloying.\n\n2. Vinegar Variety\n   • Apple Cider Vinegar: Adds a fruitier acidity and subtle apple notes.  \n   • White Wine Vinegar: Delivers a gentle, floral tang that won’t overpower the beets.  \n   • Rice Vinegar: Very mild and slightly sweet—use it to temper sharper vinegars for a delicate profile.\n\n3. Spice and Aromatic Additions\n   • Coriander Seeds: Toast lightly in a dry pan to awaken citrus-like oils, then crush and add a teaspoon per pint.  \n   • Mustard Seeds: Provide a gentle heat and complexity—1 teaspoon per pint.  \n   • Black Peppercorns: A few whole berries offer subtle warmth.  \n   • Bay Leaves & Juniper Berries: One small bay leaf and 3–4 juniper berries impart foresty fragrance that echoes beet’s earthiness.  \n   • Fresh Dill or Tarragon Sprigs: Tuck in a stem or two for herbaceous lift, especially once the jars cool down.\n\n4. Citrus Zest and Fresh Elements\n   • Lemon or Orange Zest: A strip of peel from ½ a lemon or orange brightens the brine without adding more sugar.  \n   • Thin Slices of Ginger or Garlic Cloves: One or two slices of ginger add a zingy counterpoint; one smashed garlic clove brings savory depth.\n\n5. Technique & Timing\n   • Warm Brine Infusion: Heat your vinegar, water, sugar, salt (about 1 tablespoon per pint), and spices just to a simmer—this helps flavors meld immediately.  \n   • Pour Over Warm Beets: Packing jars with hot or warm beet slices then ladling in hot brine seals flavor quickly.  \n   • Rest & Taste: Let the jars cool to room temperature, then refrigerate for at least 24–48 hours before sampling. Check seasoning after 2 days and adjust vinegar or sugar by adding a splash of fresh vinegar or a pinch of sugar to each jar if needed.\n\n6. Crispness & Color Preservation\n   • Blanch & Shock: Briefly blanch peeled beet slices in boiling water for 1–2 minutes, then plunge into ice water. This sets color and texture before pickling.  \n   • Add a Pinch of Alum or Calcium Chloride (Pickle Crisp): If you like extra firmness, a small dash keeps slices snappy.\n\nPutting it All Together – Sample Brine for One Quart Jar\n   • 1 cup apple cider vinegar  \n   • ¾ cup water  \n   • ½ cup sugar (or ¼ cup white sugar + ¼ cup maple syrup)  \n   • 1 Tbsp kosher salt  \n   • 1 tsp coriander seeds (lightly toasted)  \n   • 1 tsp mustard seeds  \n   • 5 black peppercorns  \n   • 1 bay leaf  \n   • Zest strip from ½ lemon  \n   • 1 garlic clove (smashed)  \n   • Optional: 2 sprigs fresh dill or tarragon  \n\nWarm the brine ingredients together, pack your blanched beet slices into a clean jar, pour the brine over them, seal, and refrigerate. Taste after two days and fine-tune with a splash more vinegar for assertive tang or a teaspoon more sugar for gentler balance.\n\nWith these tweaks, you’ll preserve the beet’s natural earthiness while layering in bright, lively notes—and your next batch should taste even more vibrant and nuanced. Enjoy your next pickled beet experiment!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/bowl_dining_table/COCO_train2014_000000395097.jpg",
+          "user_query": "I’m looking for some make-ahead side dishes that will keep well in the fridge and add a burst of flavor to my meals throughout the week. Any suggestions?",
+          "correct_answer": "Since you love pickled beets, try a make-ahead quick-pickled beet and fennel salad with apple cider vinegar and fresh dill — it keeps for up to a week and adds vibrant tang to any meal. For variety, batch-pickled carrots with cumin and lemon zest or a marinated cucumber salad with mint and garlic will bring bright, crunchy sides to your meals throughout the week.",
+          "incorrect_answers": [
+            "Since you love spicy Mexican flavors, try a make-ahead pickled jalapeño and onion salad with lime juice and cilantro — it keeps for up to a week and adds a zesty kick to any meal. For variety, batch-roasted chipotle-carrot slaw or a pickled corn salad with chili powder and cotija cheese will bring bold heat and freshness to your meals throughout the week.",
+            "Since you love Mediterranean flavors, try a make-ahead marinated artichoke and roasted pepper salad with lemon, oregano, and olive oil — it keeps for up to a week and adds bright, herbal notes to any dish. For variety, a quick-pickled cucumber and mint salad or a whipped feta dip with preserved lemons will infuse your meals with fresh, tangy character throughout the week.",
+            "Try a make-ahead pickled vegetable medley — combine carrots, cucumbers, and radishes in a simple vinegar brine with herbs, then let sit overnight and keep it for up to a week for a crisp, tangy side. For variety, roast or pickle additional vegetables like bell peppers or green beans with garlic and spices to add bright, crunchy sides to your meals throughout the week."
+          ]
+        },
+        {
+          "preference": "The user prefers to maintain a clean and well-organized kitchen environment.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "What evidence in the image suggests that the person values an orderly and clutter-free kitchen environment?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_refrigerator/COCO_train2014_000000130011.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The neatly aligned bottles on the counter and the act of wiping down the surface indicate a strong preference for cleanliness and organization."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_refrigerator/COCO_train2014_000000130011.jpg",
+          "user_query": "Can you recommend some simple meal planning and prep strategies that will let me get dinner on the table quickly during a busy week?",
+          "correct_answer": "Spend some time on the weekend chopping vegetables, cooking grains, and portioning proteins into containers so you can mix and match meals during the week. This prep method saves time on busy nights and helps ensure you always have something healthy ready to heat up.",
+          "incorrect_answers": [
+            "Spend Sunday afternoon chopping produce and storing it in labeled containers so you can quickly assemble meals in a clean, clutter-free workspace. With everything prepped and your kitchen spotless, dinner comes together in minutes even on your busiest nights.",
+            "Prep ingredients ahead of time and tuck them into clear, stackable containers on your sparkling countertops to streamline weeknight dinners. A neat, organized kitchen makes it easy to grab what you need and whip up a meal in no time.",
+            "Group your meal components into dedicated zones—pre-chopped veggies in one bin, cooked grains in another—then arrange them neatly to keep your cooking area streamlined. Maintaining an uncluttered, efficient setup means you’ll spend less time hunting for tools and more time enjoying dinner."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Prefers natural lighting and ergonomic workspaces in her lab",

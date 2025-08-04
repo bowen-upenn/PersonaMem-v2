@@ -199,7 +199,275 @@
       "Seeks progressive, cutting-edge cultural trends rather than maintaining traditional customs": "Prefers traditional customs over progressive, cutting-edge cultural trends."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user likely enjoys the company of small, cute dogs (puppies).",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, my tiny puppy is fast asleep on his back in my arms with all four paws in the air—why do dogs sometimes choose such a vulnerable position when they sleep, and what does it say about how comfortable and trusting they feel?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Seeing a dog sleep on its back—with belly exposed and limbs splayed—is one of the clearest signs of trust and relaxation you can observe. Here’s what’s going on behind that adorable pose:\n\n1. Vulnerability Means Ultimate Comfort\n   • In the wild, exposing the belly leaves animals defenseless, so a dog that sleeps belly-up is telling you, “I feel 100% safe.”  Domestic dogs retain that instinct: if your puppy curls up on your lap with her tummy in the air, she knows you’ll protect her.  \n\n2. Temperature Regulation\n   • A dog’s abdomen has less fur and more sweat glands than its back. When your puppy feels warm, sprawl­ing belly-up lets heat escape more easily through that thinner fur and skin.  You’ll often see this pose on hotter days or after active play.  \n\n3. Muscle Relaxation & Stretching\n   • Sleeping on the back fully elongates the spine and stretches out the shoulders and hips.  For growing puppies, this can feel especially good, helping their muscles loosen after bouts of tumbling or chasing.  \n\n4. Pack Psychology & Bonding\n   • Descended from wolves, dogs have an ingrained sense of hierarchy and social bonds.  In a wolf pack, only the most secure individuals will sprawl out.  When your puppy sleeps belly-up in your arms, she’s demonstrating that she regards you as a trusted “pack leader” who will not harm her.  \n\n5. Age and Personality Factors\n   • Young puppies often adopt more exaggerated sleep positions as they explore their new world and build confidence.  An especially trusting, playful, or laid-back dog is more likely to nap on her back than a nervous or shy one.  \n\nTips for Supporting a Safe Belly-Up Nap\n   • Keep your arms and lap level so she doesn’t roll off.  \n   • Avoid sudden movements or loud noises while she’s in this deep rest.  \n   • Make sure the room temperature is comfortable—too cold or too hot can disrupt this pose.  \n\nIn short, your puppy’s upside-down slumber is a wonderful compliment: she’s telling you she feels secure, content, and free to fully relax.  Next time she curls into this position, savor the moment—you’ve earned her complete trust and comfort!  "
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "I’m thinking about adopting a dog but I live in a small apartment and have a fairly busy work schedule. What breeds or sizes should I consider, and what should I know to prepare my home and routine before bringing a new pup home?",
+          "correct_answer": "Since you adore small, cute pups and live in a cozy apartment, consider breeds like a French Bulldog, Cavalier King Charles Spaniel, or Chihuahua mix that adapt well to limited space. Before bringing your new puppy home, puppy-proof high-traffic areas, set up a snug crate or bed for downtime, and carve out daily short walks or indoor play sessions to keep them stimulated and secure while you’re at work.",
+          "incorrect_answers": [
+            "Since you’re passionate about gourmet cooking in a compact kitchen, consider setting up a small herb garden with basil, mint, or parsley that thrive in pots on a windowsill. Before planting, clear a dedicated spot, invest in quality potting mix, and schedule brief daily watering and pruning rituals to ensure your herbs stay vibrant and flavorful.",
+            "Since you’re fascinated by classic muscle cars and have limited garage space, look at restoring a compact vintage Mini Cooper, which packs nostalgia into a small footprint. Before starting, clear out your garage for a dedicated workspace, stock up on essential tools and spare parts, and plan a consistent weekend maintenance schedule to keep your project moving smoothly.",
+            "If you have limited apartment space and a busy schedule, choose a small to medium breed with moderate exercise needs, such as a Pug, Shih Tzu, or Havanese. To prepare, puppy-proof your home by securing loose wires and toxic plants, set up a cozy crate or pet bed, and plan daily short walks or indoor play sessions so your new dog stays happy and healthy."
+          ]
+        },
+        {
+          "preference": "The user prefers using open-source educational laptops like the OLPC XO for hands-on learning.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my hands-on workshop with OLPC XO laptops, how do the XO’s hardware constraints shape the best choice of open-source programming tools for teaching coding to beginners?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000014238.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "When selecting programming environments and tools for the OLPC XO, it’s essential to respect the machine’s modest specifications—an 433 MHz ARM9 processor, 256 MB of RAM, and limited storage—as well as its power-efficient design. These constraints lead us to prioritize:\n\n1. Lightweight Interpreters and IDEs\n   • Python with minimalist editors: Python is the XO’s lingua franca thanks to its readability. Tools like Thonny (with its minimal feature set) or IDLE can run decently if you disable heavyweight debugging features.\n   • Scratch 2.0 via the offline version: Scratch’s block-based interface is optimized for low-power hardware, and the XO’s Linux build can host the standalone Flash/HTML5 player or the Photon-based Scratch Desktop.\n\n2. Sugar Activities and Bundles\n   • Sugar’s “Write” and “Speak”: These built-in activities introduce programming concepts through simple sequence scripts.\n   • Turtle Blocks: A Sugar-native geometry-turtle environment that teaches sequencing and loops with immediate visual feedback, consuming minimal CPU and memory.\n\n3. Offline and Mesh-Aware Design\n   • Standalone packages: Because XOs often run on a closed mesh network, choose tools that install via RPM or Debian packages without requiring high-latency internet.\n   • Lightweight dependencies: Avoid environments that drag in large GUI toolkits; favor GTK+2 or even curses-based editors for pure text tasks.\n\n4. Efficient Graphics and Memory Usage\n   • Simplified UIs: Custom kibitzers like PyCharm Edu might be too heavy; instead, use Geany or nano with syntax highlighting.\n   • Low-resolution art assets: In Scratch or Turtle Blocks, use low-color sprites to reduce memory footprint.\n\n5. Battery-Friendly Workflows\n   • Batch learning modules: Encourage short, focused coding sessions to avoid draining the XO’s NiMH battery.\n   • Periodic mesh sync: Teach students to save snapshots of code into the mesh before shutting down, so peer-to-peer sharing doesn’t tax the CPU continuously.\n\nBy embracing these lightweight, mesh-friendly, and Sugar-native tools, you harness the XO’s unique strengths—low-power operation and collaborative networking—while giving learners a responsive, hands-on coding experience without overwhelming the hardware."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000014238.jpg",
+          "user_query": "I’m organizing an after-school tech club for kids in a rural area where the budget and internet access are limited. What hardware and software setup would you recommend for an engaging, hands-on computing experience?",
+          "correct_answer": "Given your budget and connectivity constraints, I recommend using OLPC XO laptops running the Sugar environment, which can function completely offline. These devices support local mesh networking and come with child-friendly, open-source activities like Turtle Blocks and Scratch built in.",
+          "incorrect_answers": [
+            "Given your budget and connectivity constraints, I recommend using Raspberry Pi Zero kits running RetroPie, which can function completely offline. These devices support local mesh networking and come with child-friendly, open-source games and coding exercises like Pico-8 built in.",
+            "Given your budget and connectivity constraints, I recommend using Arduino-based microcontroller kits running mBlock, which can function completely offline. These devices support local mesh networking and come with child-friendly, open-source robotics activities like Blockly and Turtle graphics built in.",
+            "Given your budget and connectivity constraints, I recommend using low-cost netbooks running a light Linux distribution, which can function completely offline. These devices support local networking and come with child-friendly, open-source educational software like LibreOffice and GCompris built in."
+          ]
+        },
+        {
+          "preference": "The user enjoys dressing up their dog in fun and whimsical costumes.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my dog dressed as a hot dog holding a ketchup bottle, what considerations should I have for designing safe, comfortable costumes that include rigid props?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000145499.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "When you add rigid props (like that ketchup bottle) to a dog costume, you need to balance visual impact with your pup’s comfort and safety. Here are the key factors to consider:\n\n1. Weight Distribution\n  • Keep props lightweight: Use foam or hollow plastic rather than solid materials.  \n  • Mount close to the body’s center: Attach the bottle near your dog’s shoulders or on a wide harness panel so it doesn’t tip or pull backwards.\n\n2. Attachment Method\n  • Use quick-release fasteners: Velcro or magnetic snaps allow you to detach the prop instantly if your dog gets startled or tangled.  \n  • Secure to a harness, not the collar: A snug body harness spreads pressure evenly rather than concentrating it on the neck.\n\n3. Freedom of Movement\n  • Check leg clearance: Make sure the costume doesn’t rub under the front legs as your dog walks.  \n  • Allow full head and tail mobility: Avoid straps across the ears or tight panels around the tail that could constrain natural motion.\n\n4. Breathability and Temperature Control\n  • Choose light, moisture-wicking fabrics: Cotton blends or mesh panels help prevent overheating.  \n  • Ventilation openings: Cut small mesh windows along the sides or back so air can circulate under the costume.\n\n5. Padding and Chafing Prevention\n  • Line contact points: Add soft fleece or jersey fabric where the prop rests against your dog’s back and sides.  \n  • Avoid sharp edges: Round off any hard corners or seams so they cannot dig into the skin.\n\n6. Visibility and Awareness\n  • Keep props at or below shoulder level: That way your dog’s natural line of sight isn’t blocked.  \n  • Test in front of a mirror: Ensure nothing flops into your dog’s eyes or mouth when they turn their head.\n\n7. Stress & Behavior Monitoring\n  • Introduce props gradually: Let your dog sniff and investigate the ketchup bottle off the body first.  \n  • Short trial runs: Start with five minutes of wear, then slowly increase the time if your dog remains relaxed.\n\n8. Durability and Maintenance\n  • Reinforce seams: Props create leverage that can pull on the costume, so double-stitch stress points.  \n  • Use machine-washable materials: Catch any dirt or drool easily between wears.\n\nBy focusing on lightweight materials, secure but quick-release attachments, and plenty of padding and ventilation, you’ll keep your dog both safe and happy—even when they’re the life of the party as a hot dog with ketchup on top! Enjoy crafting, and be sure to reward your pup with treats for modeling their new look."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Thanks for the detailed guidelines! I'm particularly concerned about the attachment method. Could you recommend specific quick-release fasteners and explain how to integrate them onto a typical dog harness to ensure both security and ease of removal?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000145499.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Certainly! Here are some popular quick-release fastener options and a step-by-step on integrating them with a standard body harness:\n\n1. Side-Release Plastic Buckles  \n  • Why use them: Lightweight, durable, and familiar from backpack straps.  \n  • Installation:  \n    – Choose a buckle sized to your harness webbing (usually 1\" or 1.5\").  \n    – Weave one half of the buckle onto the loose end of the harness strap and the other half onto the fixed end.  \n    – Stitch or heat-seal the webbing end to prevent fraying.  \n    – Test by clipping/unclipping to ensure a smooth action.\n\n2. Magnetic Snap Connectors  \n  • Why use them: Super-fast detachment under tension and foolproof alignment.  \n  • Installation:  \n    – Select snaps rated for at least 10–20 lbf holding force.  \n    – Sew small reinforced fabric tabs onto the harness panel where you want the prop anchored.  \n    – Rivet or sew the metal snap plate to the tab, then attach the matching magnet to the prop’s base.  \n    – Cover raw edges with bias tape or leather for comfort.\n\n3. Hook-and-Loop Straps (Velcro)  \n  • Why use them: Fully adjustable, low profile, and easy to cut to length.  \n  • Installation:  \n    – Cut two strips: one hook side on the harness, one loop side on the prop.  \n    – Stitch or use industrial adhesive to bond the loop side to the prop’s mounting surface.  \n    – Stitch the hook side onto the harness panel, ensuring alignment under load.  \n    – Press together firmly and test by gently tugging in multiple directions.\n\n4. Cam-Lock Buckles  \n  • Why use them: Infinitely adjustable and self-tensioning under load.  \n  • Installation:  \n    – Thread the strap through the cam buckle according to the manufacturer’s diagram (usually under the pivot then over the bar).  \n    – Lock the cam by pressing down on its lever, which grips the webbing.  \n    – Attach the free end of the webbing to the prop using reinforced stitching or a metal D-ring.\n\nIntegration Tips:\n  • Reinforce stress points: Always double-stitch or bar-tack where the fastener meets the harness to resist repeated detachment.  \n  • Use matching widths: Fastener and strap widths should align so nothing catches or slides off.  \n  • Test under real conditions: Clip on the prop and have your dog move around, crouch, and lie down to verify stability.  \n  • Label release sides: If you’re using multiple buckles, mark which ones detach props versus which ones adjust fit.\n\nWith the right quick-release system, you’ll keep your dog comfortable and make costume removal a breeze whenever the ketchup bottle gets too playful!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000145499.jpg",
+          "user_query": "I’ve signed up for a Halloween-themed dog meetup and want to dress my pup in something imaginative yet comfortable—what are some easy-to-wear, safe costume ideas you’d recommend?",
+          "correct_answer": "As a fun yet comfy Halloween look for your meetup, try a plush pumpkin harness that snaps around your pup’s chest, letting them move freely while looking festive. You could also pair a lightweight superhero cape with soft Velcro straps or a felt taco shell that clips to their harness—both designs slip on easily and won’t restrict playtime.",
+          "incorrect_answers": [
+            "For your urban balcony garden, try a modular plant stand that snaps securely onto the railing, giving each pot solid support while looking sleek. You could also opt for lightweight ceramic planters with soft-grip edges or a vertical herb pocket system that clips to the wall—both designs install quickly and won’t crowd your space.",
+            "On your next weekend getaway, try a compact toiletry pouch that zips onto your suitcase handle, keeping essentials at hand while you travel. You could also pack lightweight packing cubes with soft mesh panels or a foldable shoe compartment that clips inside your bag—both designs slip into any luggage and keep you organized.",
+            "As a fun yet comfy Halloween look, try a simple pumpkin bandana that ties around the neck, letting your dog roam freely while looking festive. You could also add a soft fabric cape with adjustable straps or a slip-on costume jacket—both designs slide on quickly and won’t get in the way of playtime."
+          ]
+        },
+        {
+          "preference": "The user enjoys feeding their dog special flavored sauces as treats.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I shot, I’m letting my golden retriever lick barbecue sauce straight from the bottle—what ingredients in commercial sauces could be harmful to dogs, and how can I create a dog-safe version to avoid upsetting his stomach?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000080394.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Feeding your dog a small taste of sauce can be fun, but many commercial barbecue sauces contain ingredients that aren’t dog-friendly. Here are the main red flags:\n\n1. High Salt Content  \n   • Commercial sauces usually have a lot of sodium. Excess salt can lead to dehydration or even salt toxicity in dogs.  \n\n2. Onion, Garlic, and Chive  \n   • These alliums are commonly used for flavor but can damage canine red blood cells, leading to anemia.  \n\n3. Sugar, Corn Syrup & Artificial Sweeteners  \n   • High sugar loads can cause digestive upset and weight gain. Never use xylitol-sweetened products—xylitol is extremely toxic to dogs.\n\n4. Spices, Chili Peppers & Acidic Ingredients  \n   • Hot spices and strong acids (vinegar, citrus) may irritate your dog’s stomach or cause mouth and throat discomfort.\n\n5. Preservatives & Additives  \n   • Some sauces include sulfites or other chemical preservatives that can trigger allergic or toxic reactions.\n\nHow to Make a Dog-Safe “Barbecue” Style Sauce  \nYou can riff on that smoky, savory vibe while keeping ingredients gentle. Here’s a simple homemade recipe:\n\nIngredients:\n• ½ cup plain, unsweetened pumpkin puree or mashed sweet potato  \n• ¼ cup low-sodium chicken or beef broth (homemade or store-bought with no onion/garlic)  \n• 1 tsp plain, unsweetened Greek yogurt (optional, for creaminess)  \n• ½ tsp smoked paprika or ground turmeric (check with your vet first—either spice may add subtle flavor without heat)  \n• Pinch of ground cumin (optional)\n\nInstructions:\n1. Combine the pumpkin or sweet potato with the broth in a small saucepan over low heat.  \n2. Stir in the yogurt and spices until fully incorporated.  \n3. Simmer gently for 2–3 minutes, then let cool completely.  \n4. Store in an airtight container in the fridge for up to 3 days, or freeze small portions.\n\nServing Tips:\n• Always offer just a teaspoon or so at first to make sure your dog tolerates it well.  \n• Use it as an occasional topper on plain kibble or fresh vegetables.  \n• Monitor your dog for any digestive changes—diarrhea, gas, or vomiting—and discontinue if you see any of these signs.\n\nWhy This Works:\n• Low sodium and no harmful alliums protect your dog’s kidneys and red blood cells.  \n• Pumpkin and sweet potato provide fiber and gentle gastrointestinal support.  \n• Light, vet-approved spices lend a smoky flavor without the heat that could irritate your dog’s mouth or stomach.  \n\nBy swapping out the risky components of store-bought sauces for whole-food, easy-to-digest ingredients, you’ll satisfy your dog’s taste curiosity while keeping them safe and healthy. Enjoy seeing that happy, tail-wagging approval without the worry of upsetting their tummy!"
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "These instructions are helpful! I’m curious: could I swap the plain Greek yogurt for coconut yogurt if my dog is lactose intolerant? Does coconut yogurt have any risks, and should I adjust any other ingredients?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000080394.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Coconut yogurt can be a good lactose-free alternative as long as you pick an unsweetened, additive-free variety—no xylitol, artificial sweeteners, or thickeners your dog might react to. Here’s what to keep in mind:\n\n• Fat Content: Coconut yogurt is higher in saturated fat and medium-chain triglycerides (MCTs). A small amount (½–1 tsp) is usually fine, but too much too fast can cause loose stools or an upset tummy.  \n• Additives: Always read the label. Avoid brands with gums, carrageenan, or sweeteners that could trigger digestive or allergic reactions.  \n• Portion Size: Since coconut yogurt is richer than Greek yogurt, start with a smaller dose. You might reduce your overall sauce volume slightly—use 2–3 tbsp low-sodium broth and ¼ cup pumpkin or sweet potato if you notice any oiliness.  \n• Flavor Balance: Coconut has a mild natural sweetness and a hint of tropical flavor. You may find you can omit the optional ½ tsp smoked paprika or turmeric, or simply use a pinch of each to prevent the sauce from becoming too heavy.  \n\nIf you’d rather skip yogurt altogether, you can boost creaminess with an extra tablespoon of pumpkin puree or a spoonful of mashed banana. As always, introduce any swap slowly and watch for changes—if your dog tolerates the coconut yogurt well, it’s a safe and dairy-free way to keep that sauce smooth and tail-waggingly tasty."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000080394.jpg",
+          "user_query": "Could you share some easy, homemade ideas for adding a flavorful twist to my dog’s meals or treats using ingredients that are safe for dogs?",
+          "correct_answer": "To add a savory twist to your dog’s meals, stir together plain pumpkin purée, a dollop of unsweetened Greek yogurt, and a pinch of turmeric, then drizzle a bit of low-sodium chicken broth on top for an easy, dog-safe sauce.",
+          "incorrect_answers": [
+            "To add a savory twist to your cat’s meals, stir together plain pumpkin purée, a dollop of unsweetened Greek yogurt, and a pinch of turmeric, then drizzle a bit of low-sodium chicken broth on top for an easy, feline-friendly sauce.",
+            "To add a savory twist to your homemade pasta, stir together plain pumpkin purée, a dollop of unsweetened Greek yogurt, and a pinch of turmeric, then drizzle a bit of low-sodium chicken broth on top for an easy, flavorful sauce.",
+            "To add a savory twist to your meals, stir together plain pumpkin purée, a dollop of unsweetened Greek yogurt, and a pinch of turmeric, then drizzle a bit of low-sodium broth on top for an easy, delicious sauce."
+          ]
+        },
+        {
+          "preference": "The user enjoys hearty breakfast dishes like pancakes served with eggs and bacon.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I snapped of my brunch stack, those pancakes turned out incredibly tall and airy on top of eggs and bacon—what’s the secret to that extra-rise texture, and how can I get the same effect at home?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/cup_dining_table/COCO_train2014_000000316663.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That looks delicious! Achieving tall, fluffy pancakes like the ones in your photo—especially when you’re layering them with eggs and bacon—comes down to four main factors: leavening balance, gentle mixing, batter rest, and precise cooking. Here’s a step-by-step breakdown:\n\n1. Optimize Your Leavening\n   • Baking Powder & Soda: Use about 1 teaspoon of baking powder per ¾ cup of flour, plus a pinch (⅛ tsp) of baking soda if you’re using buttermilk or yogurt. The baking powder creates lift when exposed to heat, and the baking soda reacts with the acid in buttermilk to generate extra tiny bubbles.\n\n2. Control Gluten Development\n   • Flour Choice: A mix of mostly all-purpose flour with up to 25% cake flour keeps the crumb tender. Too much protein leads to excessive gluten, making pancakes dense.\n\n3. Hydration & Rest\n   • Liquid Ratio: Aim for a 1:1 ratio by volume of flour to liquid. Buttermilk is ideal because its acidity both tenderizes the batter and activates the baking soda. No buttermilk? Stir 1 tbsp lemon juice or vinegar into a cup of milk and let it sit for 5 minutes.\n   • Gentle Mixing: Combine wet and dry ingredients until just moistened—lumps are fine. Overmixing deflates the tiny bubbles you need for fluff.\n   • Rest the Batter: Let it sit 10–15 minutes at room temperature. This allows the leaveners to start working and the flour to hydrate, creating a light, aerated batter.\n\n4. Master the Cooking Technique\n   • Pan Temperature: Heat a nonstick skillet or griddle over medium–low heat (around 325°F if you have a thermometer). Too hot and the outsides brown before the centers rise.\n   • Fat Choice: Lightly brush the surface with melted butter or a neutral oil. Butter adds flavor but can burn, so don’t overdo it.\n   • Pour & Cover: Use a ¼ cup measure for each pancake. When you see bubbles forming and popping on the surface (2–3 minutes), flip gently. For an extra lift, cover the pan for the first 30–45 seconds after flipping—steam helps puff them up.\n\nLayering Tips:\n   • Keep bacon just crisp—overcooked bacon can make the stack soggy.\n   • Cook eggs to order (sunny-side or over-easy work great) and place them between the pancake layers. The residual heat will meld flavors without collapsing the stack.\n\nExample Recipe:\n   • Dry: 1 cup flour, 1 tbsp sugar, 1 tsp baking powder, pinch baking soda, ¼ tsp salt.\n   • Wet: 1 cup buttermilk, 1 egg, 1 tbsp melted butter.\n   • Fold wet into dry, rest 10 minutes, and cook as above. Stack with eggs and bacon.\n\nFollow these steps, and you’ll be well on your way to replicating the skyscraper pancakes paired perfectly with savory eggs and bacon. Enjoy your next brunch creation!"
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Quick question: I love adding fresh blueberries to my pancakes. How do I incorporate them without deflating my batter or making it too wet? Should I toss them in flour first, and are there any adjustments to rest time or cooking temperature?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/cup_dining_table/COCO_train2014_000000316663.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great idea! Adding mix-ins like blueberries can take your pancakes to the next level. Here are a few tips:\n\n1. Prepare the Fruit\n   • Toss in Flour: Lightly coat blueberries with a teaspoon of flour. This helps them stay suspended in the batter and prevents sinking.\n   • Pat Dry: If they’re very wet, gently pat the berries with a paper towel to remove excess moisture.\n\n2. Fold Gently\n   • Timing: Add the berries just before scooping your batter onto the griddle. Folding them in at the end minimizes contact and preserves air bubbles.\n\n3. Batter Consistency\n   • Slightly Thicker: If the batter seems thin once the fruit is in, add an extra tablespoon of flour or reduce the liquid by a tablespoon. You want a batter thick enough to hold berries without weighing it down.\n\n4. Cooking Adjustments\n   • Lower Heat: Cook over medium–low heat to allow the berries to warm through without causing the pancake to brown too quickly.\n   • Watch for Steam: Peek underneath carefully; blueberries release moisture, so give pancakes an extra 15–30 seconds on each side if needed.\n\n5. Rest and Bake\n   • Rest Time: You can still rest for 10 minutes, but if you’re in a hurry, a 5–7 minute rest is fine once the berries are folded in.\n\nWith these tweaks, you’ll get evenly distributed, plump blueberries in tall, airy pancakes. Enjoy!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/cup_dining_table/COCO_train2014_000000316663.jpg",
+          "user_query": "I’m planning a cozy weekend brunch for close friends and want to serve dishes that feel comforting and filling. What menu items and recipes would you recommend?",
+          "correct_answer": "Kick off with tall, fluffy buttermilk pancakes layered with maple-glazed bacon and scrambled eggs mixed with chives, served alongside rosemary-baked breakfast potatoes for a hearty touch. Set up a build-your-own coffee bar featuring dark roast, flavored syrups, and whipped cream. Finish on a lighter note with a seasonal berry platter drizzled in honey and a basket of warm cinnamon swirl muffins.",
+          "incorrect_answers": [
+            "Kick off with smoked salmon benedict on toasted brioche with a lemon-dill hollandaise, paired with crisp rosemary fingerling potatoes and a creamy lobster bisque. Set up a make-your-own mimosa bar stocked with prosecco, orange juice, and fresh berry garnishes. Finish on a lighter note with a chilled citrus ceviche salad served with tortilla chips.",
+            "Kick off with zucchini and ricotta fritters drizzled in balsamic reduction, alongside a classic caprese salad of heirloom tomatoes and fresh mozzarella, plus garlic-roasted polenta fries. Set up a self-serve iced herbal tea station with lavender sprigs and lemon wheels. Finish on a lighter note with rosemary shortbread cookies and a platter of marinated olives.",
+            "Kick off with fluffy buttermilk pancakes, a spinach and cheese frittata, and roasted breakfast potatoes seasoned with herbs. Set up a DIY coffee and tea station complete with assorted blends, syrups, and creamers. Finish on a lighter note with a fresh fruit bowl and an assortment of buttery croissants."
+          ]
+        },
+        {
+          "preference": "The user enjoys drinking craft beer at home.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Looking at the items on the coffee table, what beverage preference can you infer from this scene?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The presence of two craft beer bottles suggests that the person enjoys drinking craft beer at home."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg",
+          "user_query": "I’m planning a casual tasting night at home with a variety of bottled drinks. What are some tips for choosing, storing, and serving them to highlight their flavors and keep the evening interesting?",
+          "correct_answer": "For a casual tasting night, pick an assortment of bottled beverages—wines, beers, and ciders—and chill them to their optimal serving temperatures to bring out their flavors. Serve each drink in the ideal glassware and guide your guests through a tasting order from lightest to strongest, using tasting cards to note each bottle’s unique profile.",
+          "incorrect_answers": [
+            "As a craft beer enthusiast hosting a tasting at home, choose a variety of bottled craft beers—IPAs, stouts, and sour ales—from different breweries to showcase a spectrum of flavors. Store them upright in your fridge at 45–55°F, then serve each style in the proper glassware (tulip for aromatic beers, snifter for high‐ABV ones) and note the tasting order from lightest to heaviest to keep the evening engaging.",
+            "Since you love enjoying craft brews in your own space, pick a diverse lineup of bottled specialty beers—pilsners, porters, and Belgian ales—and chill them at their recommended serving temperatures to preserve nuanced flavors. Present each in its signature glass (pint, goblet, or tulip) and guide your guests from the mildest to the boldest pour, using tasting cards so everyone can compare what they savor.",
+            "As someone who delights in sampling artisan small-batch beers at home, assemble an assortment of bottles from hoppy IPAs to malty brown ales and keep them refrigerated upright to prevent oxidation. Serve each beer in the ideal glass at its specified temperature range, and pace the tasting from lower to higher ABV so that every flavor can shine throughout your evening in."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Cherishes her home filled with family photos and memorabilia",

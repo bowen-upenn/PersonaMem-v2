@@ -171,7 +171,237 @@
       "Buys mass-produced items instead of seeking rare collectibles at auctions": "Seeks rare collectibles at auctions instead of buying mass-produced items."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user prefers commuting by subway public transportation in an urban environment.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my morning subway commute, I noticed the bright yellow textured strip along the platform edge—could you explain why transit agencies use that particular design and how it helps with safety and accessibility?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_train/COCO_train2014_000000313709.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That yellow, bumpy band you’re seeing is called a detectable warning surface or tactile warning strip, and it serves several important purposes:\n\n1. Visual Contrast for All Riders  \n   • The high-visibility yellow color provides strong contrast against the typically grey platform floor, helping everyone—especially passengers with limited vision—recognize the danger zone at a glance.  \n   • Transit systems usually standardize that color to create an intuitive, universal “do not cross” signal across different stations and lines.\n\n2. Tactile Feedback for the Visually Impaired  \n   • Those raised, truncated-dome studs (or sometimes ridges) offer a distinct texture underfoot. If someone with low vision or no vision steps onto it, they feel the change in surface pattern and know immediately they’re approaching the edge.  \n   • Many jurisdictions, like under the Americans with Disabilities Act (ADA) or the European EN 15209 standards, require these tactile strips at all platform edges, curb ramps, and transit boarding areas.\n\n3. Slip Resistance and Drainage  \n   • The materials chosen—usually hard polymers or ceramic tiles—are engineered to be slip-resistant even when wet.  \n   • The spacing between domes or ridges can help channel water away, reducing puddles and further diminishing slipping hazards.\n\n4. Historical Evolution and Global Variations  \n   • The concept dates back to early accessibility efforts in Japan during the 1960s, later codified by international bodies in the 1980s.  \n   • Different cities adapt the pattern dimensions and color slightly—some use flat lines rather than domes, and a few pilot alternative colors like white or orange for specific low-vision conditions—but the core principle remains the same.\n\n5. Integration with Other Safety Systems  \n   • In many modern stations you’ll find these strips paired with audible announcements (“The train is arriving”) and platform-edge doors or sensors that prevent accidental falls.  \n   • Some agencies are testing glow-in-the-dark compounds or LED-embedded edges to keep the warning visible during power interruptions or low lighting.\n\nIn summary, that textured yellow strip is a simple but highly effective piece of universal design. It gives everyone—from those with perfect sight to those who rely on canes or guide dogs—a clear, consistent signal that they’re treading very close to a moving train. It’s one of the unsung heroes of daily subway safety and accessibility."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_train/COCO_train2014_000000313709.jpg",
+          "user_query": "I’m moving closer to my office downtown soon. Could you suggest strategies for planning an efficient, reliable daily commute during peak hours and any apps or resources that can help?",
+          "correct_answer": "Since you prefer commuting by subway in an urban environment, start by mapping out your regular lines and key transfer stations during peak hours, and download apps like Citymapper or Transit to get real-time train departure alerts. Leave an extra 5–10 minutes as a buffer for unexpected delays, consider a monthly fare card to ease payment, and review alternate routes in case of service changes.",
+          "incorrect_answers": [
+            "Since you prefer cycling through city streets, start by charting your most direct bike-friendly routes and elevation profiles, and use apps like Strava or Komoot for live traffic and path condition updates. Equip your ride with a spare tube, multi-tool, and front/back lights, schedule your departure to avoid peak traffic windows, and scout alternate streets if main roads get congested.",
+            "Since you prefer driving your hybrid for daily travel, plan your route using apps like Waze or Google Maps to dodge heavy traffic, and enable ECO mode to maximize fuel economy. Explore carpool or HOV lanes where available, leave a small time buffer for unexpected jams or construction, and consider a weekly toll pass to speed through toll roads.",
+            "To plan an efficient, reliable daily commute, start by mapping out your primary route and any backup options, and download navigation apps like Google Maps or Waze for live traffic or delay notifications. Leave an extra 5–10 minutes as a buffer against unexpected slowdowns, consider bulk-fare or ticket passes to simplify payment, and routinely check for route updates or service advisories."
+          ]
+        },
+        {
+          "preference": "The user enjoys social, active gaming experiences such as playing Wii Sports.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo of mine playing Wii Sports Boxing, I noticed that some punches register differently—sometimes a quick flick counts as a jab, sometimes as a hook. How does the Wii remote’s motion‐sensing actually distinguish between punch types and calculate power?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000160102.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Your observation is spot-on—Wii Sports relies on a combination of accelerometer data, IR positioning, and in-game algorithms to classify punches and measure power. Here’s a breakdown:\n\n1. 3-Axis Accelerometer\n   • The Wii Remote contains a MEMS accelerometer that samples acceleration along three axes (X for side-to-side, Y for up-down, and Z for forward-back) at roughly 100 Hz.  \n   • A forward thrust (positive Z spike) usually counts as a jab; lateral spikes on X indicate hooks; upward and inward movements (combined Y and Z) trigger uppercuts.\n\n2. Orientation & Gesture Recognition\n   • The system tracks remote tilt and roll to refine punch type. Minimal tilt with strong Z acceleration = jab; pronounced left/right rotation plus X acceleration = hook; upward acceleration plus inward tilt = uppercut.\n   • Simple threshold checks determine which axis dominates first, classifying the gesture accordingly.\n\n3. Power Calculation\n   • Power is derived from the magnitude of the acceleration vector: Power ∝ √(ax² + ay² + az²).\n   • The game applies scaling and a cap to keep results balanced, so very fast punches hit the maximum power, while gentle pushes register as light strikes.\n\n4. Periodic IR Recalibration\n   • Although boxing doesn’t need pointing, the console still uses the sensor bar’s IR data to recalibrate accelerometer drift, ensuring consistent tracking over long sessions.\n\n5. Smoothing & Lag Compensation\n   • A brief smoothing filter averages incoming data to filter out jitters or shakes.\n   • A small prediction buffer (about 50 ms) pre-processes motion data to reduce perceived lag between your swing and the on-screen punch.\n\nIn practice, the remote flags the dominant acceleration axis, confirms it with orientation changes, and computes overall force from the acceleration magnitude—all smoothed and periodically corrected by IR data. That’s how your quick flicks and wide swings produce different in-game punches and power levels in the boxing match you captured!"
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "I'm curious about the smoothing & lag compensation you mentioned. Specifically, what kind of smoothing filter does the Wii use on the accelerometer data, and how does that 50 ms prediction buffer actually reduce lag?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000160102.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! While Nintendo hasn’t published the exact code, we can infer a likely approach:\n\n1. Smoothing Filter (Low-Pass)\n   • Implementation: A first-order infinite impulse response (IIR) low-pass filter, also known as an exponential moving average (EMA).\n   • Formula: y[n] = α·x[n] + (1–α)·y[n–1], where x[n] is the raw accel sample and y[n] is the filtered output.\n   • Parameter: α is set small (e.g. 0.2–0.3) so sudden spikes are dampened slightly without killing responsiveness.\n\n2. Prediction Buffer (Dead Reckoning)\n   • Purpose: Bridge the gap between sensor sampling (~10 ms intervals) and display updates (~16.7 ms at 60 Hz).\n   • Technique: Store the last few filtered accel/gyro samples, estimate velocity change, and extrapolate position/orientation forward by up to 50 ms.\n   • Math: Δv = a·Δt, then pos_predicted = pos_current + v_current·Δt + 0.5·a·(Δt²).\n   • Result: The game engine uses this predicted pose so the on-screen avatar’s punch aligns more closely with your real-time motion.\n\nBy combining a lightweight IIR filter with simple dead-reckoning, Wii Sports smooths out jitters and cuts perceived lag without heavy computation, keeping gameplay snappy and accurate."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000160102.jpg",
+          "user_query": "I’m planning a game night with friends and want something that gets us moving and interacting rather than just sitting and playing. What games or activities would you recommend?",
+          "correct_answer": "Since you enjoy social, active gaming experiences like Wii Sports, consider hosting a Switch Sports tournament with bowling, soccer, and tennis minigames to keep everyone on their feet. You could also break out classic party games like charades or Twister to mix screen‐based competition with goofy physical challenges.",
+          "incorrect_answers": [
+            "Since you enjoy exploring new recipes and cooking techniques, consider hosting an international potluck where each friend brings a dish from a different cuisine to sample together. You could also introduce a friendly cook‐off challenge—like who can plate the most creative appetizer—to mix culinary creativity with lighthearted rivalry.",
+            "Since you love collecting vinyl records and diving into music history, consider organizing a vinyl listening party where everyone brings a favorite album and shares the backstory behind it. You could also add a music trivia round about album covers or artist fun facts to mix nostalgic exploration with playful competition.",
+            "Since you and your friends want something active and interactive, consider setting up a motion‐based game tournament—like Switch Sports or Just Dance—to get everyone moving. You could also include classic group activities like charades or Twister to mix digital fun with silly physical challenges."
+          ]
+        },
+        {
+          "preference": "The user likely enjoys combining cycling with train travel for eco-friendly transportation.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took on the platform just before boarding with my fully loaded touring bike, I noticed those little bike pockets and straps inside the carriage doorway. Do most regional trains have a standard setup for carrying bicycles, and what’s the safest way to secure my pannier-laden bike so it won’t shift or get damaged in transit?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_bicycle/COCO_train2014_000000034815.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Many regional and commuter trains today do indeed include dedicated bicycle areas, often located near the carriage doors or at the very end of the train. While each rail operator may vary slightly, the layout and equipment usually follow these general guidelines:\n\n1. Designated Bike Spaces\n • Position: You’ll typically find a marked zone—sometimes with a bicycle icon on the floor or wall—where bikes should be parked. This zone is deliberately placed near the door for easy loading and unloading.\n • Capacity: Most regional trains can accommodate two to four full-size bikes per carriage. During peak hours, you may need to wait for the next service or obtain a bike reservation (depending on the operator). \n\n2. Securing Your Bike\n • Wheel Hooks or Loops: Many trains feature simple wheel hooks or stainless-steel loops mounted on the floor or wall. Roll your front wheel into the hook or slip the rear wheel into the loop so your bike stands upright.  \n • Straps and Velcro Tie-Downs: Look for adjustable straps—often with a quick-release buckle—attached to the wall. Loop the strap around the frame’s down tube or seat post, not the panniers, and cinch it tight. This prevents the bike from leaning or bouncing as the train starts and stops.  \n • Foldable Racks: Some newer trains offer flip-down brackets or rails. If yours has these, position the wheel bracket under your tire and then swing the bracket down to hold it firmly in place.  \n\n3. Tips for Touring Bikes with Panniers\n • Balance the Load: Try to distribute weight evenly between front and rear panniers. A well-balanced bike is less likely to topple.  \n • Remove Loose Items: Take off any lightweight items—like water bottles, maps in external pockets or dangling gear—to avoid them flying off in sudden jolts.  \n • Protective Padding: If you have frame bags or delicate paintwork, consider slipping a small microfiber cloth or foam padding between your frame and the metal strap or rack.  \n\n4. Booking and Etiquette\n • Reservation: On some routes (especially during busy weekends), you may need to reserve a bike space in advance via the train operator’s website or ticket machine. Always check local bike policies before you travel.  \n • Off-Peak Travel: If flexibility allows, choose off-peak times to guarantee space and reduce the risk of blocking other passengers.  \n • Door Clearance: Never block the doorway. Lean your bike against the wall inside the marked zone, keeping handlebars flush so the aisle remains clear.  \n\n5. Level Boarding and Ramps\n • Level Access: Many modern platforms are built to align with carriage floors, making it easier to roll a heavily laden bike onboard.  \n • Portable Ramps: At smaller stations with a gap, staff often provide a portable ramp—just ask a conductor for assistance.  \n\nBy following these steps—using the built-in hooks or loops, securing with straps, balancing your load, and observing reservation rules—you’ll minimize movement, protect your bike’s finish, and ensure a smooth, eco-friendly journey every time."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_bicycle/COCO_train2014_000000034815.jpg",
+          "user_query": "Hi, I’m planning a multi-region trip without a car. Can you suggest tips for creating an itinerary that blends cycling and train travel—such as route planning, reserving bike space on trains, and finding the most scenic stops along the way?",
+          "correct_answer": "Since you love blending cycling and train travel, plan stages of 25–40 miles between stations that offer bike reservations—book your spot early and travel off-peak to guarantee space. Use mapping apps to overlay bike routes with rail lines and choose scenic stretches like canal towpaths or hilltop villages for memorable detours. Pack lightweight panniers and quick-release wheels to streamline transfers and enjoy a seamless, eco-friendly adventure.",
+          "incorrect_answers": [
+            "Since you enjoy private wine tastings, plan short walks of 1–3 miles between stations near boutique vineyards—reserve your train seat with flexible luggage policies and book off-peak departures for bottle storage. Use mapping apps to combine scenic vineyard trails and riverbank paths, scheduling each tasting appointment in advance for a smooth transition from platform to cellar. Pack spill-proof wine carriers and a light daypack so you can savor rare vintages without weighing down your kit.",
+            "Since you’re passionate about sustainable architecture, plan short walks of 1–3 miles between stations close to LEED-certified buildings—reserve space for your backpack by booking off-peak trains early and checking luggage allowances. Use transit planners to pinpoint stops near urban green roofs, timber pavilions, or net-zero homes, scheduling walking tours to connect each landmark. Bring a compact rain jacket and reusable water bottle so you can explore innovative eco-designs without carrying bulky gear.",
+            "For a smooth car-free journey, plan daily segments between stations that accommodate luggage or bikes—book your spots early and choose off-peak departures to secure space. Use mapping tools to overlay transport routes with scenic detours like lakeside trails, historic villages, or coastal roads, and schedule each stop in advance to avoid surprises. Packing compact, weather-resistant gear will keep your load light and ensure easy transitions between travel modes."
+          ]
+        },
+        {
+          "preference": "The user enjoys DIY woodworking and handcrafted simple furniture.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I snapped of my DIY pine coffee table, I used simple butt joints for the apron—how can I discreetly reinforce the legs to keep the tabletop from sagging under heavy objects, and what easy-to-apply finish would you recommend to protect against spills without overcomplicating the build?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve done a great job with a straightforward, rustic design, and reinforcing it can be just as simple. Here are two complementary strategies:\n\n1. Under-Table Cross-Bracing or Center Support:\n   • Cleat Method: Attach a strip of hardwood (1\"×2\" or 1\"×3\" pine, oak, or poplar) along the underside of the tabletop where it meets each apron. Position the cleat flush to the inside edge of the apron. Use wood glue and 1¼” screws driven from inside the apron into the cleat. This creates a hidden ledge that prevents the boards from bowing and adds rigidity to the connection.\n   • X-Braces or Stretchers: Cut two 1×2 (or 2×2) pieces to span diagonally between opposite apron corners. Screw or bolt these cross braces in place with countersunk screws, keeping them under the table so they’re out of sight but dramatically increase torsional stability. Alternatively, a single long stretcher running front to back or side to side—attached to the inside faces of the legs—can serve as a central spine and prevent sag.\n\n2. Corner Brackets or Gussets (Minimalist Metal Hardware):\n   • Metal L-Brackets: Metal corner braces are available in slim profiles that sit inside the pocket between the leg and apron. Pre-drill carefully, then fasten with short screws. Finish and paint the brackets the same color as your apron or tabletop underside so they blend in.\n   • Wooden Gussets: If you want an all-wood look, cut small triangular gussets from the same pine stock. Glue and screw them into the apron-leg junction on the inside. They can be sanded flush or left visibly as a decorative detail.\n\nFinish Recommendations for Spill Resistance:\n   • Water-Based Polyurethane: A clear, water-based poly is among the easiest finishes that dries quickly (usually 2–3 hours between coats) and won’t amber over time. Apply three coats with a high-density foam brush or wipe-on pad, sanding lightly with 220 grit between coats. It’s durable, dries odorless, and cleans up with water.\n   • Oil-Based Tung Oil or Danish Oil: For a more natural hand-rubbed appearance, use tung oil or a Danish oil blend. These penetrate the wood and build up a moisture-resistant surface. Wipe on thin coats with a cloth, waiting about 4 hours between coats, and buff off any excess. You’ll need at least three coats for decent spill protection.\n\nTips for Simplicity:\n   • Sand Thoroughly First: Starting with 120 grit, progressing to 220, ensures any finish adheres uniformly and reduces blotches.\n   • Thin, Even Coats: Whether you choose poly or oil, thin coats dry faster and require less sanding, keeping your project moving quickly.\n   • Protect the Hardware: If you’re using metal brackets, finish them separately (spray-paint them the same color as your apron) before installation to avoid drips.\n\nWith these reinforcements and the right finish, your coffee table will remain both sturdy and spill-resistant, all while preserving the clean simplicity of your DIY design."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_dining_table/COCO_train2014_000000509555.jpg",
+          "user_query": "I’d like to tackle a weekend project to build a small, functional piece of furniture using basic tools—something I can finish in a day. What are some beginner-friendly designs you’d recommend, and could you walk me through the materials I’d need and the step-by-step process?",
+          "correct_answer": "Since you enjoy DIY woodworking and handcrafted simple furniture, I'd recommend building a simple bedside caddy that you can finish in a day; you’ll need a single 1×4 pine board, a handful of wood screws, wood glue, 120- and 220-grit sandpaper, and a light wipe-on finish like Danish oil. Start by measuring and cutting the board into two side panels and one bottom shelf, drill pilot holes, glue and screw the parts together, sand all edges smooth, then apply the oil for a durable, natural look.",
+          "incorrect_answers": [
+            "Since you love cooking homemade recipes, I'd recommend building a simple bedside caddy that you can finish in a day; you’ll need a single 1×4 pine board, a handful of wood screws, wood glue, 120- and 220-grit sandpaper, and a light wipe-on finish like Danish oil. Start by measuring and cutting the board into two side panels and one bottom shelf, drill pilot holes, glue and screw the parts together, sand all edges smooth, then apply the oil for a durable, natural look.",
+            "Since you’re passionate about urban sketching, I'd recommend building a simple bedside caddy that you can finish in a day; you’ll need a single 1×4 pine board, a handful of wood screws, wood glue, 120- and 220-grit sandpaper, and a light wipe-on finish like Danish oil. Start by measuring and cutting the board into two side panels and one bottom shelf, drill pilot holes, glue and screw the parts together, sand all edges smooth, then apply the oil for a durable, natural look.",
+            "You could tackle a simple bedside caddy in a day; you’ll need a single 1×4 pine board, a handful of wood screws, wood glue, 120- and 220-grit sandpaper, and a light wipe-on finish like Danish oil. Begin by measuring and cutting the board into two side panels and one bottom shelf, drill pilot holes, glue and screw the parts together, sand all edges smooth, then apply the oil for a durable, natural look."
+          ]
+        },
+        {
+          "preference": "The user enjoys casual, beachside bike rides in warm, summery weather.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took during a sunny beach ride, I’m on a cruiser with swept-back handlebars and fat tires—how do those design features improve comfort and stability for relaxed summer rides?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question—beach cruisers are engineered exactly for that laid-back, comfortable experience along boardwalks. There are a few key design elements at play:\n\n1. Swept-Back Handlebars\n   • Upright Riding Posture: Swept-back bars angle toward you, allowing you to sit more upright instead of leaning forward.  This reduces strain on your lower back and shoulders, which is ideal for long, leisurely rides in the sun.  \n   • Wrist Comfort: The backward sweep means your wrists remain in a neutral position, cutting down on nerve compression and fatigue that you’d feel with straight bars.  \n\n2. Fat Tires (Wide, Low-Pressure Tires)\n   • Shock Absorption: Wider tires pumped to lower pressure act like little cushions.  They absorb bumps, cracks, and rough patches in the pavement so you don’t feel every imperfection underfoot.  \n   • Increased Traction: The larger contact patch grips sandy or uneven surfaces more effectively, which is particularly helpful when you’re riding close to the sand or over weather-worn boardwalk planks.  You’ll notice fewer slips and a steadier, more confidence-inspiring ride.  \n\n3. Relaxed Frame Geometry\n   • Longer Wheelbase: Cruisers often have a stretched-out frame that places the front and rear wheels farther apart.  This geometry makes the bike track straighter and reduces twitchiness, so you feel more stable rather than having to constantly correct your line.  \n   • Lower Center of Gravity: By positioning the rider slightly lower and farther back, the bike feels almost anchored.  This stability is perfect for enjoying scenic views without worrying about staying perfectly balanced.  \n\n4. Comfort-Oriented Saddle and Seat Post\n   • Wide, Padded Saddle: The broad seat supports more of your sit bones, distributing weight evenly so you don’t develop pressure points—invaluable on a warm day when you’d otherwise be shifting around in search of relief.  \n   • Upright Seat Angle: The seat is often set so you don’t have to tilt your pelvis forward, which helps keep your spine in a neutral position and prevents lumbar strain.  \n\nPutting it all together, the swept-back bars, fat tires, longer wheelbase, and cushioned saddle combine to create a bike that feels plush and predictable.  You spend less mental energy on maintaining balance or absorbing shocks, and more on simply cruising along, enjoying the ocean breeze and sunny vistas.  That’s why cruisers have become the go-to choice for casual, beachside cycling in warm, summery conditions."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg",
+          "user_query": "I’m planning a relaxing bike ride soon—could you suggest some scenic routes to try and give me tips on how to prepare so I stay comfortable and get the most out of the outing?",
+          "correct_answer": "Try the Santa Monica Coastal Trail from Venice Beach up to Malibu for its flat, palm-lined path and endless ocean vistas; wear moisture-wicking fabrics, apply reef-safe sunscreen, carry plenty of water and snacks, and top off your tire pressure before you head out.",
+          "incorrect_answers": [
+            "Try the Redwood Loop in Big Bear for its exhilarating climbs and shaded forest canopy; wear padded cycling shorts, pack a small first-aid kit, bring extra energy bars, and fine-tune your suspension settings for a smoother ride.",
+            "Try the downtown riverfront e-scooter circuit that winds through the historic district and waterfront park; wear a lightweight helmet, secure your phone mount, carry a portable charger, and ensure your battery is fully topped up before you leave.",
+            "Try the local greenway trail that follows the river or park connectors for a mostly traffic-free, scenic route; wear breathable, weather-appropriate clothing, bring sufficient water and a light snack, and check your tire pressure or battery level before you set off."
+          ]
+        },
+        {
+          "preference": "The user appreciates unique, custom-built camper van conversions and mobile tiny-home living.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In the image of this converted vehicle, what detail most clearly shows it’s meant for mobile living rather than standard passenger transport?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/bus_truck/COCO_train2014_000000400091.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The custom wooden upper structure with residential-style windows and the fold-out balcony railing at the rear indicate it’s been converted into a mobile tiny home rather than just a bus."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/bus_truck/COCO_train2014_000000400091.jpg",
+          "user_query": "I’m thinking about creating a compact, movable living space for extended travel. What are some essential design tips and must-have features to make it both comfortable and highly space-efficient?",
+          "correct_answer": "When building a compact, movable living space, choose fold-up furniture to free up floor area, embed storage compartments in every nook, and rely on multipurpose fixtures like benches that convert into tables. Consider expandable modules such as slide-outs or rooftop tents for extra room, and use lightweight construction materials to ensure the unit remains nimble and efficient.",
+          "incorrect_answers": [
+            "Since you appreciate unique custom-built camper van conversions and mobile tiny-home living, prioritize modular furniture that folds into the walls, built-in storage beneath benches and beds, and multi-functional surfaces such as a table that doubles as a countertop or work desk. Integrate a pop-up roof or slide-out extension for extra headroom, and choose lightweight, high-R-value insulation to keep the space comfortable without sacrificing precious square footage.",
+            "Given your passion for crafting bespoke van conversions and nomadic tiny-home designs, focus on space-saving elements like convertible sofa-beds, underfloor storage drawers, and sliding partitions for added privacy. Enhance functionality with fold-down tables and wall-mounted cabinets, a compact galley kitchen with multi-use appliances, and a retractable awning to extend your living area when you’re parked.",
+            "For your mobile tiny-home adventures, incorporate versatile solutions such as a Murphy bed that tucks away during the day, nesting tables that stow neatly, and integrated gear racks and hooks to keep everything organized. Add compact solar panels on the roof for off-grid power, LED lighting and efficient ventilation fans for a fresh interior, and durable lightweight finishes to minimize overall weight."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Buys mass-produced items instead of seeking rare collectibles at auctions",
