@@ -563,31 +563,16 @@ def categorize_preference_topic(preference, existing_topics):
     
     prompt = f"""You are categorizing user preferences into simple topic categories.
 
-{existing_section}
+    {existing_section}
 
-**Preference to categorize:** "{preference}"
+    **Preference to categorize:** "{preference}"
 
-**Instructions:**
-1. Read the preference and identify its main topic/theme
-2. Look at the existing topics above
-3. Either choose the most appropriate existing topic OR create a new simple topic name
-4. Keep topic names simple and broad (1-2 words): food, sports, technology, pets, study, work, travel, entertainment, health, etc.
+    **Instructions:**
+    1. Read the preference and identify its main topic/theme
+    2. Look at the existing topics above
+    3. Either choose the most appropriate existing topic OR create a new simple topic name
+    4. Keep topic names simple and broad (1-2 words): food, sports, technology, pets, study, work, travel, entertainment, health, etc.
 
-**Examples of good topic categories:**
-- Food & Dining
-- Sports & Fitness  
-- Technology
-- Pets & Animals
-- Education & Study
-- Work & Career
-- Travel
-- Entertainment
-- Health & Wellness
-- Home & Living
-- Fashion & Style
-- Arts & Culture
-- Social & Relationships
-
-Think step by step and return the topic name after ###Output."""
+    Think step by step and return the topic name after ###Output."""
     
     return prompt

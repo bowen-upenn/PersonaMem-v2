@@ -329,7 +329,7 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
             conv_turns = utils.extract_json_from_response(conv_turns)
         except json.JSONDecodeError as e:
             print(f"Failed to parse knowledge query response: {e}")
-            return None, conversations
+            return None  # Return None for element, conversations is modified in place
 
     if random.random() < 0.33:
         conv_turns_temp = extend_to_multiturns(llm, conv_turns, verbose)
@@ -345,8 +345,10 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
     who = 'others' if is_others_pref else 'self'
 
     if conv_turns:
-        conversations[type].append({'preference': preference, 'pref_type': 'multimodal', 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path})
-
+        element = {'preference': preference, 'pref_type': 'multimodal', 'who': who, 'conversations': conv_turns, 'updated': False, 'image_path': image_path}
+        conversations[type].append(element)
+        return element
+    
 
 def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, verbose=False):
     """
@@ -431,10 +433,10 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         llm.reset_history()
         is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
         # Generate preference and conversations as if the user is providing an image to the chatbot
-        try:
-            find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
-        except Exception as e:
-            continue
+        # try:
+        element = find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+        # except Exception as e:
+        #     continue
         
     return conversations, updates
 
