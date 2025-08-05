@@ -7,10 +7,10 @@
 Edit the code in [contexts_builder.py](contexts_builder.py)
 
 Given each JSON file, i.e., one persona and its conversations, concatenate all its conversations included in content as a single list of dictionaries.
+
 Rules:
-    - Randomly shuffle conversation blocks with one exception.
-    - If a conversation block has the key "prev_pref", it must appear after its prev_pref block.
-    - You can use "prev_pref" to locate the position of the previous block.
+- Randomly shuffle conversation blocks with one exception.
+- If a conversation block has the key "prev_pref", it must appear after its prev_pref block (you can use "prev_pref" to locate the position of the previous block).
 
 Count the final number of tokens in the concatenated list, using only the content of each message.
 
