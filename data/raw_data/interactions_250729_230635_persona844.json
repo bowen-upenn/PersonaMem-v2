@@ -178,7 +178,218 @@
       "Often chooses formal or business-casual attire when the situation calls for it": "Often chooses casual or informal attire when the situation calls for it."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user enjoys using low-cost educational laptops like the OLPC XO for hands-on learning.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my OLPC XO during a classroom session, I’m curious—how exactly does its dual-mode “sunlight-readable” screen switch between reflective and backlit operation to save battery and stay visible in bright light, and what compromises does that design impose on contrast, power draw, or refresh behavior?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000014238.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! The OLPC XO’s display is one of its signature features, designed specifically for low-power, all-weather use. It achieves this through a so-called “dual-mode” or transflective LCD that toggles between two main operating states:\n\n1. Reflective mode (ambient-light only):\n   • How it works: In strong daylight, the display turns off its backlight entirely and relies on ambient light reflecting off a reflective layer behind the liquid-crystal cells. That layer acts like a mirror, bouncing sunlight back through the color filter and polarizers so you can see the image without drawing any power for illumination.\n   • Power savings: Since the backlight LEDs are completely off, the screen’s power draw drops by roughly 80–90% compared to backlit mode, which is why you can run the XO for many hours – even days – on a single charge when you’re outside.\n   • Compromises: Because the system depends on external light, contrast can appear lower in very bright conditions (the difference between dark and light pixels shrinks), and fine details or very dark tones can wash out. You also lose color richness, since you’re effectively seeing a greyscale image.\n\n2. Transmissive (backlit) mode:\n   • How it works: When ambient light is dim (indoors or at night), a bank of white LEDs behind the LCD panel turns on. The backlight passes through the liquid-crystal matrix and polarizer stack, illuminating the image from behind. The XO then behaves more like a conventional laptop screen.\n   • Power trade-off: Backlighting consumes significantly more current, typically 300–500 mW just for the LEDs, plus the driving circuitry. In this mode the screen can use up to 5–10 times more power than in reflective mode. \n   • Advantages: You get higher contrast (darker blacks and brighter whites), full color reproduction, and crisper edges, which is vital for reading small text or looking at detailed graphics when light is limited.\n\n3. Automatic or manual switching:\n   • Sensor logic: The XO includes a simple ambient-light sensor. If the sensor reading is above a predefined threshold, it automatically disables the backlight and goes into reflective mode. If it falls below that threshold, it restores the LED backlight.\n   • User control: There’s also a keyboard shortcut (and a software GUI toggle in Sugar) so learners or teachers can override automatic behavior if they prefer one mode or the other for a particular task.\n\n4. Pixel and refresh implications:\n   • Dithering for greyscale: In reflective mode, the XO typically displays a high-contrast monochrome image, using temporal dithering to simulate multiple greyscales. This can introduce a faint flicker at lower brightness levels.\n   • Refresh speed: Because reflective mode relies on ambient pulses of light, rapid animations or subtle video can appear choppy. Backlit mode runs at the standard frame rate and supports smoother transitions.\n\nSummary of trade-offs:\n   • Battery life vs. contrast: Reflective mode maximizes uptime but sacrifices contrast and color fidelity. Backlit mode restores vibrant, sharp images at the expense of higher power consumption.\n   • Visibility vs. flicker: Reflective mode remains visible in direct sun but can flicker and lacks fine grey detail. Backlit mode is flicker-free with better greyscale but can glare under bright conditions and drains the battery faster.\n\nBy balancing these two operating states, the XO’s display offers a very energy-efficient way to keep text and simple graphics legible both in full sun and in a darkened room—albeit with the compromise that you must trade off between battery duration and display quality depending on your environment."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000014238.jpg",
+          "user_query": "I’m trying to set up a portable, budget-friendly computer lab to teach coding and basic electronics to young learners. What laptop models or DIY kits would you recommend, and how can I get the most educational value out of them?",
+          "correct_answer": "I’d recommend low-cost machines like the OLPC XO or the Kano PC kit, which are rugged, energy-efficient, and built for hands-on coding; to get the most educational value, structure your lessons around guided soldering exercises, peer programming sessions, and simple sensor projects so learners can immediately see how their code controls hardware.",
+          "incorrect_answers": [
+            "I’d recommend laptops like the ASUS ROG Strix or Razer Blade, which are powerful, customizable, and built for immersive gaming; to get the most educational value, structure your lessons around guided soldering exercises, peer programming sessions, and simple sensor projects so learners can immediately see how their code controls hardware.",
+            "I’d recommend notebooks like the MacBook Pro or Microsoft Surface Book, which are premium, high-resolution, and optimized for creative workflows; to get the most educational value, structure your lessons around guided soldering exercises, peer programming sessions, and simple sensor projects so learners can immediately see how their code controls hardware.",
+            "I’d recommend affordable options like Chromebooks or Raspberry Pi kits, which are easy to set up, cost-effective, and widely supported; to get the most educational value, structure your lessons around guided soldering exercises, peer programming sessions, and simple sensor projects so learners can immediately see how their code controls hardware."
+          ]
+        },
+        {
+          "preference": "The user prefers working in a cozy home environment with their pet nearby.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took, my dog is curled up under a blanket on the couch right behind my work table—how can I arrange my home workspace so my dog stays cozy and I minimize distractions while keeping my laptop ergonomically positioned?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_laptop/COCO_train2014_000000166853.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That’s a lovely picture—your dog clearly feels at home in your workspace. To balance your pet’s comfort with your own productivity and ergonomics, consider these adjustments:\n\n1. Create a Dedicated Pet Nook:  \n   • Move a small side table or low shelf a foot away from your desk.  \n   • Place a thick, washable pet bed or blanket there. This gives your dog a soft, warm spot that’s still within your line of sight.  \n   • If the couch blanket is essential, fold it neatly into a cushion near your desk so your dog still feels enveloped by familiar scents without getting tangled in work materials.\n\n2. Optimize Desk and Monitor Height:  \n   • Elevate your laptop or monitor so the top of the screen sits at eye level. This reduces neck strain and keeps your posture upright, even when you glance back to check on your dog.  \n   • Use a separate keyboard and mouse on your desk surface, which lets you maintain a neutral wrist position and shifts your focus between screen and pet more comfortably.\n\n3. Manage Lighting and Glare:  \n   • Position your desk near a window for soft, indirect daylight, which is easy on your eyes and creates a calm environment.  \n   • Add a small desk lamp with an adjustable arm. Lower, focused light prevents glare on your screen and avoids shining into your dog’s eyes.\n\n4. Keep Essentials Within Reach—But Out of Paws’ Way:  \n   • Use a mug coaster and a small tray for snacks (like that tangerine) to contain spills.  \n   • Mount hooks or small baskets below your desk to store cables and notebooks. This tidies the tabletop and prevents curious paws from knocking things over.\n\n5. Soothing Sounds and Break Cues:  \n   • Play gentle background music or a white-noise machine at a low volume. It can help mask ambient noises (like traffic) that might startle your dog.  \n   • Schedule mini breaks every hour: use that time to stretch, refill your drink, and give your dog a quick scratch behind the ears. These interludes boost your focus and reinforce your bond.\n\n6. Climate Control and Airflow:  \n   • Keep a small fan or air purifier nearby to maintain fresh air without chilling your dog. If you use a space heater or heated pad for your pet, place it safely under the side table where cords aren’t exposed.\n\nBy carving out a cozy pet zone, refining your desk layout, and maintaining clear sightlines, you’ll create a harmonious environment where your dog can snooze contentedly and you can work comfortably and distraction-free."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_laptop/COCO_train2014_000000166853.jpg",
+          "user_query": "I’m setting up a home office and want it to feel more inviting and comfortable. What are some budget-friendly tips to personalize the space and boost my focus throughout the day?",
+          "correct_answer": "Add a soft pet bed or blanket beside your desk so your dog can stay cozy, then swap in a few throw pillows or an inexpensive wool rug to warm up the space. Install a daylight-simulating bulb and tuck a small potted plant on your shelf to boost focus and personalize the area on a budget.",
+          "incorrect_answers": [
+            "Add a sleek cable organizer beside your desk so your workspace stays clutter-free, then swap in a few neutral-toned cushions or an inexpensive wool rug to soften the minimalist vibe. Install a daylight-simulating bulb and tuck a small potted plant on your shelf to boost focus and personalize the area on a budget.",
+            "Add a low-profile window seat cushion beside your desk so you can enjoy natural light comfortably, then swap in a few light linen pillows or an inexpensive wool rug to make the seating area more inviting. Install a daylight-simulating bulb and tuck a small potted plant on your shelf to boost focus and personalize the area on a budget.",
+            "Add a couple of throw pillows beside your desk so you feel more at home, then swap in a few framed photos or an inexpensive wool rug to reflect your personality. Install a daylight-simulating bulb and tuck a small potted plant on your shelf to boost focus and personalize the area on a budget."
+          ]
+        },
+        {
+          "preference": "The user enjoys motion-controlled gaming experiences on the Nintendo Wii.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took of my living room setup, I was customizing my Mii on the Wii and noticed the on-screen pointer sometimes jumps or drifts. How does the Wii Remote actually determine its on-screen position and motion, and what can I adjust in my setup—like sensor bar placement, distance, or lighting—to get smoother, more accurate pointer control?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000400064.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! The Wii Remote combines two main tracking systems to figure out exactly where it’s pointing and how it’s moving:\n\n1. Infrared Camera + Sensor Bar\n   • What it is: Inside the front of the Wii Remote is a tiny infrared (IR) camera. The “sensor bar” isn’t really a bar at all, but simply two clusters of IR LEDs—one at each end—placed above or below your TV.\n   • How it works: The IR camera in your remote sees the glowing LEDs as two bright dots. By measuring the angle and distance between those two dots in its field of view, the remote can calculate its horizontal and vertical position relative to the screen. This is what moves the cursor or pointer on the TV.\n\n2. Accelerometer (Motion Sensing)\n   • What it is: The Wii Remote also contains a three-axis accelerometer, which can detect tilts and swings (up/down, left/right, forward/back).\n   • How it works: While the IR camera tells the system where you’re pointing, the accelerometer fills in the gaps by sensing sudden motions or shakes—useful in games that require swings, rotations, or shakes.\n\nWhy your pointer sometimes drifts or jumps:\n  • Sensor Bar Placement: If the bar is too high, too low, off-center, or angled away from the TV, the IR camera may only see one LED or a skewed view of the pair. That confuses the triangulation and makes the pointer wobble or drift.\n  • Distance & Viewing Angle: Standing too close (< 4 feet) can compress the IR dots and make them hard to distinguish. Standing too far (> 12 feet) can make them appear too dim or too close together. Try to keep your distance between 6–10 feet for the most reliable tracking.\n  • Ambient IR Light: Sunlight, halogen lamps, or other IR sources (like certain remotes or heater sensors) can introduce spurious dots or wash out the sensor bar. Work in a moderately lit room and avoid direct sunlight on the TV or sensor bar.\n  • Controller Orientation: Tilting the Wii Remote excessively can shift the IR camera’s view so that it can’t see both LEDs simultaneously. Hold it as level as possible when pointing at menus or precise targets.\n\nHow to improve your setup:\n1. Center the Sensor Bar: Mount it directly above or below your TV, centered with the screen’s midpoint.\n2. Adjust Distance & Height: Keep the bar about eye-level when you’re standing or sitting, and maintain a 6–10 foot gap.\n3. Reduce IR Interference: Close curtains, turn off bright halogen or incandescent lights, and keep other remotes or IR emitters away from the bar.\n4. Calibrate in the Wii Settings: On the Wii’s System Settings, go to “Sensor Bar” and adjust the “Position” (above or below) and run the “Pointer Calibration” routine. Follow the on-screen targets to realign your pointer precisely.\n5. Test in a Darkened Room: If things still seem jumpy, try dimming the lights for a test. The sensor bar’s LEDs will stand out more clearly against less ambient IR.\n\nBy ensuring optimal sensor bar placement, controlling stray IR light, and recalibrating the pointer in the Wii settings, you should notice a much smoother, more accurate cursor when creating your Mii—or playing any pointer-based game. Enjoy your next motion-controlled gaming session!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000400064.jpg",
+          "user_query": "I’ve been wanting to play games that really get me moving instead of just pressing buttons—what titles should I check out?",
+          "correct_answer": "Since you enjoy motion-controlled gaming experiences on the Nintendo Wii, you might want to check out Wii Sports Resort, Just Dance 2019, and Wii Fit Plus. These games get you up and moving—whether you’re practicing swordplay, busting dance routines, or following guided workout sessions.",
+          "incorrect_answers": [
+            "Since you enjoy curling up with detective novels in your downtime, you might want to check out L.A. Noire, Sherlock Holmes: Crimes & Punishments, and Heavy Rain. These games get you investigating crime scenes—whether you’re interrogating suspects, piecing together clues, or making tough moral decisions.",
+            "Since you enjoy solving intricate jigsaw puzzles, you might want to check out Portal 2, The Witness, and Tetris Effect. These games get you flexing your problem-solving skills—whether you’re placing portals, uncovering island enigmas, or aligning blocks.",
+            "You might want to check out Wii Sports Resort, Just Dance 2019, and Wii Fit Plus. These games get you up and moving—whether you’re practicing motions, dancing to popular tracks, or working through fitness challenges."
+          ]
+        },
+        {
+          "preference": "The user enjoys healthy homemade meals, such as grilled chicken served with quinoa salad.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my homemade dinner, I plated grilled chicken with a parsley-and-quinoa salad that I prepped earlier—any tips on how to dress and store the salad so it stays crisp and flavorful alongside the chicken without getting soggy?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That’s a great question—keeping a quinoa salad bright and crisp while still tasting vibrant alongside your chicken comes down to three key factors: the dressing formulation, the assembly timing, and storage technique.\n\n1. Dress Separately and Lightly: Instead of tossing the quinoa and herbs directly in your dressing, reserve most of the vinaigrette in a separate container. A simple ratio of 2 parts high-quality extra-virgin olive oil to 1 part acid (lemon juice or a mild vinegar) infused with a pinch of salt and freshly cracked pepper works well. When you’re ready to eat, drizzle just enough to coat the surface—this prevents the grains from absorbing too much liquid and turning mushy.\n\n2. Layer and Airtight Store: If you’re preparing ahead, store the cooked quinoa base in one airtight container, and place chopped parsley, scallions, cucumber (seeds removed), or any tender greens in another. Keep your dressing in a third jar. When it’s mealtime, gently fold the herbs and veggies into the quinoa, then finish with your reserved dressing. This avoids extended contact with moisture and preserves that lively, fresh texture.\n\n3. Add Crunchy Elements at the End: A few minutes before serving, consider stirring in toasted nuts or seeds (like almonds or pumpkin seeds) or even a handful of finely chopped celery. These not only add dimension to the salad but also help absorb any residual dressing without becoming limp. For extra brightness, finish with a light sprinkle of lemon zest or a quick grating of zest from orange or lime.\n\nBy following these steps—light, separate dressing; layered storage; and last-minute additions—you’ll keep your quinoa salad both crisp and flavorful. It’ll pair beautifully with the grilled chicken, ensuring that each bite feels fresh rather than soggy, even if you’ve prepped parts of the meal in advance."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg",
+          "user_query": "I’m looking for quick, nutritious weeknight dinner ideas that are flavorful and easy to make at home—can you suggest a few recipes or meal ideas?",
+          "correct_answer": "Since you enjoy healthy homemade meals like grilled chicken with quinoa salad, you might try sheet-pan salmon with roasted vegetables and couscous, turkey lettuce wraps topped with avocado and salsa, or a chickpea and spinach stir-fry over brown rice—all ready in under 30 minutes.",
+          "incorrect_answers": [
+            "Since you love cozy weekend brunch frittatas topped with fresh greens, you might try sheet-pan salmon with roasted vegetables and couscous, turkey lettuce wraps topped with avocado and salsa, or a chickpea and spinach stir-fry over brown rice—all ready in under 30 minutes.",
+            "Since you favor bold, spicy street-food inspired dishes, you might try sheet-pan salmon with roasted vegetables and couscous, turkey lettuce wraps topped with avocado and salsa, or a chickpea and spinach stir-fry over brown rice—all ready in under 30 minutes.",
+            "You might try sheet-pan salmon with roasted vegetables and couscous, turkey lettuce wraps topped with avocado and salsa, or a chickpea and spinach stir-fry over brown rice—all ready in under 30 minutes."
+          ]
+        },
+        {
+          "preference": "The user enjoys eating pizza as a casual snack during work or brainstorming sessions.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took while sketching on my whiteboard, I noticed my pizza slice barely droops even with heavy toppings—what dough or baking techniques contribute to such a sturdy slice?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000475957.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great observation—slice stability actually comes down to a few key factors in dough formulation, topping management, and baking conditions. Here’s a breakdown:\n\n1. Dough Hydration and Gluten Structure\n   • Hydration Ratio: A moderately low hydration dough (around 60–62% water by flour weight) produces a firmer crumb that won’t collapse under weight. Higher-hydration doughs can be airier but tend to droop more.  \n   • Gluten Development: Proper kneading and a long, cold fermentation (12–24 hours in the fridge) strengthen the gluten network. Well-developed gluten traps gas bubbles uniformly, giving the crust a resilient structure that supports toppings.\n\n2. Dough Shaping and Thickness\n   • Edge Crust (Cornicione) vs. Tip: Many pizza makers shape the dough with a slightly thicker rim and a taper toward the tip. That thicker outer ring bakes up crisp and acts like a collar, keeping the slice balanced.  \n   • Uniform Thickness: Rolling or stretching the center to a consistent thickness helps the slice heat evenly, so the middle doesn’t underbake and weaken the slice.\n\n3. Topping Ratios and Moisture Control\n   • Sauce Viscosity: A thicker, well-reduced tomato sauce prevents sogginess. Too much liquid makes the dough soft and prone to droop.  \n   • Cheese Choice: Low-moisture mozzarella (or a blend of mozzarella and provolone) releases less water, so the melt is stretchy without making the slice limp.  \n   • Even Distribution: Spreading toppings evenly—leaving a little extra crust near the tip—reduces stress points. Heavy clusters of sausage or veggies in one spot can pull the slice down.\n\n4. Oven Temperature and Bake Surface\n   • High Heat: Baking at 475–500°F (or higher, if you have a stone or steel) sets the crust quickly. The rapid rise of steam in the dough creates a firm outer shell before the toppings fully heat through.  \n   • Baking Surface: A preheated pizza stone or steel conducts heat directly into the crust, crisping the bottom and reducing any floppy underlayer.\n\n5. Par-bake and Finish Techniques\n   • Par-bake (Optional): Some home chefs give the plain dough a 2–3 minute head start on the hot surface before adding sauce and cheese. That creates an extra-crisp base.  \n   • Olive Oil Seal: Lightly brushing the tip and outer crust with olive oil can form a moisture barrier, helping the dough stay crisp longer.\n\n6. Slice Handling and Folding\n   • Fold to Strengthen: In many New York–style approaches, you fold the slice along its length, effectively doubling up the crust for extra stiffness. This simple crease shifts the bending point closer to your hands and off the tip.\n\nPutting it all together, a balanced hydration level, strong gluten network, targeted shaping, moisture-controlled toppings, rapid high-temperature bake, and even a brief par-bake can make your slice remarkably sturdy. Next time you’re experimenting at home, try adjusting one factor at a time—say, reducing dough hydration by a couple of points or switching to low-moisture cheese—and observe how your slice’s rigidity changes. Enjoy baking (and brainstorming) with a pizza that’s as structurally sound as it is delicious!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000475957.jpg",
+          "user_query": "I often get hungry during long work sessions and need something tasty and easy to eat without interrupting my flow—what snacks or quick bites would you recommend?",
+          "correct_answer": "Since you enjoy pizza as a casual snack during work, you might try mini pizza rolls or calzones—they’re easy to nibble without breaking your flow and you can quickly heat them up in the microwave for a cheesy boost.",
+          "incorrect_answers": [
+            "Since you love starting your day with a strong cup of coffee, you might try biscotti or coffee-flavored energy bites—they’re sturdy enough to nibble between sips and give you a gentle caffeine lift without derailing your workflow.",
+            "Since you often listen to lo-fi beats to stay focused, you might try granola clusters or rice cake stacks—they’re portable and quiet snacks that won’t distract your headphones or concentration when you need a quick bite.",
+            "You might try snack bars or sliced vegetables with hummus—they’re easy to eat one-handed and keep you energized without requiring a big time commitment or interrupting your work rhythm."
+          ]
+        },
+        {
+          "preference": "The user prefers mobile devices that feature a physical QWERTY keyboard.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Looking at the handheld device in the person’s hand, what design feature do they likely appreciate when choosing a mobile device?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_laptop/COCO_train2014_000000297632.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "They likely appreciate a physical QWERTY keyboard for more accurate and comfortable typing on their mobile device."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_laptop/COCO_train2014_000000297632.jpg",
+          "user_query": "I often need to compose long messages on my phone while I’m on the go, but the touchscreen keyboard slows me down and leads to errors. Which smartphones should I consider to type faster and more accurately when I’m out and about?",
+          "correct_answer": "If you often compose long messages on your phone, consider choosing a model with tactile buttons and a powerful predictive text engine—this setup can help you type quickly and accurately anywhere.",
+          "incorrect_answers": [
+            "Given your need for on-the-go messaging, consider a smartphone like the BlackBerry KEY2 or the Unihertz Titan Pocket—both feature physical QWERTY keyboards that make typing lengthy texts faster and more precise.",
+            "If you frequently write long messages while moving around, look at devices such as the BlackBerry KEY2 or the Unihertz Titan Pocket, both of which offer a tactile hardware keyboard that helps you type more reliably.",
+            "To speed up your mobile typing and reduce errors, try phones like the BlackBerry KEY2 or Unihertz Titan Pocket, which provide a built-in keyboard for more accurate and comfortable on-the-go text composition."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Do not remember 'Regularly attends local tech meetups and hackathons' in memory",

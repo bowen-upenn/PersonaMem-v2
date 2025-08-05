@@ -206,7 +206,218 @@
       "Adopts a pragmatic approach to professional challenges rather than actively promoting diversity initiatives": "Actively promotes diversity initiatives rather than adopting a pragmatic approach to professional challenges."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user enjoys working remotely in cafés with their laptop and mobile devices.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this café shot I took, I’m about to work on container security over the café’s public Wi-Fi—what are the best practices to protect my laptop and Docker environments from network threats in a setting like this?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000468357.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Working in a café on public Wi-Fi can be convenient, but it does introduce a number of network- and host-level risks. Here’s a multi-layered approach you can follow to keep both your laptop and your Docker environment as secure as possible:\n\n1. Encrypt Your Network Traffic\n   • Use a trusted VPN service. A VPN will tunnel all your outbound traffic through an encrypted channel to a server you control, preventing anyone on the local network from sniffing packets or performing man-in-the-middle attacks.  \n   • If you can’t use a VPN, consider tethering through your phone’s data connection instead of the café’s open Wi-Fi. Mobile networks are generally more secure by default.\n\n2. Lock Down Your Docker Daemon\n   • Don’t expose the Docker API over TCP on a public network. Make sure Docker is listening only on the local UNIX socket (e.g., /var/run/docker.sock).  \n   • Enable TLS if you do need remote access. Generate and require client certificates for any connection to the Docker daemon.  \n   • Consider running Docker in rootless mode. That way, even if a container escape occurs, the attacker gains much less privilege on the host.\n\n3. Harden Your Host Operating System\n   • Keep your OS and Docker engine up to date with the latest security patches.  \n   • Enable and configure a host-level firewall (ufw, nftables, or Windows Defender Firewall) to block all inbound services except those you explicitly allow.  \n   • Use full-disk encryption (e.g., LUKS on Linux, FileVault on macOS) so that theft of your laptop won’t expose unencrypted data or keys.\n\n4. Follow Container Best Practices\n   • Start from minimal, official base images (e.g., Alpine or scratch) to reduce your attack surface.  \n   • Use multi-stage builds to avoid leaving build-time tools and secrets in your final image.  \n   • Run containers with the least privileges needed: add `--cap-drop ALL` and then selectively add back only required capabilities.  \n   • Avoid mounting host directories into containers unless absolutely necessary—and if you do, mount them read-only whenever possible.\n   • Sign your images using Docker Content Trust (Notary) and pull only signed images when working in production.\n   • Scan your images for known vulnerabilities with tools like Trivy or Clair before you build or deploy.\n\n5. Secure Your Credentials and Secrets\n   • Never bake secrets (API keys, SSH keys) directly into your images. Use Docker secrets, environment variables, or a dedicated vault solution (HashiCorp Vault, AWS Secrets Manager).  \n   • If you use environment variables, avoid passing them on the command line (where they can be visible in `ps`). Instead, use an environment file or a secrets store that your container can read at runtime.\n\n6. Monitor and Audit\n   • Run the Docker Bench for Security script regularly to check your host and container configuration against best-practice rules.  \n   • Enable logging and monitoring at the host level—look at system logs (`journalctl` on Linux) and container logs to spot any unusual activity.  \n   • Consider an intrusion-detection system (Fail2Ban, OSSEC) to alert you to repeated login failures or port scans.\n\n7. Physical and Operational Hygiene\n   • Keep your wallet, phone, and other personal effects close by—don’t leave them in plain sight.  \n   • Lock your screen (e.g., Ctrl+Alt+L on Linux, Win+L on Windows, Ctrl+Command+Q on macOS) whenever you step away from your table.  \n   • Use a privacy screen filter if you’re working on sensitive code and want to block side-glances.\n\nBy combining encrypted networking, a locked-down Docker setup, a hardened host OS, container best practices, and strong operational hygiene, you’ll dramatically reduce the attack surface when working in public spaces. This layered defense lets you enjoy the café ambiance—good coffee, background buzz, and flexible seating—while keeping your laptop and container workloads secure."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000468357.jpg",
+          "user_query": "I’m planning to work from a new location away from home, with just my laptop and smartphone. What kinds of environments and daily routines could help me stay focused, energized, and productive?",
+          "correct_answer": "When you’re working remotely in a café with just your laptop and smartphone, pick a table near reliable Wi-Fi and natural light with easy access to power outlets; block your day into focused work sprints of about 45 minutes followed by 10-minute coffee or stretch breaks; and keep a water bottle and healthy snack at hand to stay energized.",
+          "incorrect_answers": [
+            "When you’re sketching landscapes in a city park with just your sketchbook and watercolors, choose a spot near a shaded bench and a gentle breeze with easy access to clean water; block your session into creative drawing sprints of about 30 minutes followed by 10-minute observation or tea breaks; and keep a small snack and a water bottle at hand to stay energized.",
+            "When you’re cycling at sunrise with just your bike and a hydration pack, choose quiet tree-lined routes with smooth pavement and gentle elevation; structure your ride into 20-minute cycling intervals followed by 5-minute recovery stretches; and keep a water bottle and energy bar in your pack to stay fueled.",
+            "When you’re working away from home with just your laptop and smartphone, choose a location with a stable internet connection and good lighting; divide your day into focused work blocks of around 45 minutes with short 10-minute breaks in between; and keep water and a light snack at your side to maintain energy."
+          ]
+        },
+        {
+          "preference": "The user enjoys relaxing at home with their dog while playing video games.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of me playing my Wii with my pug curled up on my lap, I’m curious—why does he stay so relaxed and sleepy even though I’m moving the controller and there’s game sound around? Do dogs actually tune out that kind of activity, and what makes this setup so comforting for him?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000344597.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Great question! There are several reasons why your pug looks so at ease—even amid the motion and noise of a gaming session.\n\n1. Familiarity and Association\nDogs are creatures of habit. If your pug has learned that your lap + controller + TV noise equals quality cuddle time, he’ll associate those sounds and movements with comfort and bonding. Over repeated sessions, even the quick hand gestures and button clicks on the Wii remote become background “white noise” that he knows won’t harm him.\n\n2. Physical Warmth and Pressure\nYour lap provides a gentle, consistent heat source that many dogs find soothing. The slight pressure of your legs and arms around him also mimics the comforting effect of being held or swaddled. Together, warmth and gentle containment trigger relaxation responses—much like how a weighted blanket can calm humans.\n\n3. Canine Hearing and Sound Filtering\nAlthough dogs hear a wider range of frequencies than we do, they’re also adept at filtering out repetitive sounds they recognize as nonthreatening. The steady hum of the TV, the familiar tone of your favorite game’s audio cues, and the mechanical click of the Wii remote can all fade into the background once your pug realizes they signal peaceful together time.\n\n4. Trust and Security\nAt its core, your pug’s comfort stems from trust: he knows you’re in control and that nothing dangerous is happening. This sense of security allows him to enter a restful state even while you’re actively moving around. When dogs feel safe, they’ll often choose to nap rather than stay alert for potential threats.\n\n5. Vestibular Resilience\nMost dogs tolerate gentle motion very well—especially when they’re nestled snugly. Your hand movements while gaming are relatively slow and predictable compared to, say, a car ride or a jog. That low-intensity, rhythmic motion can actually have a mildly lulling effect, similar to how rocking a baby can help them drift off to sleep.\n\nPutting it all together, your gaming setup creates the perfect comfort trifecta: the warmth and gentle pressure of your lap, the repetitive yet benign sounds of the game, and the strong bond of trust you share. It’s no wonder your pug can snooze peacefully right in the middle of your play session!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000344597.jpg",
+          "user_query": "I’ve got a few free evenings at home coming up—what are some relaxing activities I could try to unwind and recharge?",
+          "correct_answer": "Why not set aside some time to launch into a chill video game session on the couch with your pup by your side? Brew a mug of hot cocoa, drape a cozy blanket over your lap, and let your dog’s snuggles add extra comfort. The combination of low-key gaming and your pup’s company will help you unwind and recharge.",
+          "incorrect_answers": [
+            "Why not set aside some time to tackle a gentle watercolor painting on your balcony with your favorite tunes in the background? Brew a mug of herbal tea, drape a cozy blanket over your lap, and let the colors flow with each brushstroke. The combination of creative painting and soothing music will help you unwind and recharge.",
+            "Why not set aside some time to take a leisurely bike ride around your neighborhood with a playlist of soft melodies? Pack a water bottle, drape a cozy jacket over your shoulders, and let the fresh air guide you along. The combination of gentle exercise and calming scenery will help you unwind and recharge.",
+            "Why not set aside some time to curl up on the couch with a good book and some soft background music? Brew a mug of tea, drape a cozy blanket over your lap, and let yourself get lost in the story. The combination of quiet reading and warm comfort will help you unwind and recharge."
+          ]
+        },
+        {
+          "preference": "The user enjoys leisurely outdoor cycling along the beach in casual summer attire.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took riding along the shoreline, how do coastal winds and the pavement surface affect my cruise, and what subtle bike or posture tweaks can I use for a smoother, more stable seaside ride?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Coastal environments present two main challenges for beachside cycling: steady crosswinds and variable pavement conditions. Here’s how each factor comes into play—and what you can do to compensate:\n\n1. Handling Coastal Winds\n  • Crosswind Dynamics: On open stretches by the water, side gusts can push your bike off center. To counteract this, lean slightly into the wind (about 5–10°) and grip your handlebars a bit firmer. That small lean helps you stay upright without overcorrecting.\n  • Aerodynamic Posture: When you anticipate a strong breeze, lower your torso toward the bars—keeping elbows slightly bent—to reduce frontal drag. In gentler conditions, an upright stance is perfectly fine for comfort and enjoying the view, but be ready to switch positions when gusts pick up.\n  • Bar Configuration: If your setup allows, move your brake levers or grips closer to the center of your bars. This narrower hand position offers better control in crosswinds, since you won’t be stretched too far out when a sudden gust arrives.\n\n2. Adapting to Pavement and Sandy Edges\n  • Tire Pressure and Width: Beachside paths often have fine sand blown onto the edges of asphalt. Running your tires at a slightly lower pressure (about 10–15% below your usual road inflation) increases the contact patch, giving you extra grip on loose or gritty surfaces. If you ride here regularly, consider wider tires (35–40 mm) for greater stability.\n  • Centerline Riding: Stick closer to the pavement’s center, where sand and debris tend to accumulate less. Avoid the shoulder if it’s layered with sand—you’ll experience fewer slips and won’t have to make sudden corrections.\n  • Suspension or Cushioning: While most beach cruisers lack full suspension, you can add a suspension seatpost or a thicker saddle cover to absorb minor bumps from cracks or leftover sand patches, enhancing your comfort over longer rides.\n\n3. Gear and Cadence Adjustments\n  • Lower Gearing: Coastal winds can feel like a persistent headwind when you turn around, or crosswinds can sap your speed. Shift into a lower gear to maintain a steady, comfortable cadence (around 60–80 rpm) without straining your legs.\n  • Smooth Pedal Stroke: Focus on a circular pedaling motion rather than mashing straight down. This technique helps you keep momentum through small rough patches and counters the uneven resistance from wind and sand.\n\n4. Clothing and Sun Considerations\n  • Breathable Layers: A light long-sleeve jersey or a cycling jersey with UPF protection can shield you from direct sunlight and the cooling effect of wind, preventing chill when the breeze intensifies.\n  • Secure Accessories: Fit a snug-fitting helmet and collar your jersey to keep sand out. A pair of close-fitting sunglasses will help protect your eyes from windblown sand and glare off the water.\n\nBy integrating these subtle adjustments—leaning into the wind, optimizing tire pressure, riding the cleaner centerline, and fine-tuning your posture—you’ll find your seaside cycling both more stable and more enjoyable. Over time, these small tweaks add up to a smoother, more confident ride along the shore."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_bicycle/COCO_train2014_000000086189.jpg",
+          "user_query": "“Hey there, I’m planning some laid-back bike rides this summer—mostly on flat, paved paths near water. Can you recommend scenic routes, essential lightweight gear, and tips on what to wear to stay comfortable in warm weather?”",
+          "correct_answer": "Try the Santa Monica Beach Bike Path or the Bayshore Bikeway for smooth oceanfront cycling; bring a lightweight saddle bag stocked with water, snacks, and a mini pump. Wear a loose, moisture-wicking tee, comfortable shorts or skirt, a breathable helmet, sunglasses, and a sun-protective cap to stay cool.",
+          "incorrect_answers": [
+            "Try the Skyline Trail in Marin County or the Mount Diablo Loop for scenic forest singletrack; bring a lightweight hydration pack stocked with a spare tube, multi-tool, and energy bars. Wear a breathable long-sleeve jersey, padded mountain-bike shorts, gloves, a ventilated helmet, and moisture-wicking socks for comfort and protection.",
+            "Try the Embarcadero bike path in San Francisco or the East River Greenway in NYC for waterfront skyline views; bring a lightweight commuter backpack with a lock, compact pump, and light. Wear a moisture-wicking polo, lightweight shorts or chinos, comfortable sneakers, sunglasses, and a well-ventilated helmet to stay comfortable.",
+            "Try local lakefront trails or riverside greenways for gentle scenery; bring a lightweight handlebar bag with water, a snack, and basic repair tools. Wear a breathable tee, comfortable shorts, a ventilated helmet, sunglasses, and sunscreen to stay comfortable in warm weather."
+          ]
+        },
+        {
+          "preference": "The user prefers using urban public transportation such as the subway for commuting.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took during my daily subway commute, I noticed these yellow textured strips along the platform edge and how riders cluster at certain spots before the doors open. Can you explain how these design features and passenger positioning strategies improve safety and boarding efficiency on busy urban trains?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_train/COCO_train2014_000000313709.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Your photo highlights two key elements of efficient, safe subway operations: the tactile platform edge markings and the natural clustering behavior of commuters at train doors.\n\n1. Tactile Warning Strips: Those yellow, raised-texture strips you see along the platform edge are a universal safety feature known as \"tactile paving.\" Their primary purpose is to alert visually impaired riders that they are near the platform drop-off. The contrasting color and textured surface provide both a visual and haptic cue—people can see the bright stripe even under dim lighting, and they feel the change underfoot if they step too close to the tracks. Transit agencies often standardize these markers to maintain consistency across stations, reinforcing the instinct to stay back until the train arrives.\n\n2. Platform Markings and Door Alignment: In many modern systems, platforms are painted or tiled with symbols indicating where each train car’s doors will open. Overhead signage and map diagrams inside the car usually correspond to these floor symbols, helping riders predict where to stand if they want to board a particular car—say, one closest to an exit or elevator at their destination station. This organization minimizes last-second scrambling, reduces dwell time (the time a train spends stopped at a station), and helps maintain schedule reliability.\n\n3. Passenger Clustering: Observing how riders naturally form clusters at the door-marked zones is actually an example of self-organizing behavior that transit operators encourage. By waiting in discreet vertical queues rather than crowding the entire platform edge, riders open clear pathways for passengers to exit the train first. This ‘exit-first, enter-after’ convention vastly speeds up the exchange of people and prevents bottlenecks. You’ll notice that the people in your photo are standing back until the train arrives, then moving forward in an orderly manner—this reduces the need for the operator to extend door-hold times and keeps trains running punctually.\n\n4. Safety and Efficiency in Tandem: Together, tactile strips discourage accidental falls; door-alignment markers and platform graphics guide riders to the optimal boarding points; and clustering behavior ensures rapid, safe entry and exit. These subtle design principles and commuter practices have been refined over decades to cope with peak-hour crowds in dense urban systems. In essence, by combining universal safety cues with well-tested crowd management strategies, subway networks can move thousands of people quickly without compromising rider safety or operational efficiency.\n\nSo next time you wait on that yellow strip and align yourself with the painted markers, you’ll know you’re participating in a carefully calibrated system designed to protect you and keep the trains rolling on time."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_train/COCO_train2014_000000313709.jpg",
+          "user_query": "I just started a new job downtown and want to make my morning commute as smooth and reliable as possible—what are some efficient options I should consider to get there on time?",
+          "correct_answer": "Since you prefer urban public transportation like the subway, consider taking the express line that runs every six minutes during the morning peak and pairing it with a short shared e-scooter ride from the station to your office. Use a real-time transit app to track train schedules and service alerts, and aim to leave 5–10 minutes earlier to buffer against any unexpected delays.",
+          "incorrect_answers": [
+            "Since you prefer cycling, consider mapping a dedicated bike lane route that avoids heavy traffic and pairing it with a quick lock-up at a secure bike cage near your office. Use a GPS cycling app to monitor live traffic and weather conditions, and plan to depart 5–10 minutes early to account for any delays.",
+            "Since you prefer walking, consider charting a well-lit pedestrian-friendly path through quieter streets or park walkways and pairing it with a short bus ride if you want to shorten the distance. Use a walking directions app to gauge real-time pace and leave 5–10 minutes early to accommodate traffic signals or unexpected detours.",
+            "Consider taking the express train that runs every six minutes during the morning peak and pairing it with a short shared e-scooter ride from the station to your office. Use a real-time transit app to track schedules and service alerts, and aim to leave 5–10 minutes earlier to buffer against any unexpected delays."
+          ]
+        },
+        {
+          "preference": "The user enjoys small dogs and sharing cute puppy photos.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "I just snapped this shot of my tiny puppy sprawled out belly-up on my arm—why do dogs often sleep like this, and what does it say about how comfortable or secure they feel?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "When a dog—especially a small breed puppy—tosses itself onto its back and snoozes with its legs in the air, it’s actually offering you a powerful signal of trust and relaxation. Here’s what’s going on under the surface:\n\n1. Vulnerable Posture, Maximum Trust  \n   Belly-up is one of the most exposed positions a dog can take. Their chest, throat and vital organs are completely unprotected when they lie this way. By doing it in your arms, your puppy is communicating that it feels safe with you and doesn’t need to stay on alert. This shows a high level of comfort and security in your presence.\n\n2. Temperature Regulation  \n   Puppies—with their thinner coats and higher metabolisms—can overheat easily. Belly-up allows more of their skin to air out and cool down quickly, because the fur is usually thinner on their underside. If your pup has been playing hard or you’re in a warm room, sprawling on its back helps it shed heat.\n\n3. Muscle Relaxation & Joint Comfort  \n   Lying flat on their back with limbs splayed takes strain off muscles and joints, which can be soothing for growing puppies. This posture relieves tension in the spine and shoulders—areas that can get tight when they’re learning to hold themselves up and wag their tails.\n\n4. Puppy Development & Social Bonding  \n   In litters, very young puppies often pile together, and those on the bottom or inside of the pile end up flushed onto their backs. Over time, that position becomes associated with warmth and companionship. When your puppy lies belly-up on you, it’s tapping into that same cozy feeling it remembers from its littermates.\n\n5. Reading the Signs  \n   • If your puppy snoozes belly-up with completely loose, floppy legs and a gentle breath, it’s a sign of deep sleep and calm.  \n   • If the legs are rigid or the eyes stay half-open, your pup might be startled or still semi-alert—bear in mind that puppies can drift between light and deep sleep quickly.  \n\nHow to Respond  \n   • Gently support its head and hips so the spine stays comfortable.  \n   • Make sure your arm isn’t cutting off circulation—if the pup shifts, allow it to roll over onto a softer surface.  \n   • Use this bonding moment to quietly speak or stroke its belly, reinforcing the sense of safety.\n\nIn short, belly-up snoozes are one of the cutest—and clearest—ways your puppy tells you, “I trust you completely.” Enjoy these moments, because nothing says “home” more than that little pup kicking back in total peace on your arm."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "I recently adopted a puppy and want to make sure I set up a healthy feeding routine—how many meals a day should it have, and what types of food and treats should I include in its diet?",
+          "correct_answer": "As a small-dog lover who can’t resist snapping cute puppy pics, feed your new pup four small meals a day of high-quality kibble formulated for toy breeds. Supplement with a few tiny soft training treats—like pea-and-chicken bites—so you can reward good behavior without overfeeding or sacrificing photo opportunities.",
+          "incorrect_answers": [
+            "As a vintage tech memorabilia collector, feed your new pup four small meals a day of high-quality kibble formulated for toy breeds. Supplement with a few tiny soft training treats—like pea-and-chicken bites—so you can reward good behavior without overfeeding or sacrificing photo opportunities.",
+            "As someone who enjoys mainstream pop and acoustic music, feed your new pup four small meals a day of high-quality kibble formulated for toy breeds. Supplement with a few tiny soft training treats—like pea-and-chicken bites—so you can reward good behavior without overfeeding or sacrificing photo opportunities.",
+            "Feed your new puppy four small meals a day of high-quality puppy-formula kibble suited to its size. Add a few small soft training treats—such as pea-and-chicken bites—between meals to reinforce good behavior without overfeeding."
+          ]
+        },
+        {
+          "preference": "The user enjoys high-adrenaline motocross and dirt bike racing.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Given the rough dirt track, flying mud, and the rider on an off-road motorcycle, which high-adrenaline motorsport is depicted in this image?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_motorcycle/COCO_train2014_000000168627.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "This image shows a motocross event, which is an adrenaline-packed form of off-road dirt bike racing."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_motorcycle/COCO_train2014_000000168627.jpg",
+          "user_query": "I’m looking for an outdoor activity that’s physically intense, technically challenging, and gives a real sense of speed and excitement. What sports or hobbies fit that bill, and how can I get started safely?",
+          "correct_answer": "For an intense outdoor thrill that pushes your fitness and skills, you could try downhill mountain biking, which offers plenty of speed and technical riding. To get started, rent or buy a trail bike, sign up for an introductory riding clinic, and always wear a helmet and protective pads. Begin on beginner-friendly trails and gradually progress to more advanced runs.",
+          "incorrect_answers": [
+            "Since you already love motocross and dirt bike racing, you might enjoy downhill mountain biking, which delivers similar high-speed thrills and technical riding. Begin with a well-maintained trail bike, attend a local skills clinic, and invest in full protective gear—helmet, pads, and gloves. Start slowly on easier trails before tackling more challenging descents.",
+            "Since you seek that same off-road adrenaline you get from motocross and dirt biking, downhill mountain biking could be a great fit—it’s physically intense, technically demanding, and gives you a real sense of speed. Get started by choosing a suitable trail bike, enrolling in an entry-level workshop, and wearing proper protective gear like a full-face helmet and pads. Ease in on beginner-friendly trails before moving to steeper, rockier terrain.",
+            "If you’re into aggressive off-road riding and crave technical challenges and speed, give downhill mountain biking a try—it’s like motocross on two wheels without an engine. Kick off with a sturdy mountain bike, take a basic downhill course, and suit up in protective gear including a full-face helmet, knee and elbow pads. Practice on mellow slopes before advancing to steeper, trickier trails."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Loves craft coffee from independent cafes",

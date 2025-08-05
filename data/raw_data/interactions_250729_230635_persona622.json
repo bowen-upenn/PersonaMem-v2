@@ -135,7 +135,237 @@
       "Uses version control with minimal commit messages for a streamlined process": "Uses version control with detailed commit messages for a comprehensive process."
     },
     "conversations": {
-      "multimodal": [],
+      "multimodal": [
+        {
+          "preference": "The user prefers using Apple MacBook laptops.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my workspace, I was using my MacBook Pro alongside a friend’s older model—how have the hardware and thermal designs changed between these two generations to affect sustained performance during heavy coding sessions?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_couch/COCO_train2014_000000133384.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That’s an excellent question. Apple’s MacBook line has undergone several key design evolutions over the years, especially in terms of hardware architecture and thermal management, both of which critically influence sustained performance under heavy loads like long coding or compiling tasks. Let’s break down the main areas of change:\n\n1. Processor Architecture and Efficiency\n   • Older MacBooks often used Intel’s 5th- or 7th-generation Core CPUs, built on a 14–16 nm manufacturing process. Newer MacBook Pros have transitioned to Apple’s own M1, M2, and subsequent Silicon chips, built on a much more efficient 5 nm process. This smaller fabrication node allows Apple Silicon to deliver higher transistor density, better power efficiency, and ultimately more sustained performance without generating excessive heat.\n   • Apple’s in-house chips integrate CPU, GPU, and Neural Engine onto a single “system on a chip” (SoC). This unified architecture reduces latency between components and optimizes power distribution, whereas older Intel-based MacBooks had discrete CPU and GPU modules that consumed more power and produced more heat under load.\n\n2. Thermal Design and Cooling Systems\n   • The Intel-based MacBook Pros relied on small, high-RPM fans and heat pipes to dissipate heat. While effective for moderate workloads, these designs could hit thermal limits quickly under prolonged, heavy CPU or GPU use, leading to thermal throttling (automatic reduction of clock speeds to prevent overheating).\n   • Apple Silicon MacBooks use a combination of passive heat spreaders, larger heat sinks, and carefully tuned fan curves (in models that still include fans). The improved SoC efficiency means less heat is produced per unit of performance. Even the fanless MacBook Air variants maintain surprisingly high sustained performance before passive cooling limits are reached.\n   • The newer chassis designs also incorporate improved airflow channels and thinner yet more conductive materials, enabling the device to stay cooler under continuous loads.\n\n3. Battery and Power Delivery\n   • With Intel chips, high thermal output meant the power delivery system had to juggle between performance and battery life, often throttling down under intensive tasks to preserve thermals and battery health.\n   • Apple Silicon’s high performance-per-watt ratio allows the same battery capacity to power more demanding workloads for longer periods without sacrificing sustained clock speeds. This improvement dramatically benefits developers who compile large codebases or run containerized development environments on battery power.\n\n4. Unified Memory Architecture (UMA)\n   • In Intel MacBooks, CPU and GPU each had separate memory pools. Under graphics-heavy operations or parallel workloads (common when running simulations or game engines), memory bandwidth constraints could become bottlenecks.\n   • Apple’s UMA shares a single pool of high-bandwidth LPDDR memory between CPU, GPU, and other processors. This arrangement eliminates redundant data copies and accelerates tasks that move large amounts of data back and forth, improving performance consistency during sustained high-demand scenarios.\n\n5. Real-World Impact for Developers\n   • On an Intel-based MacBook, you might notice fan noise ramping up quickly during a big compile or a Docker container build, followed by occasional slowdowns as the system throttles to cool itself.\n   • On a modern Apple Silicon MacBook, you’ll experience much quieter operation and clock speeds that remain high for longer, meaning faster compile times, more responsive IDE interactions, and smoother multitasking when you’re running local servers, simulators, or virtual machines alongside your code editor.\n\nIn summary, the shift from Intel to Apple Silicon, along with refined thermal engineering and unified memory design, has significantly improved sustained performance in recent MacBook Pros. For developers, this translates into quieter fans, fewer throttle-induced slowdowns, and longer battery life when tackling resource-intensive tasks over extended sessions."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_couch/COCO_train2014_000000133384.jpg",
+          "user_query": "I’m a freelance designer looking for a portable computer that can handle heavy creative apps like Photoshop and Illustrator smoothly, with long battery life for working on the go—what specs should I focus on, and are there any specific models you’d recommend?",
+          "correct_answer": "Since you’re a MacBook fan, I’d recommend the 14-inch MacBook Pro with the M2 Pro chip, 16GB of RAM, and a 1TB SSD—this configuration runs Photoshop and Illustrator flawlessly and delivers up to 18 hours of battery life. Its compact design keeps your freelance workflow agile on the road.",
+          "incorrect_answers": [
+            "As a Linux enthusiast, you might enjoy the Framework Laptop 13 with an Intel Core i7, 32GB RAM, and a 1TB NVMe drive—its modular design and Ubuntu certification ensure smooth creative performance, and the swappable battery can net you around 12–14 hours on the go.",
+            "If you favor high-end gaming performance, the Razer Blade 14 with AMD Ryzen 9, 16GB RAM, and a 1TB SSD is a great pick—its RTX-series GPU accelerates Photoshop and Illustrator, and with Optimus mode, you can still get about 8–10 hours of battery life.",
+            "For heavy creative apps like Photoshop and Illustrator, you’ll want a laptop with a strong CPU (Intel Core i7/Ryzen 9 or Apple M2 Pro), at least 16GB of RAM, a fast 1TB SSD, and 10+ hours of battery life. Models such as the MacBook Pro, Dell XPS 13, and HP Spectre x360 are excellent choices for balancing power and portability."
+          ]
+        },
+        {
+          "preference": "The user enjoys snacking on fresh fruit, such as bananas and strawberries, while working.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In the snapshot I took of my desk, I often rest my banana and strawberry right on the laptop keyboard so they’re always within reach while I code. What are some best practices for enjoying fresh fruit at my workstation without risking sticky residue, accidental spills, or long-term damage to my keyboard?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000420523.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "You’ve captured a relatable setup—having fresh fruit close by can be a healthy, energizing way to snack through a long coding session. To keep your keyboard and work area safe while still enjoying those bananas and strawberries, consider these layered strategies:\n\n1. Use a Dedicated Snack Plate or Silicone Mat  \n   • Place a small, washable plate or a silicone snack mat next to (rather than on) your keyboard. This keeps fruit elevated and contains any juices or crumbs.  \n   • Silicone mats are easy to wipe clean and provide a non-slip surface for cut fruit pieces.  \n\n2. Pre-Prep Your Fruit  \n   • Slice your banana into bite-size rounds and hull or quarter strawberries in advance. Pre-cut fruit reduces the chance you’ll press keys with sticky fingers.  \n   • Store pre-cut fruit in a small covered container; scoop out one or two pieces at a time.  \n\n3. Protect Your Keyboard  \n   • Invest in a thin, transparent keyboard cover or silicone keyboard protector. These are inexpensive and guard against liquid seepage, while still letting you type comfortably.  \n   • If you don’t want a full cover, use a folded microfiber cloth or paper towel under the fruit plate to soak up stray drips and prevent moisture from migrating under the keys.  \n\n4. Maintain Good Hygiene and Cleaning Habits  \n   • Keep a pack of unscented wipes or a small spray bottle of isopropyl alcohol (70%) on your desk. Quickly wipe down keys and palms of your hands after snacking.  \n   • At the end of each workday, gently remove the keyboard cover (if used) and clean it, then give the keyboard itself a quick compressed-air blast to dislodge any tiny fruit particles.  \n\n5. Optimize Ergonomics and Workflow  \n   • Position your snack plate slightly to one side or above the number pad, so you don’t have to reach over your main typing zone.  \n   • Use one hand for snacking and the other for typing whenever possible. This minimizes cross-contamination of sticky residues on keycaps.  \n\n6. Consider Alternative Holding Tools  \n   • Small, handheld tongs or fruit forks allow you to grab pieces without touching the fruit directly, which can be especially helpful if you like to keep your keyboard pristine.  \n\n7. Stay Mindful of Juiciness and Timing  \n   • Bananas aren’t too messy, but strawberries can burst unexpectedly. If you’re debugging a critical issue, you might switch to less-juicy fruits (like grapes or apple slices) until you wrap up.  \n\nBy combining a protective keyboard barrier, a designated snack zone, and quick cleaning routines, you’ll be able to keep fresh fruit at arm’s reach without worrying about spills or stickiness. This way, your healthy snacking habit can coexist harmoniously with a productive, damage-free coding environment."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000420523.jpg",
+          "user_query": "What are some quick, nutritious snacks I can keep at my desk to maintain energy and focus during long work sessions?",
+          "correct_answer": "Since you enjoy fresh fruit like bananas and strawberries, keep a small bowl of apple slices, a cup of mixed berries, and a handful of raw almonds at your desk. These snacks combine natural sugars, fiber, and protein for sustained energy without the crash.",
+          "incorrect_answers": [
+            "Since you enjoy savory nuts and seeds, keep a small bowl of roasted almonds, a cup of pumpkin seeds, and a handful of pistachios at your desk. These snacks combine healthy fats, protein, and fiber for sustained energy without the crash.",
+            "Since you enjoy energy bars and protein bites, keep a small bowl of granola clusters, a cup of protein balls, and a handful of trail mix at your desk. These snacks combine carbs, protein, and healthy fats for sustained energy without the crash.",
+            "Keep a small bowl of apple slices, a cup of Greek yogurt, and a handful of raw nuts at your desk. These snacks combine natural sugars, protein, and healthy fats for sustained energy without the crash."
+          ]
+        },
+        {
+          "preference": "The user likely enjoys cats and cat-related content.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my cat sprawled across my laptop, I’m curious: what makes laptops so irresistible to cats beyond just the warmth? Are there factors like texture or attention-seeking that explain this behavior?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_laptop/COCO_train2014_000000145629.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Cats are drawn to laptops for a combination of reasons, and warmth is only part of the story. Let’s break down the main factors:\n\n1. Heat Source:\n   – Laptops generate gentle, consistent heat from their processors and batteries. Cats naturally seek out warm spots to conserve energy and regulate their body temperature. A laptop’s warmth feels cozy, much like a sunbeam or a heated cat bed.\n\n2. Elevated Perch & Territory:\n   – Keyboards and laptop surfaces sit slightly above the desk, giving cats a better vantage point. By perching on your laptop, they can survey the room and mark it as part of their territory—cats have scent glands in their paws, and stepping or lying on an object tells other animals, “This is mine.”\n\n3. Texture & Sensory Feedback:\n   – The smooth, slightly rubbery feel of keys and the subtle contour of the trackpad can be pleasant under their paws. Some cats enjoy the gentle vibrations and the light clicking sounds as a kind of tactile and auditory stimulation.\n\n4. Social Attention & Bonding:\n   – When you’re working, your focus is on the screen, not on your cat. By positioning themselves directly under your hands, they ensure you can’t ignore them. This is a clever attention-seeking strategy—many cats learn that sitting on your keyboard or blocking the screen quickly earns them pets, chatter, or a break for play.\n\n5. Novelty & Curiosity:\n   – A running laptop is alive with lights, sounds, and movement on the screen. Cats are naturally inquisitive, and a flickering display or the sound of typing can spark their interest. Investigating this strange, dynamic object satisfies their curiosity.\n\nTips to Redirect This Behavior:\n\n• Offer a Warm Alternative: Place a self-heating pet bed or a warmed mat near your workspace. Cats tend to transfer their loyalty if you match both the heat and your presence.\n\n• Provide Elevated Perches: Install a cat shelf or window perch at desk height. Cats still get the benefit of a high vantage point without commandeering your keyboard.\n\n• Engage with Interactive Toys: Keep a few of your cat’s favorite toys nearby. Automated toys or puzzle feeders can capture their attention and reduce their interest in your laptop.\n\n• Schedule Pre-Work Playtime: Spend 5–10 minutes in a focused play session before you start working. This gives your cat some quality attention up front, so they’re less likely to demand it mid-task.\n\n• Use Gentle Deterrents: A lightweight document holder or a laptop stand can make the keyboard less accessible. When your cat hops on, gently move them to their bed and reward them with a treat when they stay there.\n\nBy understanding these layered motivations—warmth, territory marking, sensory stimulation, and social bonding—you can better accommodate your cat’s needs while protecting your workflow. With consistent redirection and environmental enrichment, your kitty can have an equally inviting spot next to your laptop without interrupting your work."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_laptop/COCO_train2014_000000145629.jpg",
+          "user_query": "I’m looking for some fun DIY gift ideas that feel personal and unique—what kinds of projects or themes would you recommend, and do you have any tips to make them extra special?",
+          "correct_answer": "Try painting a custom cat portrait on a small canvas or creating a set of clay paw-print ornaments, then embellish each piece with your friend’s cat’s name in metallic paint for that extra special personal touch.",
+          "incorrect_answers": [
+            "Try making a homemade coffee-scented candle or packaging a DIY coffee scrub in a repurposed jar, then add a personalized label featuring their favorite blend for that extra cozy vibe.",
+            "Try assembling a miniature terrarium in a decorative jar or hand-painting cute succulent planters, then attach a handwritten care tag tied with twine to make it truly unique.",
+            "Try creating a personalized photo collage in a handmade frame or painting a small wooden keepsake box, then finish it off with a handwritten note or a dash of their favorite scent to make it unforgettable."
+          ]
+        },
+        {
+          "preference": "The user enjoys playing the online virtual world Second Life.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my Second Life setup, the HUD and chat windows look washed-out and hard to read in this lighting—what viewer or in-world settings can I tweak to boost interface contrast and legibility without breaking immersion?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/couch_laptop/COCO_train2014_000000474562.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Second Life’s viewer offers a number of ways to improve UI readability while still keeping your on-screen elements integrated into the virtual world. Here are several approaches you can try:\n\n1. Adjust UI Scale and Fonts\n   • In most viewers (Viewer 3, Firestorm, etc.), go to Me → Preferences → Interface (or Accessibility) and increase the “UI Scale” or “Font Size.” That will enlarge your HUD labels, chat text, and all interface widgets.\n   • Many third-party viewers let you choose custom fonts; switching to a highly legible sans-serif font at a slightly heavier weight can make text pop against busy backdrops.\n\n2. Tweak Brightness, Gamma, and Contrast\n   • Under Me → Preferences → Graphics, you’ll find sliders for Brightness, Gamma, and Contrast. Raising Contrast and lowering Gamma slightly can help HUD backgrounds stay darker while text remains crisp and bright.\n   • If you use the Firestorm viewer, there’s an advanced “Color Correction” panel (Preferences → Display → Advanced) where you can fine-tune hue, saturation, and individual RGB curves to make interface panels more distinct.\n\n3. Use Semi-Opaque HUD Backgrounds\n   • In the same Graphics or Interface settings, look for “HUD opacity” controls—these allow you to set a solid or semi-opaque background on chat and status panels, reducing bleed-through from your world view.\n   • You can also right-click on individual HUD elements, choose “Edit,” and in the mini-editor set the panel’s background transparency to something like 80% so text sits on a darker backdrop.\n\n4. Install or Create a Custom UI Skin\n   • Many Second Life communities offer custom UI skins (often called “Phoenix skins” or “Firestorm themes”) that apply high-contrast color schemes to windows and buttons. Download one of these community-created themes and apply it via the Viewer → Preferences → Skins panel.\n   • If you’re comfortable editing XML/CSS files, you can even tweak your own skin: locate the “skins” folder in your viewer install directory, duplicate a theme, and modify button and panel color values until you get the contrast you like.\n\n5. Leverage Chat and IM Color Settings\n   • Chat readability can be boosted by changing the default chat bubble color and text color. Right-click the chat window, choose Appearance Settings, then pick darker bubble fills or brighter text hues.\n   • You can also enable “Chat log to file” and switch to a separate text viewer if you want maximum clarity—though this sacrifices in-world immersion, it can be handy for reading long threads.\n\n6. Experiment with Lighting in Your Physical Space\n   • Since your image shows a dim living-room setup, sometimes adding a small bias light behind your laptop or using a desk lamp angled away from the screen can improve contrast perception without altering in-game settings.\n\nPutting it all together:\n1. Boost your UI scale and font size by 10–20%.  \n2. Increase contrast and tweak gamma so panel backgrounds are darker and text stands out.  \n3. Add a semi-opaque background to HUD elements, whether via global settings or per-HUD adjustments.  \n4. Try a high-contrast skinned theme from the viewer community or tweak your own.  \n5. Customize chat bubble and text colors for maximum legibility.  \n6. Finally, optimize your real-world lighting to further reduce screen glare.\n\nWith these tweaks, you should be able to enjoy crisp, easy-to-read HUDs and chat windows in Second Life without sacrificing the immersive in-world experience you love."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/couch_laptop/COCO_train2014_000000474562.jpg",
+          "user_query": "I’ve been exploring virtual world platforms lately and I’m looking for creative, social activities to keep things interesting. Can you suggest some engaging projects or events I could try?",
+          "correct_answer": "In Second Life, you could host a themed art exhibit where friends contribute interactive builds. You might also join live music and dance events, which are great for meeting other residents and sparking creativity.",
+          "incorrect_answers": [
+            "In Minecraft, you could host a pixel-art build competition where friends craft themed sculptures. You might also join community adventure map nights, which are great for exploring together and showcasing creativity.",
+            "In VRChat, you could organize a private world-building session where friends collaborate on immersive scenes. You might also join avatar fashion shows or virtual karaoke nights, which are great for socializing and sharing styles.",
+            "In many virtual worlds, you could host collaborative build challenges where friends create themed environments. You might also join virtual concerts or interactive game nights, which are great for meeting new people and sparking creativity."
+          ]
+        },
+        {
+          "preference": "The user enjoys preparing and eating healthy homemade meals featuring lean protein and grain-based salads.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this photo I took of my homemade dinner—grilled chicken with a quinoa-herb salad and dipping sauce—what could I add to boost both protein and fiber without making the meal feel heavy or adding much extra prep?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "That looks like a wonderfully balanced meal already! To gently ramp up protein and fiber while keeping everything light and quick, try one or two of these additions:\n\n1. Canned or Cooked Legumes\n  • Chickpeas or white beans: Rinse and stir in about ¼ cup per serving. They blend beautifully with quinoa, add chewy texture, and pack roughly 6–7 g of protein plus 5 g of fiber.  \n  • Edamame (shelled): Steam or microwave frozen edamame for 2–3 minutes, drain, and toss into your salad for an extra 8 g protein and 4 g fiber per handful.\n\n2. Seed Mix\n  • Pumpkin, sunflower, or hemp seeds: A tablespoon adds a nutty crunch, 3–5 g of protein, healthy fats, and around 1–2 g of fiber.  \n  • Chia or flax seeds: Stir in a teaspoon or two—these absorb a bit of the dressing, give a mild thickness to the sauce, and contribute omega-3s plus 2 g fiber per teaspoon.\n\n3. Quick Greens\n  • Baby spinach or arugula: Wilt a handful in the microwave or finely chop and toss raw. They add virtually no heaviness but deliver extra fiber, vitamins, and about 1–2 g of protein per cup.\n\n4. Greek-Yogurt–Based Drizzle\n  • Protein-rich swap: Blend plain Greek yogurt with lemon juice, garlic, and herbs in place of—or alongside—your dipping sauce. Two tablespoons add 4–6 g of protein and a creamy lift without weighing down the plate.\n\n5. Lean Seafood or Eggs (if you’d like variety)\n  • Flaked canned salmon or tuna: Stir a couple of tablespoons into the salad to add around 7 g of protein and a boost of omega-3s.  \n  • Soft-boiled egg: Halve and serve on top—an easy 6 g protein addition with minimal prep.\n\nPutting It All Together:\n• Pick one legume and one seed to mix into your quinoa salad; then top with a light swirl of Greek-yogurt dressing.  \n• Add a handful of greens on the side or lightly wilt them under your chicken while it rests.  \n• Finish with a sprinkle of seeds and a squeeze of lemon juice to brighten everything.\n\nThese tweaks only add a minute or two of hands-on time, and they’ll take your meal’s protein up into the 40–50 g range (depending on portions) plus a hearty 8–12 g of fiber—yet still keep it fresh, light, and homemade. Enjoy your next healthy dinner upgrade!"
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Perfect, thanks! I'd love to make that Greek yogurt–based drizzle. Could you share a quick recipe incorporating Greek yogurt, lemon, garlic, and perhaps chia or flax seeds? Also, how should I adjust the seasonings if I toss in chickpeas to keep the flavors balanced?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Certainly! Here’s a simple step-by-step for a hearty, seed-spiked Greek yogurt dressing and tips for balancing in chickpeas:\n\nQuick Greek Yogurt–Seed Drizzle\nIngredients:\n • ½ cup plain Greek yogurt\n • 1 tablespoon fresh lemon juice (about half a lemon)\n • 1 small garlic clove, minced\n • 1 teaspoon extra-virgin olive oil\n • 1 teaspoon chia seeds (or flaxmeal)\n • 1 tablespoon chopped fresh herbs (parsley, dill, or cilantro)\n • ⅛ teaspoon sea salt (adjust to taste)\n • Pinch of black pepper\n\nInstructions:\n1. In a small bowl, whisk together the Greek yogurt, lemon juice, minced garlic, and olive oil until smooth.\n2. Stir in chia (or flax) seeds and your chopped herbs.\n3. Season with salt and pepper. Let the dressing rest 5 minutes—this hydrates the seeds and mellows the garlic.\n4. Give it one more stir and drizzle over your quinoa salad or grilled chicken.\n\nAdjusting for Chickpeas:\n • Add ¼ to ⅓ cup cooked chickpeas straight into your salad mix before drizzling.  \n • Increase lemon juice by another teaspoon to brighten the extra starch.  \n • Add a ¼ teaspoon ground cumin or smoked paprika for warmth and depth—complements the chickpeas nicely.  \n • If it feels too thick, stir in 1–2 teaspoons of water or more olive oil to reach your desired consistency.\n\nThese tweaks keep everything light, fiber-packed, and bursting with fresh flavor. Enjoy!"
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000522129.jpg",
+          "user_query": "I’m trying to switch up my weekday lunch routine by batch-prepping a few meals on the weekend. What are some balanced, make-ahead recipes that stay fresh through the week?",
+          "correct_answer": "Consider grilling chicken breasts and mixing with quinoa, chopped cucumber, cherry tomatoes, and fresh parsley in individual containers, with lemon vinaigrette on the side. You could also roast salmon fillets and pair them with farro and steamed asparagus for a nutrient-packed option that reheats well. For a warming change, batch-cook a turkey-barley chili in jars—just reheat and top with avocado each day.",
+          "incorrect_answers": [
+            "Consider seasoning chicken thighs with chipotle and lime then mixing with cilantro-lime rice and black beans in prep containers, keeping salsa separate. You could also roast flank steak strips with fajita spices and serve over Spanish rice for a Tex-Mex twist that reheats perfectly. For a heartier soup, batch-cook a smoky black bean chili in mason jars and add shredded cheese before serving.",
+            "Consider tossing marinated tofu cubes with brown rice, edamame, and shredded carrot in stacked containers, storing toasted sesame-soy dressing aside. You could also steam teriyaki tempeh and serve with soba noodles and broccoli florets for an Asian-inspired lunch that holds up all week. To mix it up, prepare a miso-lentil soup in individual jars—just heat and garnish with green onions.",
+            "Consider grilling turkey burgers and serving with rice and mixed vegetables in freezer-safe containers, keeping condiments in separate cups. You could also bake fish fillets and pair them with quinoa and steamed broccoli for a satisfying reheat-friendly lunch. Finally, batch-cook a hearty vegetable stew or chili in mason jars—simply warm and enjoy with crusty bread."
+          ]
+        },
+        {
+          "preference": "The user enjoys small dog breeds, especially Chihuahuas.",
+          "pref_type": "multimodal",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Which small dog breed, often chosen for its compact size and suitability as a lap dog, is shown sleeping in the person's arms?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The dog appears to be a Chihuahua, a tiny breed known for settling comfortably in a lap."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "I’m considering adopting a dog but live in a small apartment and can’t commit to long daily walks. Which breeds tend to do well in that kind of environment and what should I know before choosing one?",
+          "correct_answer": "Small dog breeds such as French Bulldogs, Shih Tzus, and Pugs are well-suited for apartment living and typically require only brief daily walks. You should also consider that they can have specific health or grooming needs, so regular vet check-ups and some indoor playtime are essential.",
+          "incorrect_answers": [
+            "Since you love compact breeds like Chihuahuas, consider a French Bulldog, Pug, or Cavalier King Charles Spaniel—they adapt well to apartment life and only need short daily walks. Keep in mind these breeds can experience breathing issues or weight gain, so regular vet visits and indoor play sessions are key.",
+            "Given your fondness for pint-sized pups such as Chihuahuas, small, low-energy breeds like Pomeranians, Maltese, or English Bulldogs can thrive in limited space with brief outings. Be aware they often have grooming requirements or respiratory sensitivities, so plan for routine check-ups and interactive indoor play.",
+            "If you’re drawn to tiny companions like the Chihuahua, breeds such as Shih Tzus, Boston Terriers, or Miniature Pinschers make great apartment dogs with minimal exercise needs. Just remember these breeds may need extra dental care or early socialization, so schedule regular brushing and gentle training indoors."
+          ]
+        }
+      ],
       "personal_email": [
         {
           "preference": "Favors command-line tools over graphical interfaces",
