@@ -208,19 +208,35 @@ def get_persona_files_in_range(base_dir, base_name, start_idx=-1, end_idx=-1):
         end_idx (int): Ending persona index (-1 means all)
     
     Returns:
-        list: List of matching file paths
+        list: List of matching file paths sorted by persona index numerically
     """
     import glob
+    import re
     
     # Create pattern to match persona files
     pattern = os.path.join(base_dir, f"{base_name}_*persona*.json")
     all_files = glob.glob(pattern)
     
+    # Function to extract persona index from filename for sorting
+    def get_persona_index(file_path):
+        filename = os.path.basename(file_path)
+        match = re.search(r'_persona(\d+)\.json', filename)
+        return int(match.group(1)) if match else 0
+    
     if start_idx == -1 and end_idx == -1:
-        return sorted(all_files)
+        # Sort all files by persona index numerically
+        return sorted(all_files, key=get_persona_index)
 
     if end_idx == -1:
-        end_idx = len(all_files)
+        # Find the maximum persona index to set as end_idx
+        max_idx = 0
+        for file_path in all_files:
+            filename = os.path.basename(file_path)
+            match = re.search(r'_persona(\d+)\.json', filename)
+            if match:
+                persona_idx = int(match.group(1))
+                max_idx = max(max_idx, persona_idx)
+        end_idx = max_idx
     
     # Filter files by persona index
     print('start_idx', start_idx, 'end_idx', end_idx)
@@ -234,4 +250,5 @@ def get_persona_files_in_range(base_dir, base_name, start_idx=-1, end_idx=-1):
             if start_idx <= persona_idx <= end_idx:
                 filtered_files.append(file_path)
     
-    return sorted(filtered_files)
+    # Sort filtered files by persona index numerically
+    return sorted(filtered_files, key=get_persona_index)

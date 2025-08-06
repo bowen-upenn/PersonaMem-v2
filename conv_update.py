@@ -350,7 +350,7 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
         return element
     
 
-def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, verbose=False):
+def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, file_path, verbose=False):
     """
     Process all preferences and generate conversations for each aligned preference.
     
@@ -394,7 +394,9 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", []))
     ]:
-        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
+        persona_id = re.search(r'persona\d+', file_path).group()
+        print(f"Processing {pref_key} preferences for {persona_id}")
+        for pref_idx, pref in tqdm(enumerate(pref_list), total=len(pref_list)):
             llm.reset_history()
 
             try:
@@ -456,7 +458,7 @@ def update_aligned_preferences(final_json, conversations, updates):
     return final_json
 
 
-def process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose=False):
+def process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, file_path, verbose=False):
     """
     Process a single persona to generate all its interactions and conversations.
     
@@ -483,7 +485,7 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
             return None
 
     # Process preferences and generate conversations
-    conversations, updates = convert_preferences_to_conversations(llm, persona_str, final_json_response, implicit_types, self_verify, verbose)
+    conversations, updates = convert_preferences_to_conversations(llm, persona_str, final_json_response, implicit_types, self_verify, file_path, verbose)
 
     # Update aligned preferences
     # if updates is not an empty dict
@@ -506,11 +508,11 @@ def process_single_persona_thread(args):
     Returns:
         tuple: (idx, persona_id, final_json, full_path) or (idx, None, None, None) if failed
     """
-    idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
+    idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, file_path, verbose = args
     
     # try:
     # Process single persona
-    final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+    final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, file_path, verbose)
     
     if final_json is not None:
         persona_id = str(uuid4())
@@ -561,7 +563,7 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
         for i in range(num_persona):
             idx = persona_start_idx + i  # Use the adjusted index
             persona = random.choice(all_personas)
-            persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose))
+            persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, file_path, verbose))
         
         # Process personas in parallel batches
         max_workers = min(llm.rate_limit_per_min, num_persona)
@@ -683,7 +685,7 @@ def load_persona_data_from_file(file_path):
         return None, None, None, None
 
 
-def regenerate_conversations_for_data_types(llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, verbose=False):
+def regenerate_conversations_for_data_types(llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, verbose=False):
     """
     Regenerate conversations for specific data types while preserving all other data.
     
@@ -709,7 +711,7 @@ def regenerate_conversations_for_data_types(llm, persona_str, final_json_respons
     
     # Process preferences and generate new conversations only for specified data types
     new_conversations, updates = convert_preferences_to_conversations_selective(
-        llm, persona_str, final_json_response, data_types_to_update, self_verify, verbose
+        llm, persona_str, final_json_response, data_types_to_update, conversations, self_verify, file_path, verbose
     )
     
     # Update only the specified data types
@@ -720,16 +722,49 @@ def regenerate_conversations_for_data_types(llm, persona_str, final_json_respons
     return conversations, updates
 
 
-def convert_preferences_to_conversations_selective(llm, persona_str, final_json, data_types_to_update, self_verify, verbose=False):
+def collect_existing_preferences_from_conversations(conversations, data_types_to_update):
+    """
+    Collect all preferences that are already used in existing conversation types.
+    Only looks at conversation types that are NOT being updated.
+    
+    Args:
+        conversations: Existing conversations dict
+        data_types_to_update: List of data types being updated (preferences from these will be ignored)
+    
+    Returns:
+        set: Set of preference strings already used in existing conversation types
+    """
+    existing_preferences = set()
+    
+    for conversation_type, conversation_list in conversations.items():
+        # Skip multimodal and types being updated
+        if conversation_type == 'multimodal' or conversation_type in data_types_to_update:
+            continue
+            
+        # Collect preferences from this conversation type
+        for conversation_obj in conversation_list:
+            if 'preference' in conversation_obj:
+                existing_preferences.add(conversation_obj['preference'])
+                
+            # Also check for preferences in 'prev_pref' field (for updated preferences)
+            if 'prev_pref' in conversation_obj:
+                existing_preferences.add(conversation_obj['prev_pref'])
+    
+    return existing_preferences
+
+
+def convert_preferences_to_conversations_selective(llm, persona_str, final_json, data_types_to_update, existing_conversations, self_verify, file_path, verbose=False):
     """
     Process preferences and generate conversations only for specified data types.
     Modified version of convert_preferences_to_conversations that only generates specific data types.
+    Only works on preferences not already covered in existing conversation types.
     
     Args:
         llm: Language model instance
         persona_str: String representation of the persona
         final_json: Persona data
         data_types_to_update: List of data types to generate
+        existing_conversations: Existing conversations dict to check for already used preferences
         self_verify: Whether to verify preferences
         verbose: Whether to print verbose output
     
@@ -740,6 +775,12 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
     for type in data_types_to_update:
         conversations[type] = []
     updates = {}
+
+    # Collect preferences that are already used in existing conversation types (excluding those being updated)
+    existing_preferences = collect_existing_preferences_from_conversations(existing_conversations, data_types_to_update)
+    
+    if verbose:
+        print(f"Found {len(existing_preferences)} existing preferences to avoid: {list(existing_preferences)[:5]}..." if existing_preferences else "No existing preferences found to avoid")
 
     sensitive_info = final_json.get('sensitive_information', {})
     # Add conversations with sensitive information only if relevant data type is requested
@@ -774,9 +815,17 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", []))
     ]:
-        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
+        # Extract persona id from the full path
+        persona_id = re.search(r'persona\d+', file_path).group()
+        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for {persona_id}", total=len(pref_list)):
             llm.reset_history()
             try:
+                # Skip preferences that are already used in existing conversation types
+                if pref in existing_preferences:
+                    if verbose:
+                        print(f"Skipping preference already used: {pref[:50]}...")
+                    continue
+                
                 # Verify preference alignment
                 alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
 
@@ -788,23 +837,27 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
                         # Randomly choose whether this is others' preference
                         is_others_pref = random.random() < 0.33
                         
+                        # Each preference is randomly assigned to ONLY ONE of the available types
+                        selected_type = random.choice(available_types)
+                        
                         if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in available_types:
+                            # For knowledge queries, we might override the selected_type
+                            selected_type = 'knowledge_query'
                             element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
                         else:
-                            # Generate conversations for a random data type from available types
-                            type = random.choice(available_types)
-                            element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, verbose)
+                            # Generate conversations for the selected data type only
+                            element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, selected_type, conversations, is_others_pref, verbose)
 
                         has_asked_to_forget = False
                         if random.random() < 0.33 and not is_others_pref and element and available_types:
-                            type = random.choice(available_types)
-                            user_ask_to_forget(llm, element, conversations, type, verbose)
+                            # Use the same selected_type for consistency
+                            user_ask_to_forget(llm, element, conversations, selected_type, verbose)
                             has_asked_to_forget = True
 
                         # Generate preference updates
                         if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"] and not has_asked_to_forget and available_types:
-                            type = random.choice(available_types)
-                            generate_preference_updates(llm, persona_str, pref, pref_key, type, conversations, updates, is_others_pref, verbose)
+                            # Use the same selected_type for consistency
+                            generate_preference_updates(llm, persona_str, pref, pref_key, selected_type, conversations, updates, is_others_pref, verbose)
 
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
@@ -850,7 +903,7 @@ def update_single_persona_file(llm, file_path, data_types_to_update, image_match
     
     # Regenerate conversations for specified data types
     updated_conversations, updates = regenerate_conversations_for_data_types(
-        llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, verbose
+        llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, verbose
     )
     
     # Update the final_json_response with new conversations

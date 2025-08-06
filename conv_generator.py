@@ -394,7 +394,7 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", []))
     ]:
-        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
+         for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
             llm.reset_history()
 
             try:

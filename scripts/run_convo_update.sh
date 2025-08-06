@@ -5,8 +5,10 @@ python main.py \
   --step update_conv \
   --conv_output_dir data/raw_data/ \
   --data_types personal_email professional_email social_media_post \
-  --persona_start_idx 0 \
+  --persona_start_idx 20 \
   --persona_end_idx -1 \
+  --rate_limit_per_min 15 \
+  --parallel
 
 # Examples of specifying persona ranges:
 # --persona_start_idx 0 --persona_end_idx 49  # Update personas 0-49
