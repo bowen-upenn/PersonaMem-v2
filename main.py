@@ -9,6 +9,7 @@ from qa_generator import generate_qa
 from categorize_topic import categorize_topics
 from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
+from conv_update import update_conversations_for_data_types
 from query_llm import QueryLLM
 from image_matcher import ImageMatcher
 import utils
@@ -25,7 +26,7 @@ def main():
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
-    parser.add_argument('--step', type=str, default='generate_data', help='Choose generate_data, generate_qa, categorize_topics, build_context, or run_eval.')
+    parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, or run_eval.')
     parser.add_argument('--conv_output_dir', type=str, default='data/raw_data/', help='Set the directory for conversation data output')
     parser.add_argument('--qa_output_dir', type=str, default='data/raw_data/', help='Set the directory for QA data output')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
@@ -73,7 +74,7 @@ def main():
     image_matcher = ImageMatcher(llm)
     image_matcher.load_or_create_embeddings_cache()
 
-    if args['inference']['step'] == 'generate_data':
+    if args['inference']['step'] == 'generate_convo':
         # Create timestamped output path
         timestamped_path = utils.create_timestamped_filename(
             args['data']['conv_output_dir'], 
@@ -86,6 +87,32 @@ def main():
         output_dict = generate_interactions_from_persona(llm, all_personas, image_matcher, output_path=timestamped_path, implicit_types=args['data']['data_types'],
                                                          num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], 
                                                          parallel=args['inference']['parallel'], verbose=args['inference']['verbose'])
+    elif args['inference']['step'] == 'update_conv':
+        # Get persona files within the specified range
+        persona_files = utils.get_persona_files_in_range(
+            args['data']['conv_output_dir'],
+            'interactions',
+            args['data']['persona_start_idx'],
+            args['data']['persona_end_idx']
+        )
+        
+        if not persona_files:
+            print("No persona files found in the specified range.")
+            return
+        
+        print(f"Found {len(persona_files)} persona files to update conversations")
+        
+        # Update conversations for specified data types
+        update_conversations_for_data_types(
+            llm, 
+            persona_files, 
+            args['data']['data_types'], 
+            image_matcher,
+            args['data']['self_verify'],
+            parallel=args['inference']['parallel'], 
+            verbose=args['inference']['verbose']
+        )
+        
     elif args['inference']['step'] == 'generate_qa':
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(

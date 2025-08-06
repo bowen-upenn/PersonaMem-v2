@@ -57,7 +57,7 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
         prompt += f"""This preference was recently changed from its opposite, but you shall only reflect this change naturally and subtly.
         """
 
-    if type == 'personal_email' or type == 'professional_email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message':
+    if type == 'personal_email' or type == 'professional_email' or type == 'creative_writing' or type == 'professional_writing' or type == 'chat_message' or type == 'social_media_post':
         if type == 'professional_writing':
             type = 'professional writing related to their work'
         if (type == 'personal_email' or type == 'professional_email') and is_others_pref:
@@ -68,11 +68,12 @@ def generate_conversations(persona, preference, type, is_others_pref=False, rand
             The user request to explain the {type} received should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
             """
         else:
-            whose = "the user's first perspective" if is_others_pref else f"a third person's perspective and pick a random name as the author of this {type}, such that this {type} is not written by this user"
+            whose = "the user's first perspective" if not is_others_pref else f"a third person's perspective and pick a random name as the author of this {type}, such that this {type} is not written by this user"
             prompt += f"""
             Think about if the user can implicitly mention this preference when they ask ChatGPT to help improve the language in this {type}, and in the original {type}, the user somehow includes this information. 
             The {type} should use {whose}. Please write the user query to the model to refine this {type}, the {type}, and the refined {type}. 
             The user request to refine the {type} should be simple and realistic, without on purposely mentioning the specific preference we are testing here. 
+            Do not mention anything about being first or third person's perspective in the user query.
             """
     elif type == 'translation':
         random_languages = random.choice(['Chinese', 'Japanese', 'Hindi', 'Korean', 'French', 'Germany', 'Spanish', 'Arabic', 'Vietnamese', 'Italian', 'Thai', 'Portuguese', 'Hebrew', 'Ukrainian'])
