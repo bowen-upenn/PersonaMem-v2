@@ -57,6 +57,13 @@ source myenv/bin/activate
 pip install -r requirements.txt
 ```
 
+##### TODO 4 Human Eval
+- Does the conversation sound natural and realistic?
+- Can the ground truth user preference be inferred from the conversation?
+- Are the user query, correct answer, and incorrect answers well formatted?
+- Can the correct answer be inferred from the ground-truth user preference, but not from incorrect options?
+  
+
 ### ⚙️ API Keys Setup
 
 Configure your API credentials in the `.env` file, following examples in `.env.example`.
