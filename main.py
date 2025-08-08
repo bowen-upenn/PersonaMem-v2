@@ -66,101 +66,102 @@ def main():
     args['inference']['refresh_mem'] = cmd_args.refresh_mem if cmd_args.refresh_mem is not None else None
     print(args)
 
-    # Build persona and preferences
-    with open(args['data']['persona_path'], 'r') as file:
-        all_personas = file.readlines()
+    # # Build persona and preferences
+    # with open(args['data']['persona_path'], 'r') as file:
+    #     all_personas = file.readlines()
 
-    # Ensure data_types is always a list
-    if isinstance(args['data']['data_types'], str):
-        args['data']['data_types'] = [args['data']['data_types']]
+    # # Ensure data_types is always a list
+    # if isinstance(args['data']['data_types'], str):
+    #     args['data']['data_types'] = [args['data']['data_types']]
 
-    llm = QueryLLM(args, args['inference']['rate_limit_per_min'])
-    image_matcher = ImageMatcher(llm)
-    image_matcher.load_or_create_embeddings_cache()
+    # llm = QueryLLM(args, args['inference']['rate_limit_per_min'])
+    # image_matcher = ImageMatcher(llm)
+    # image_matcher.load_or_create_embeddings_cache()
 
-    if args['inference']['step'] == 'generate_convo':
-        # Create timestamped output path
-        timestamped_path = utils.create_timestamped_filename(
-            args['data']['conv_output_dir'], 
-            'interactions', 
-            '.json'
-        )
+    # if args['inference']['step'] == 'generate_convo':
+    #     # Create timestamped output path
+    #     timestamped_path = utils.create_timestamped_filename(
+    #         args['data']['conv_output_dir'], 
+    #         'interactions', 
+    #         '.json'
+    #     )
         
-        print(f"Saving interactions to: {timestamped_path}")
+    #     print(f"Saving interactions to: {timestamped_path}")
         
-        output_dict = generate_interactions_from_persona(llm, all_personas, image_matcher, output_path=timestamped_path, implicit_types=args['data']['data_types'],
-                                                         num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], 
-                                                         parallel=args['inference']['parallel'], verbose=args['inference']['verbose'])
-    elif args['inference']['step'] == 'update_conv':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'interactions',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
-        )
+    #     output_dict = generate_interactions_from_persona(llm, all_personas, image_matcher, output_path=timestamped_path, implicit_types=args['data']['data_types'],
+    #                                                      num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], 
+    #                                                      parallel=args['inference']['parallel'], verbose=args['inference']['verbose'])
+    # elif args['inference']['step'] == 'update_conv':
+    #     # Get persona files within the specified range
+    #     persona_files = utils.get_persona_files_in_range(
+    #         args['data']['conv_output_dir'],
+    #         'interactions',
+    #         args['data']['persona_start_idx'],
+    #         args['data']['persona_end_idx']
+    #     )
         
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
+    #     if not persona_files:
+    #         print("No persona files found in the specified range.")
+    #         return
         
-        print(f"Found {len(persona_files)} persona files to update conversations")
+    #     print(f"Found {len(persona_files)} persona files to update conversations")
         
-        # Update conversations for specified data types
-        update_conversations_for_data_types(
-            llm, 
-            persona_files, 
-            args['data']['data_types'], 
-            image_matcher,
-            args['data']['self_verify'],
-            persona_keys_to_add=args['data']['persona_keys_to_add'],
-            parallel=args['inference']['parallel'], 
-            verbose=args['inference']['verbose']
-        )
+    #     # Update conversations for specified data types
+    #     update_conversations_for_data_types(
+    #         llm, 
+    #         persona_files, 
+    #         args['data']['data_types'], 
+    #         image_matcher,
+    #         args['data']['self_verify'],
+    #         persona_keys_to_add=args['data']['persona_keys_to_add'],
+    #         parallel=args['inference']['parallel'], 
+    #         verbose=args['inference']['verbose']
+    #     )
         
-    elif args['inference']['step'] == 'generate_qa':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'interactions',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
-        )
+    # elif args['inference']['step'] == 'generate_qa':
+    #     # Get persona files within the specified range
+    #     persona_files = utils.get_persona_files_in_range(
+    #         args['data']['conv_output_dir'],
+    #         'interactions',
+    #         args['data']['persona_start_idx'],
+    #         args['data']['persona_end_idx']
+    #     )
         
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
+    #     if not persona_files:
+    #         print("No persona files found in the specified range.")
+    #         return
         
-        print(f"Found {len(persona_files)} persona files to process")
+    #     print(f"Found {len(persona_files)} persona files to process")
         
-        # QA pairs will be added directly to the original persona files in conv_output_dir
-        qa_output_path = args['data']['conv_output_dir']
+    #     # QA pairs will be added directly to the original persona files in conv_output_dir
+    #     qa_output_path = args['data']['conv_output_dir']
         
-        # Generate Q&A using the updated generate_qa function that supports parallel processing
-        generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], 
-                   verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
+    #     # Generate Q&A using the updated generate_qa function that supports parallel processing
+    #     generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], 
+    #                verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
 
-    elif args['inference']['step'] == 'categorize_topics':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'interactions',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
-        )
+    # elif args['inference']['step'] == 'categorize_topics':
+    #     # Get persona files within the specified range
+    #     persona_files = utils.get_persona_files_in_range(
+    #         args['data']['conv_output_dir'],
+    #         'interactions',
+    #         args['data']['persona_start_idx'],
+    #         args['data']['persona_end_idx']
+    #     )
         
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
+    #     if not persona_files:
+    #         print("No persona files found in the specified range.")
+    #         return
         
-        print(f"Found {len(persona_files)} persona files to categorize topics")
+    #     print(f"Found {len(persona_files)} persona files to categorize topics")
         
-        # Categorize topics using the categorize_topics function
-        categorize_topics(llm, persona_files, output_dir=None, parallel=args['inference']['parallel'], 
-                         verbose=args['inference']['verbose'], refresh_mem=args['inference']['refresh_mem'])
+    #     # Categorize topics using the categorize_topics function
+    #     categorize_topics(llm, persona_files, output_dir=None, parallel=args['inference']['parallel'], 
+    #                      verbose=args['inference']['verbose'], refresh_mem=args['inference']['refresh_mem'])
 
-    # Build long context
-    elif args['inference']['step'] == 'build_context':
+    # # Build long context
+    # elif args['inference']['step'] == 'build_context':
+    if args['inference']['step'] == 'build_context':
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(
             args['data']['conv_output_dir'],
@@ -175,14 +176,26 @@ def main():
         
         print(f"Found {len(persona_files)} persona files to build context from")
         
-        # Load and merge all persona data
-        merged_data = {}
+        # Process each persona file individually to preserve filename information
         for file_path in persona_files:
-            with open(file_path, 'r') as file:
-                file_data = json.load(file)
-                merged_data.update(file_data)
-        
-        build_context(merged_data, args['data']['context_length'])
+            print(f"\nProcessing {file_path}")
+            try:
+                with open(file_path, 'r') as file:
+                    file_data = json.load(file)
+                
+                # Build context for this individual persona file
+                build_context(file_data, args['data']['context_length'], input_filename=file_path)
+                
+            except json.JSONDecodeError as e:
+                print(f"ERROR: Failed to parse JSON in {file_path}")
+                print(f"JSON Error: {e}")
+                print(f"Skipping this file and continuing with next...")
+                continue
+            except Exception as e:
+                print(f"ERROR: Failed to process {file_path}")
+                print(f"Error: {e}")
+                print(f"Skipping this file and continuing with next...")
+                continue
 
     elif args['inference']['step'] == 'run_eval':
         pass
