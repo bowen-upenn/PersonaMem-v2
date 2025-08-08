@@ -310,6 +310,33 @@ def generate_sensitive_information():
     return prompt
 
 
+def generate_health_and_medical_conditions():
+    """
+    Generate additional personal health and medical related histories/conditions.
+    Mirrors style of generate_therapy_related_history. Adds a new key
+    "health_and_medical_conditions" whose value is a list of concise
+    strings (conditions, histories, lifestyle factors, treatments, risks, accommodations).
+    """
+    prompt = f"""
+    Given the persona and preferences above, propose 10 diverse personal medical related histories or conditions
+    of this person that could plausibly influence their future interactions with an AI assistant (e.g.,
+    illnesses, past acute events, surgeries, allergies, medications, prescriptions, disabilities, family and genetic disease). 
+
+    Requirements:
+    - Each item should be a concise and short.
+    - No obviously contradictory statements.
+    - Do NOT repeat identical wording; avoid duplicating content already present; ensure variety.
+    - Should feel realistic, not sensationalized.
+    - All medical conditions should be related to this person.
+    - Find unique conditions for this person.
+
+    Add them to the existing JSON under the key "health_and_medical_conditions" whose value is a list of strings.
+    Preserve all previously generated keys and their content.
+    Let us think step by step and output the full JSON in the end enclosed in ```json```.
+    """
+    return prompt
+
+
 def create_demographic_prompt():
     """
     Create a prompt for analyzing image demographics.
@@ -584,7 +611,7 @@ def categorize_preference_topic(preference, existing_topics):
     else:
         existing_section = "**Existing Topics:** None (this is the first preference being categorized)"
     
-    prompt = f"""You are categorizing user preferences into simple topic categories.
+    prompt = f"""You are categorizing user preferences into simple topic categories. Existing topics:
 
     {existing_section}
 
@@ -594,8 +621,52 @@ def categorize_preference_topic(preference, existing_topics):
     1. Read the preference and identify its main topic/theme
     2. Look at the existing topics above
     3. Either choose the most appropriate existing topic OR create a new simple topic name
-    4. Keep topic names simple and broad (1-2 words): food, sports, technology, pets, study, work, travel, entertainment, health, etc.
+    4. Merge redundant or overlapping topics, if necessary, avoiding creating an overly long list of existing topics 
+    5. Keep topic names simple and broad (1-2 words): food, sports, technology, pets, study, work, travel, entertainment, health, etc.
+    6. Use noun, not adjective.
 
     Think step by step and return the topic name after ###Output."""
     
     return prompt
+
+
+def recategorize_least_frequent_topic(current_topic, current_count, all_topics_str, preference_example):
+    """
+    Generate a prompt to re-categorize a least frequent topic by asking the LLM 
+    if it wants to merge with a more frequent category or keep the current one.
+    
+    Args:
+        current_topic: The current topic name (one of the least frequent)
+        current_count: The count of occurrences for this topic
+        all_topics_str: Formatted string of all existing topics with counts
+        preference_example: An example preference that was categorized as this topic
+        
+    Returns:
+        str: The prompt for the LLM
+    """
+    
+    prompt = f"""You are reviewing topic categorization quality. A topic category has been identified as one of the LEAST FREQUENT categories and MIGHT need re-categorization.
+
+**Current Topic:** "{current_topic}" (only {current_count} occurrences)
+**Example preference in this category:** "{preference_example}"
+
+**All existing topic categories:**
+{all_topics_str}
+
+**IMPORTANT:** This "{current_topic}" category is among the 10% least frequent categories in our dataset, suggesting it might be too specific or could be merged with a more general category.
+
+**Instructions:**
+1. Consider if "{current_topic}" is too narrow/specific
+2. Look at all the other categories above
+3. Decide if this topic should be:
+   - MERGED with one of the existing frequent categories (specify which one)
+   - KEPT as is (if it represents a truly distinct topic that shouldn't be merged)
+
+**Your decision should be based on:**
+- Semantic similarity with existing frequent topics
+- Whether the current topic is conceptually distinct enough to warrant its own category
+- Whether merging would improve overall categorization quality
+
+Think step by step and return your decision after ###Output in this format:
+- If merging: "MERGE: [target_topic_name]"
+- If keeping: "KEEP: {current_topic}" """

@@ -641,51 +641,68 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     return output_dict
 
 
-def load_persona_data_from_file(file_path):
+def load_persona_data_from_file(file_path, llm=None, persona_keys_to_add=None, verbose=False):
     """
     Load persona data from a JSON file and separate persona_str and final_json_response.
-    
+    Optionally add new persona keys (e.g., health_and_medical_conditions) by querying LLM.
+
     Args:
         file_path: Path to the persona JSON file
-    
+        llm: QueryLLM instance (required if persona_keys_to_add is not None)
+        persona_keys_to_add: list of keys to add (currently supports ["health_and_medical_conditions"])
+        verbose: verbosity
     Returns:
         tuple: (persona_str, final_json_response, persona_id, conversations) or (None, None, None, None) if failed
     """
     try:
         with open(file_path, 'r') as f:
             data = json.load(f)
-        
-        # Get the first (and should be only) persona ID and data
         persona_id = list(data.keys())[0]
         persona_data = data[persona_id]
-        
-        # Extract persona string (everything before stereotypical_preferences)
+
+        # Build persona_str (content before stereotypical_preferences as before)
         persona_dict = {}
         for key, value in persona_data.items():
             if key == 'stereotypical_preferences':
                 break
             persona_dict[key] = value
-        
         persona_str = json.dumps(persona_dict, ensure_ascii=False)
-        
-        # Extract final_json_response (everything before conversations)
+
+        # Build final_json_response (content before conversations)
         final_json_response = {}
         for key, value in persona_data.items():
             if key == 'conversations':
                 break
             final_json_response[key] = value
-        
-        # Extract existing conversations
+
         conversations = persona_data.get('conversations', {})
-        
+
+        # Add new persona keys if requested
+        if persona_keys_to_add and llm is not None:
+            for key_to_add in persona_keys_to_add:
+                if key_to_add == 'health_and_medical_conditions':
+                    # Construct prompt by prepending existing persona_str
+                    llm.reset_history()
+                    prompt = persona_str + "\n" + prompts.generate_health_and_medical_conditions()
+                    try:
+                        resp = llm.query_llm(prompt, use_history=False, verbose=verbose)
+                        resp_json = utils.extract_json_from_response(resp)
+                        # Merge only the new key if present
+                        if 'health_and_medical_conditions' in resp_json:
+                            final_json_response['health_and_medical_conditions'] = resp_json['health_and_medical_conditions']
+                            if verbose:
+                                print(f"Added health_and_medical_conditions to {file_path}")
+                    except Exception as e:
+                        if verbose:
+                            print(f"Failed adding {key_to_add} for {file_path}: {e}")
+
         return persona_str, final_json_response, persona_id, conversations
-        
     except Exception as e:
         print(f"Error loading persona data from {file_path}: {e}")
         return None, None, None, None
 
 
-def regenerate_conversations_for_data_types(llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, verbose=False):
+def regenerate_conversations_for_data_types(llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, persona_keys_to_add=None, verbose=False):
     """
     Regenerate conversations for specific data types while preserving all other data.
     
@@ -702,16 +719,17 @@ def regenerate_conversations_for_data_types(llm, persona_str, final_json_respons
     Returns:
         dict: Updated conversations
     """
-    # Clear conversations for data types we're updating
-    for data_type in data_types_to_update:
-        if data_type in conversations:
-            conversations[data_type] = []
-        else:
-            conversations[data_type] = []
+    if not persona_keys_to_add:
+        # Clear conversations for data types we're updating
+        for data_type in data_types_to_update:
+            if data_type in conversations:
+                conversations[data_type] = []
+            else:
+                conversations[data_type] = []
     
     # Process preferences and generate new conversations only for specified data types
     new_conversations, updates = convert_preferences_to_conversations_selective(
-        llm, persona_str, final_json_response, data_types_to_update, conversations, self_verify, file_path, verbose
+        llm, persona_str, final_json_response, data_types_to_update, conversations, self_verify, file_path, persona_keys_to_add, verbose
     )
     
     # Update only the specified data types
@@ -753,7 +771,7 @@ def collect_existing_preferences_from_conversations(conversations, data_types_to
     return existing_preferences
 
 
-def convert_preferences_to_conversations_selective(llm, persona_str, final_json, data_types_to_update, existing_conversations, self_verify, file_path, verbose=False):
+def convert_preferences_to_conversations_selective(llm, persona_str, final_json, data_types_to_update, existing_conversations, self_verify, file_path, persona_keys_to_add=None, verbose=False):
     """
     Process preferences and generate conversations only for specified data types.
     Modified version of convert_preferences_to_conversations that only generates specific data types.
@@ -810,11 +828,20 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
                 except json.JSONDecodeError as e:
                     print(f"Failed to parse knowledge query response: {e}")
 
-    for pref_key, pref_list in [
-        ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
-        ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
-        ("therapy_background", final_json.get("therapy_background", []))
-    ]:
+    if persona_keys_to_add:
+        persona_features = [
+            ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
+            ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
+            ("therapy_background", final_json.get("therapy_background", []))
+        ]
+    else:
+        if isinstance(persona_keys_to_add, str):
+            persona_keys_to_add = [persona_keys_to_add]
+        for key in persona_keys_to_add:
+            persona_features.append((key, final_json.get(key, [])))
+    print('Keys in persona_features', [k for k, _ in persona_features])
+
+    for pref_key, pref_list in persona_features:
         # Extract persona id from the full path
         persona_id = re.search(r'persona\d+', file_path).group()
         for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for {persona_id}", total=len(pref_list)):
@@ -876,14 +903,15 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
     return conversations, updates
 
 
-def update_single_persona_file(llm, file_path, data_types_to_update, image_matcher, self_verify, verbose=False):
+def update_single_persona_file(llm, file_path, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose=False):
     """
-    Update conversations for specific data types in a single persona file.
+    Update conversations for specific data types in a single persona file, or add new persona keys.
     
     Args:
         llm: Language model instance
         file_path: Path to the persona JSON file
         data_types_to_update: List of data types to regenerate
+        persona_keys_to_add: list of persona keys to add (e.g., ["health_and_medical_conditions"])
         image_matcher: Image matcher instance
         self_verify: Whether to verify preferences
         verbose: Whether to print verbose output
@@ -892,12 +920,30 @@ def update_single_persona_file(llm, file_path, data_types_to_update, image_match
         bool: True if successful, False otherwise
     """
     # Load existing persona data
-    persona_str, final_json_response, persona_id, conversations = load_persona_data_from_file(file_path)
+    persona_str, final_json_response, persona_id, conversations = load_persona_data_from_file(file_path, llm, persona_keys_to_add, verbose)
     
     if persona_str is None:
         print(f"Failed to load persona data from {file_path}")
         return False
     
+    # If persona_keys_to_add is given, just add those keys and skip conversation regeneration
+    if persona_keys_to_add:
+        if verbose:
+            print(f"Adding persona keys {persona_keys_to_add} to {file_path}")
+        
+        # The keys were already added by load_persona_data_from_file, so we just need to save
+        # Ensure conversations are preserved at the end
+        final_json_response['conversations'] = conversations
+        
+        # Save the updated data back to the file
+        try:
+            utils.save_json({persona_id: final_json_response}, file_path, clean=False)
+            if verbose:
+                print(f"Successfully added persona keys to {file_path}")
+        except Exception as e:
+            print(f"Error saving updated data to {file_path}: {e}")
+    
+    # Otherwise, regenerate conversations for specified data types
     if verbose:
         print(f"Updating conversations for data types {data_types_to_update} in {file_path}")
     
@@ -929,22 +975,22 @@ def update_single_persona_file_thread(args):
     Thread-safe function to update a single persona file.
     
     Args:
-        args: tuple containing (file_path, llm, data_types_to_update, image_matcher, self_verify, verbose)
+        args: tuple containing (file_path, llm, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose)
     
     Returns:
         tuple: (file_path, success)
     """
-    file_path, llm, data_types_to_update, image_matcher, self_verify, verbose = args
+    file_path, llm, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose = args
     
     try:
-        success = update_single_persona_file(llm, file_path, data_types_to_update, image_matcher, self_verify, verbose)
+        success = update_single_persona_file(llm, file_path, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose)
         return file_path, success
     except Exception as e:
         print(f"Error updating persona file {file_path}: {e}")
         return file_path, False
 
 
-def update_conversations_for_data_types(llm, persona_files, data_types_to_update, image_matcher, self_verify, parallel=False, verbose=False):
+def update_conversations_for_data_types(llm, persona_files, data_types_to_update, image_matcher, self_verify, persona_keys_to_add=None, parallel=False, verbose=False):
     """
     Update conversations for specific data types across multiple persona files.
     
@@ -954,6 +1000,7 @@ def update_conversations_for_data_types(llm, persona_files, data_types_to_update
         data_types_to_update: List of data types to regenerate
         image_matcher: Image matcher instance
         self_verify: Whether to verify preferences
+        persona_keys_to_add: list of persona keys to add (e.g., ["health_and_medical_conditions"])
         parallel: Whether to process files in parallel
         verbose: Whether to print verbose output
     """
@@ -964,7 +1011,7 @@ def update_conversations_for_data_types(llm, persona_files, data_types_to_update
         # Parallel processing
         file_args = []
         for file_path in persona_files:
-            file_args.append((file_path, llm, data_types_to_update, image_matcher, self_verify, verbose))
+            file_args.append((file_path, llm, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose))
         
         # Process files in parallel batches
         max_workers = min(llm.rate_limit_per_min, len(persona_files))
@@ -1011,7 +1058,7 @@ def update_conversations_for_data_types(llm, persona_files, data_types_to_update
         
         for file_path in tqdm(persona_files, desc="Updating persona files"):
             try:
-                success = update_single_persona_file(llm, file_path, data_types_to_update, image_matcher, self_verify, verbose)
+                success = update_single_persona_file(llm, file_path, data_types_to_update, persona_keys_to_add, image_matcher, self_verify, verbose)
                 if success:
                     successful_updates += 1
                 else:

@@ -1,14 +1,15 @@
 #!/bin/bash
 
 python main.py \
-  --model o4_mini \
+  --model gpt-4.1 \
   --step categorize_topics \
   --conv_output_dir data/raw_data/ \
   --persona_start_idx 0 \
-  --persona_end_idx 113 \
+  --persona_end_idx -1 \
   --rate_limit_per_min 10 \
   --parallel \
-  --verbose
+  --refresh_mem 100
+  # --verbose
 
 # Example usage:
 # ./scripts/run_categorize_topics.sh

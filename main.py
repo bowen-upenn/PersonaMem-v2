@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--persona_start_idx', type=int, default=-1, help='Starting persona index for QA generation (-1 for all)')
     parser.add_argument('--persona_end_idx', type=int, default=-1, help='Ending persona index for QA generation (-1 for all)')
     parser.add_argument('--data_types', type=str, default="email", nargs="+", help='Conversation types for the user to implicitly express their preferences')
+    parser.add_argument('--persona_keys_to_add', type=str, default=None, nargs="+", help='List of persona keys to add (e.g., health_and_medical_conditions)')
     parser.add_argument('--context_length', type=int, default=32000, help='Length of the total context to be generated, including irrelevant tokens')
     parser.add_argument('--self_verify', dest='self_verify', action='store_true', help='Set self_verify to True')
     parser.add_argument('--rate_limit_per_min', type=int, default=10, help='Rate limit for API calls per minute')
@@ -41,6 +42,7 @@ def main():
     parser.add_argument('--clean', dest='clean', action='store_true', help='Remove existing data and start from scratch')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     parser.add_argument('--validate_qa', dest='validate_qa', action='store_true', help='Enable QA validation to filter out problematic pairs')
+    parser.add_argument('--refresh_mem', type=int, default=None, help='Number of files to process before refreshing memory (saving and reloading topics). If not specified, no memory refresh is performed.')
     cmd_args = parser.parse_args()
 
     # Override args from config.yaml with command-line arguments if provided
@@ -51,6 +53,7 @@ def main():
     args['data']['result_path'] = cmd_args.result_path if cmd_args.result_path is not None else args['data']['result_path']
     args['data']['num_persona'] = cmd_args.num_persona if cmd_args.num_persona is not None else args['inference']['num_persona']
     args['data']['data_types'] = cmd_args.data_types if cmd_args.data_types is not None else args['data']['data_types']
+    args['data']['persona_keys_to_add'] = cmd_args.persona_keys_to_add if cmd_args.persona_keys_to_add is not None else None
     args['data']['context_length'] = cmd_args.context_length if cmd_args.context_length is not None else args['data']['context_length']
     args['inference']['rate_limit_per_min'] = cmd_args.rate_limit_per_min if cmd_args.rate_limit_per_min is not None else args['inference']['rate_limit_per_min']
     args['inference']['parallel'] = cmd_args.parallel if cmd_args.parallel is not None else args['inference'].get('parallel', False)
@@ -60,6 +63,7 @@ def main():
     args['inference']['validate_qa'] = cmd_args.validate_qa if cmd_args.validate_qa is not None else args['inference'].get('validate_qa', False)
     args['data']['persona_start_idx'] = cmd_args.persona_start_idx if cmd_args.persona_start_idx is not None else -1
     args['data']['persona_end_idx'] = cmd_args.persona_end_idx if cmd_args.persona_end_idx is not None else -1
+    args['inference']['refresh_mem'] = cmd_args.refresh_mem if cmd_args.refresh_mem is not None else None
     print(args)
 
     # Build persona and preferences
@@ -109,6 +113,7 @@ def main():
             args['data']['data_types'], 
             image_matcher,
             args['data']['self_verify'],
+            persona_keys_to_add=args['data']['persona_keys_to_add'],
             parallel=args['inference']['parallel'], 
             verbose=args['inference']['verbose']
         )
@@ -152,7 +157,7 @@ def main():
         
         # Categorize topics using the categorize_topics function
         categorize_topics(llm, persona_files, output_dir=None, parallel=args['inference']['parallel'], 
-                         verbose=args['inference']['verbose'])
+                         verbose=args['inference']['verbose'], refresh_mem=args['inference']['refresh_mem'])
 
     # Build long context
     elif args['inference']['step'] == 'build_context':

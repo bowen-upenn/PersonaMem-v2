@@ -16,7 +16,7 @@ import base64
 
 
 class QueryLLM:
-    def __init__(self, args, rate_limit_per_min=50, use_o4=False):
+    def __init__(self, args, rate_limit_per_min=50):
         self.args = args
         self.history = []
         self.request_times = []
@@ -24,19 +24,18 @@ class QueryLLM:
         self.semaphore = asyncio.Semaphore(rate_limit_per_min)  # Max number of concurrent requests
 
         load_dotenv(override=True)
-        if use_o4:
-            self._setup_client(use_o4=True)
-        else:
-            self._setup_client()
+        self._setup_client()
 
 
-    def _setup_client(self, use_o4=False):
+    def _setup_client(self):
         """Setup OpenAI or Azure OpenAI client based on environment variables."""
         # Check for Azure OpenAI configuration first
         azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         azure_key = os.getenv("AZURE_OPENAI_KEY")
-        if use_o4:
+        if self.args['models']['llm_model'] == 'o4_mini':
             azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_O4")
+        elif self.args['models']['llm_model'] == 'gpt-4.1':
+            azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_41")
         else:
             azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")

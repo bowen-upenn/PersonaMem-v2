@@ -90,17 +90,22 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
 
     # 5) additional therapy-related personal history
     prompt = prompts.generate_therapy_related_history()
-    final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    llm.query_llm(prompt, use_history=True, verbose=verbose)
     print("Done generating therapy-related personal history.")
 
-    # 6) generate sensitive private information
+    # 6) additional health and medical-related personal history
+    prompt = prompts.generate_health_and_medical_conditions()
+    final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    print("Done generating health and medical-related personal history.")
+
+    # 7) generate sensitive private information
     prompt = prompts.generate_sensitive_information()
     final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
     print("Done generating sensitive private information.")
     if 'sorry' in final_json.lower():
         final_json = final_json_temp
 
-    # 7) find images if image_matcher is provided that match the persona
+    # 8) find images if image_matcher is provided that match the persona
     if image_matcher:
         matched_images = image_matcher.find_most_similar_image(final_json, top_k=6)
         matched_images = [img_path for img_path, _ in matched_images]  # Filter out low similarity images
