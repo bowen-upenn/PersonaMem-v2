@@ -47,6 +47,13 @@ Add a new code file named [inference.py](inference.py)
 Inference script that runs Azure OpenAI models on this CSV table. 
 For each model, the script should iterate over all questions, in parallel processing on batches, and save output responses and options to a JSON file.
 
+##### TODO 4 Human Eval
+- Does the conversation sound natural and realistic?
+- Can the ground truth user preference be inferred from the conversation?
+- Are the user query, correct answer, and incorrect answers well formatted?
+- Can the correct answer be inferred from the ground-truth user preference, but not from incorrect options?
+  
+
 ### 📦 Installation
 
 Install the required dependencies:
