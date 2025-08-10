@@ -174,7 +174,7 @@ def categorize_topics_sequential(file_path, llm, global_topics, verbose=False):
             if verbose:
                 print(f'Processing conv_type: {conv_type} in {os.path.basename(file_path)}')
             
-            for conv_elem in tqdm(conv_list, desc=f"Categorizing {conv_type}", leave=False):
+            for conv_elem in tqdm(conv_list, desc=f"Categorizing {conv_type} for {os.path.basename(file_path)}", leave=False):
                 try:
                     # Extract preference and user_query from the element
                     preference = conv_elem.get('preference')

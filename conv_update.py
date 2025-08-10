@@ -828,7 +828,7 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
                 except json.JSONDecodeError as e:
                     print(f"Failed to parse knowledge query response: {e}")
 
-    if persona_keys_to_add:
+    if persona_keys_to_add is None:
         persona_features = [
             ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
             ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
@@ -837,14 +837,14 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
     else:
         if isinstance(persona_keys_to_add, str):
             persona_keys_to_add = [persona_keys_to_add]
+        persona_features = []
         for key in persona_keys_to_add:
             persona_features.append((key, final_json.get(key, [])))
-    print('Keys in persona_features', [k for k, _ in persona_features])
 
     for pref_key, pref_list in persona_features:
         # Extract persona id from the full path
         persona_id = re.search(r'persona\d+', file_path).group()
-        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for {persona_id}", total=len(pref_list)):
+        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} for {persona_id}", total=len(pref_list)):
             llm.reset_history()
             try:
                 # Skip preferences that are already used in existing conversation types
@@ -949,7 +949,7 @@ def update_single_persona_file(llm, file_path, data_types_to_update, persona_key
     
     # Regenerate conversations for specified data types
     updated_conversations, updates = regenerate_conversations_for_data_types(
-        llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, verbose
+        llm, persona_str, final_json_response, data_types_to_update, conversations, image_matcher, self_verify, file_path, persona_keys_to_add, verbose
     )
     
     # Update the final_json_response with new conversations

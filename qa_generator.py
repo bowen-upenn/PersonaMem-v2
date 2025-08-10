@@ -377,8 +377,8 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
         conversations_by_type = persona.get("conversations", {})
         
         for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
-            if conv_type != "personal_email" and conv_type != "professional_email" and conv_type != "social_media_post":
-                continue
+            # if conv_type not in ['personal_email', 'professional_email', 'social_media_post']:
+            #     continue
             print(f'Processing conv_type: {conv_type} in {os.path.basename(file_path)}')
             
             # Create a new list to store only valid QA pairs
@@ -386,11 +386,12 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
                 try:
+                    if conv_elem['preference'] not in persona["health_and_medical_conditions"]:
+                        if conv_type not in ['personal_email', 'professional_email', 'social_media_post']:
+                            continue
+
                     llm.reset_history()
                     curr_persona = persona.get("persona", "")
-
-                    if conv_type not in ['personal_email', 'professional_email', 'social_media_post']:
-                        continue
 
                     if conv_type == 'knowledge_query':
                         if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:

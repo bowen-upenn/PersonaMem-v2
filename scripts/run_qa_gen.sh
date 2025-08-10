@@ -8,7 +8,7 @@ python main.py \
   --persona_start_idx 0 \
   --persona_end_idx -1 \
   --validate_qa \
-  --rate_limit_per_min 15 \
+  --rate_limit_per_min 20 \
   --parallel
 
 # Examples of specifying persona ranges:

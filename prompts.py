@@ -619,13 +619,11 @@ def categorize_preference_topic(preference, existing_topics):
 
     **Instructions:**
     1. Read the preference and identify its main topic/theme
-    2. Look at the existing topics above
-    3. Either choose the most appropriate existing topic OR create a new simple topic name
-    4. Merge redundant or overlapping topics, if necessary, avoiding creating an overly long list of existing topics 
-    5. Keep topic names simple and broad (1-2 words): food, sports, technology, pets, study, work, travel, entertainment, health, etc.
+    2. Either choose the most appropriate existing topic OR create a new simple topic name
+    4. Keep topic names in one word, and at most two words in rare, necessary cases: food, sports, technology, pets, study, work, travel, entertainment, health, etc.
     6. Use noun, not adjective.
 
-    Think step by step and return the topic name after ###Output."""
+    Return the topic name after ###Output."""
     
     return prompt
 
