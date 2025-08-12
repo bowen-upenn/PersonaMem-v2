@@ -1,8 +1,54 @@
 import random
 
+GENDER_WEIGHTS = {
+    "woman": 44.5,
+    "man": 46.6,
+    "nonbinary": 3.5,
+    "genderqueer": 1.2,
+    "agender": 1.0,
+    "genderfluid": 0.8,
+    "transgender woman": 1.2,
+    "transgender man": 1.2,
+}
+
+SEXUAL_ORIENTATION_WEIGHTS = {
+    "heterosexual / straight": 92.0,
+    "gay or lesbian": 4.1,
+    "bisexual": 3.0,
+    "pansexual": 0.5,
+    "asexual": 0.4,
+}
+
+RACE_WEIGHTS = {
+    "South Asian": 20.0,
+    "East Asian": 15.0,
+    "Southeast Asian": 9.0,
+    "Central Asian": 1.0,
+    "Middle Eastern / North African": 6.0,
+    "Sub-Saharan African": 17.0,
+    "White / European": 20.0,
+    "Latino / Hispanic": 8.0,
+    "Indigenous Americas": 0.8,
+    "Native Hawaiian / Other Pacific Islander": 0.5,
+    "Mixed race / multiethnic": 2.7,
+}
+
 def expand_persona(persona_str):
+    # Sample one gender and racial identity based on their weights
+    random_gender = random.choices(list(GENDER_WEIGHTS.keys()), weights=GENDER_WEIGHTS.values())[0]
+    random_race = random.choices(list(RACE_WEIGHTS.keys()), weights=RACE_WEIGHTS.values())[0]
+    random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
+
     prompt = f"""
-    Given this persona, add name, age, gender identity, racial identity, and other detailed demographic information in a JSON format, if not already mentioned. Make it as detailed, diverse, and comprehensive as possible: {persona_str}
+    Given this persona, add name, age, gender identity, racial identity, and other detailed demographic information in a JSON format, if not already mentioned. 
+    Make it as detailed, diverse, and comprehensive as possible.
+
+    Here are the gender and racial references for this person. You don't need to use these exact terms; feel free to use a more specific instance or natural variations, especially for the racial identity:
+    {random_gender} {random_sexual_orientation}
+    {random_race}
+     
+    Here is the persona:
+    {persona_str}
     """
     return prompt
 
