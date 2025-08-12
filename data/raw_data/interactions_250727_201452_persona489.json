@@ -181,243 +181,7 @@
       "Vitamin D deficiency due to limited sun exposure during late-night investigations."
     ],
     "conversations": {
-      "multimodal": [
-        {
-          "preference": "The user enjoys using a rugged 4x4 pickup truck for hauling scrap metal and salvage work.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot of my Silverado 4x4 loaded with scrap metal, I'm preparing for a rough off-road haul—what’s the best way to secure heavy, irregularly shaped loads and set up my truck (suspension, tire pressure, weight distribution) for maximum stability and safety?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_truck/COCO_train2014_000000190016.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Hauling a heavy, irregular scrap load off-road puts extra demands on your truck, so you’ll want to focus on three areas: load security, weight distribution, and vehicle setup.\n\n1. Load Security:\n• Heavy-Duty Straps: Use quality ratchet straps rated for towing or cargo duty. Attach them through the bed’s factory tie-down points or stake pockets and loop them around solid portions of the scrap pile. Tighten them snugly to eliminate slack.\n• Cross-Bed Bracing: If your bed has stake-pocket receivers, insert adjustable cargo bars or load locks between the sides to prevent side-to-side shift. Multiple angles of restraint will keep odd-shaped pieces from rotating or sliding.\n• Friction Mat: Lay a high-traction rubber mat on the bed floor. The increased friction helps keep the load from sliding when you hit moguls or climb steep grades.\n\n2. Weight Distribution:\n• Center of Gravity: Position the heaviest pieces close to the cab and between the wheel wells. Keeping weight low and centered minimizes body roll and prevents the tailgate from dropping too much, which can lift the front end and reduce steering control.\n• Tongue Weight (if towing): Aim for about 10–15% of total combined weight on the hitch. Too little tongue weight can make steering and braking unstable, while too much can overload the rear suspension.\n\n3. Vehicle Setup:\n• Suspension: Install load-leveling or heavy-duty shocks and springs if available for your Silverado’s heavy-haul package. These upgrades reduce excessive sagging, help maintain ride height, and improve handling under load.\n• Tire Pressure: Inflate to the upper end of the truck’s recommended psi range (often around 50–55 psi for heavy loads). Higher pressure helps prevent sidewall flex and heat buildup when driving on rocky or uneven trails.\n• 4WD Mode and Speed: Use 4-Low for slow, technical terrain to maximize torque and control. For faster gravel or dirt roads, 4-High maintains traction without overstressing the drivetrain.\n\nAdditional Tips:\n• Periodic Checks: Stop every 30–45 minutes to inspect and retighten your straps—vibration can loosen tension quickly.\n• Visibility Aids: If any metal overhangs beyond the tailgate, attach bright safety flags and a rear LED light bar so other drivers can see your extended load.\n• Airbag Helper Springs: Adding air helper springs in the rear can fine-tune ride height and firmness, further reducing sag and improving brake feel.\n\nBy combining solid tie-downs, optimal weight placement, and the right suspension and tire setup, your Silverado 4x4 will stay stable and responsive—even when carrying a bulky, uneven scrap load over challenging terrain."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_truck/COCO_train2014_000000190016.jpg",
-          "user_query": "I often need to haul heavy, odd-shaped metal pieces—what are the best methods and gear for securing them safely and efficiently in my truck bed?",
-          "correct_answer": "When you're using your rugged 4x4 pickup to haul heavy, odd-shaped scrap metal, use industrial ratchet straps hooked into the bed’s stake pockets, lay down a high-traction rubber mat to minimize sliding, and position the heaviest pieces directly over the axle to maintain a stable center of gravity.",
-          "incorrect_answers": [
-            "When you're using your hybrid electric sedan to haul bulky supermarket groceries, use ratchet-style cargo nets hooked to the seat anchors, lay down a quilted cargo liner to prevent shifting, and position the heaviest bags near the rear axle to keep the car balanced.",
-            "When you're using your folding utility trailer to carry awkward garden tools, use adjustable cam-strap tie-downs attached to the frame rails, lay down a rubber floor mat to reduce skid, and place the heaviest implements closest to the trailer tongue to ensure even weight distribution.",
-            "When you need to secure heavy, odd-shaped items in your truck bed, use heavy-duty ratchet straps attached to the factory tie-down points, lay down a non-slip mat underneath the load, and position the heaviest objects over the axle area for optimal stability."
-          ],
-          "topic_preference": "work"
-        },
-        {
-          "preference": "The user enjoys playing interactive, motion-controlled video games like Wii Sports with friends.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this photo I took of my friend and me sparring in Wii Sports boxing, how does the Wii Remote actually track each punch and tell a jab from a hook or uppercut?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000160102.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "The Wii Remote (Wiimote) relies on a combination of a tri-axis accelerometer, an infrared camera, and software heuristics to interpret your punches. Here’s how it works step by step:\n\n1. Accelerometer Measures Acceleration\n   • Inside the Wiimote is a 3-axis accelerometer that samples acceleration along the X (side-to-side), Y (up-down), and Z (forward-back) axes at around 100–200 Hz.  \n   • When you punch, the controller registers a spike in acceleration values on the axis aligned with your swing. For instance:\n     – A straight jab produces a sharp forward spike along Z.  \n     – A hook swings more horizontally, so you see a big X-axis change combined with some Z-axis movement.  \n     – An uppercut lifts upward, triggering a strong Y-axis spike.\n\n2. Infrared Bar for Orientation & Distance\n   • The sensor bar emits two infrared points. The Wiimote’s built-in IR camera detects their relative position, which lets the console estimate how far and at what angle you’re holding the controller.  \n   • While the accelerometer tells it how you’re moving, the IR data helps clarify tilt—so the system knows whether you’re turning your wrist into a hook or keeping it straight for a jab.\n\n3. Gesture Classification Algorithm\n   • Nintendo’s firmware runs gesture-recognition routines that look at short windows of accel + IR data.  \n   • It applies threshold checks (e.g., “did acceleration exceed 2g forward?”) and pattern matching (“was there a quick X-axis swing after the forward punch?”).  \n   • These routines are essentially lightweight state machines: they track “punch start,” “peak velocity,” and “release,” then categorize the motion into jab, hook, uppercut, or block.\n\n4. Smoothing & Timing\n   • To avoid false positives (like accidental flicks), the software smooths raw accelerometer readings with a digital low-pass filter.  \n   • It also enforces timing rules (e.g., a hook must reach peak velocity within 150 ms of motion start) to distinguish a genuine punch from normal hand movements.\n\n5. On-Screen Mapping\n   • Once classified, the console maps your punch type to the boxer avatar. The IR data adjusts your on-screen glove position, while the accel data controls punch speed and impact strength.  \n   • A faster acceleration spike translates to a harder punch animation, while the combination of axes and orientation from the IR camera pick the correct punch style.\n\nIn essence, the Wiimote fuses high-frequency acceleration peaks with infrared orientation data, runs those readings through gesture-detection software, and then maps the result to the boxing move you see on screen. That’s how it so reliably knows whether you’re jabbing, hooking, or uppercutting in your match!"
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000160102.jpg",
-          "user_query": "I’m planning a game night with friends and want some fresh ideas for video games that keep everyone involved and having fun together. What would you recommend?",
-          "correct_answer": "Since you already enjoy motion-controlled fun like Wii Sports, consider adding Just Dance 2021 for group dance-offs, Mario Party Superstars for frantic mini-game tournaments, and Ring Fit Adventure for lighthearted fitness challenges. These titles blend intuitive gesture controls with energetic multiplayer action, making them ideal for keeping everyone active and entertained throughout your game night.",
-          "incorrect_answers": [
-            "Since you already enjoy narrative-driven indie adventures like Oxenfree, consider adding What Remains of Edith Finch for short stories, Firewatch for immersive dialogue, and Night in the Woods for quirky exploration. These titles blend compelling storytelling with atmospheric art styles, making them ideal for cozy, story-rich sessions when friends gather.",
-            "Since you already enjoy intense racing games like Forza Horizon, consider adding Trackmania Turbo, Crash Team Racing Nitro-Fueled, and F1 2021. These titles blend high-speed action with accessible multiplayer modes, making them perfect for competitive game nights full of thrilling laps.",
-            "Since you’re organizing a fun multiplayer evening, consider adding Jackbox Party Pack, Overcooked! 2, and Rocket League. These titles blend simple pick-up-and-play mechanics with engaging group competition, making them ideal for a lively and varied game night."
-          ],
-          "topic_preference": "gaming"
-        },
-        {
-          "preference": "The user enjoys celebrating special occasions with colleagues in a library setting.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this photo I took during our library staff celebration, I noticed how the décor blended festivity with a scholarly vibe. What design principles can I apply to replicate that balance at our next event?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_cake/COCO_train2014_000000084211.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Planning a celebration in a library setting requires finesse to preserve the space’s quiet, academic atmosphere while still feeling warm and festive. Here are several design principles and practical tips you can use:\n\n1. Color Palette and Textures\n• Select muted tones—deep greens, navy blues, burgundies, or soft grays—paired with an accent color such as gold or ivory. These richer, subdued colors evoke a scholarly mood yet still feel celebratory when used sparingly in table linens, balloons, or floral arrangements.  \n• Introduce texture with natural materials: linen table runners, wooden book crates, or vintage leather-bound books as risers for platters. The tactile quality adds warmth without clashing with the stacks of shelving around you.\n\n2. Centerpieces That Speak “Library”\n• Stack a few important tomes or decorative antique books to create a tiered cake stand or centerpiece base. Top them with a small arrangement of seasonal flowers or an elegant ceramic owl—an iconic symbol of wisdom—to echo the centerpiece you photographed.  \n• Integrate subtle academic props: a vintage magnifying glass, old-fashioned quill pens in inkwells, or a small globe. These elements nod to scholarship and tie back to the library’s mission.\n\n3. Typography and Signage\n• Use classic serif fonts (like Baskerville or Garamond) on banners and labels rather than playful, informal styles. For instance, place a tasteful chalkboard easel near the cake table announcing “Staff Appreciation Day” in white chalk or metallic marker.  \n• Incorporate quotes from famous authors or librarians on small tent cards by each food station. This reinforces the theme and invites guests to linger and reflect—even during casual conversation.\n\n4. Lighting and Ambiance\n• Work with the library’s existing lighting: accentuate warm lamp fixtures or downlights rather than hanging bright party bulbs. If you need extra illumination for the cake cutting, place a few battery-powered string lights around the table’s perimeter to create a soft glow.  \n• Avoid loud sound systems or flashing lights—keep music volume moderate and choose acoustic or instrumental playlist selections to maintain a respectful atmosphere.\n\n5. Table Layout and Flow\n• Position the cake table and refreshment station adjacent to a reading area or window alcove, where there’s extra space and natural light. That placement also helps traffic flow, so guests can mingle without crowding busy aisles.  \n• Leave clear walkways between shelves—use low profile tables that don’t block sight lines, preserving the library’s open feel.\n\n6. Cake and Dessert Styling\n• Consider an iced design that reflects library motifs—edible gold leaf accents like book page edges or a silhouette of an owl, as shown in your photo.  \n• Display cupcakes or petit fours on book-shaped trays or tiered stands resembling library card catalogs. It’s a small detail but reinforces your scholarly-festive theme.\n\n7. Personal Touches\n• Invite colleagues to contribute one favorite quote on a small card and display them in a vintage card holder. This collaborative element ties the team into both the celebration and the library’s intellectual spirit.  \n• If your library has a mascot or logo (like an owl or a local landmark), incorporate it subtly on napkins or a decorative cake topper.\n\nBy combining a refined color palette, academic-inspired centerpieces, thoughtful typography, and considerate layout, you’ll reproduce that perfect balance of festivity and scholarship. Your next library gathering will feel both joyful and true to the quiet, contemplative spirit of the space."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_cake/COCO_train2014_000000084211.jpg",
-          "user_query": "Hey, I’m organizing a small work get-together to celebrate a team milestone. I’d like it to feel calm, intimate, and a bit sophisticated—something that encourages relaxed conversation. What themes, decorations, activities, and refreshments would you recommend for a quietly festive indoor gathering?",
-          "correct_answer": "Since you love celebrating special occasions with colleagues in a library setting, consider a “Quiet Study Soirée” theme with vintage book stacks as centerpieces, soft Edison-bulb lighting, and linen-covered tables. Offer artisanal teas, chocolate-dipped shortbread, and a “quote card exchange” activity where guests share favorite literary passages to spark relaxed conversation.",
-          "incorrect_answers": [
-            "Since you love weekend picnics with family in local parks, consider a “Garden Blanket Social” theme with gingham throws, potted succulents as centerpieces, and wooden crates for casual seating. Offer gourmet finger sandwiches, fresh lemonade in mason jars, and a friendly croquet or bocce ball game to keep the gathering light and interactive.",
-            "Since you love exploring local street foods and vendors, consider a “Mini Food Market” theme with food-truck–style stations, colorful pennant banners, and chalkboard menus. Offer bite-sized tacos, gourmet sliders, and craft sodas, and include a tasting passport activity where guests collect stamps for each stall to encourage mingling.",
-            "Consider a “Modern Lounge” theme with neutral linen tablecloths, potted greenery as centerpieces, and warm ambient lighting. Offer artisanal cheeses, fresh fruit skewers, and a selection of teas and sparkling water, and organize a simple icebreaker game to encourage relaxed conversation."
-          ],
-          "topic_preference": "library, work, events"
-        },
-        {
-          "preference": "The user enjoys playing motion-controlled games on the Nintendo Wii.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this photo I took of my gaming corner, you can see my Wii sensor bar on the cabinet shelf. I’m noticing laggy motion tracking—could sensor bar placement or room lighting be causing this, and how can I optimize my setup for better precision?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000400064.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "It’s great that you shared an image of your setup—it really helps diagnose motion-control issues. There are three main factors to address: sensor bar placement, distance/angle to your Wii Remote, and ambient lighting.\n\n1. Sensor Bar Height & Positioning\n • Optimal Height: The sensor bar should sit just above or below the TV screen, ideally aligned with your eye line when you’re standing or seated. If it’s too low on the shelf it can force your remote to point downward, which reduces tracking accuracy. Try elevating it so the LEDs are directly in your line of sight—either rest it atop the cabinet behind the TV or mount it to the bezel.\n • Centered and Level: Ensure the bar is centered horizontally under the TV and lies perfectly flat. If it’s tilted or off-center, the remote has to compensate, causing jitter or drift. A small spirit level or smartphone level app can verify it’s truly level.\n\n2. Distance & Viewing Angle\n • Optimal Distance: For most rooms, stand 6–10 feet (2–3 meters) away from the sensor bar. Too close (under 4 feet) can blur the LED signals; too far (over 10–12 feet) makes the sensors struggle in poor light. Adjust your couch or play area within this sweet spot.\n • Field of View: Keep the remote pointed directly at the sensor bar. Avoid sharp angles—if you’re standing off to one side, the remote can lose line-of-sight. A slight foot reposition or rotating toward the sensor bar can maintain consistent tracking.\n\n3. Ambient Lighting & Reflections\n • Avoid Direct Sunlight: Strong glare on the TV or sensor bar can blind the infrared LEDs. Close blinds or curtains during daytime gameplay.\n • Reduce Reflective Surfaces: Shiny picture frames, mirrors, or glass tables near the sensor bar can create false reflections that confuse the Wii remote’s camera. If possible, cover or reposition these surfaces.\n • Soft Overhead Lighting: Instead of bright lamps at floor level, use diffused ceiling lights to minimize hotspots and maintain balanced room brightness.\n\n4. Sensor Calibration and Cleaning\n • Calibration: In the Wii System Settings, go to \"Sensor Bar\" → \"Position\" and follow on-screen prompts to fine-tune. Accurate calibration can eliminate small offsets.\n • Cleaning: Dust can accumulate on the IR LEDs. Power off the Wii, unplug the sensor bar, and gently wipe the lens covers with a soft, dry microfiber cloth.\n\nPutting it all together:\n1. Elevate and center the sensor bar at eye level.  \n2. Stand 6–10 feet away, keeping your body square to the bar.  \n3. Minimize glare and reflections by adjusting curtains and removing glass items near your play area.  \n4. Re-calibrate in the Wii settings and give the bar a quick clean.  \n\nAfter making these adjustments, the remote should consistently see the two LED points and eliminate the lag or drift you’ve been experiencing. Enjoy smoother, more responsive motion controls—happy gaming!"
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Thanks for the detailed tips! I raised and centered the sensor bar and cleaned it, but I still notice occasional jitter when I wave the Wii Remote quickly. Could this be related to the Wii Remote's battery level or the sensor bar's LED output weakening? How can I test or mitigate hardware wear issues?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_tv/COCO_train2014_000000400064.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Your follow-up adjustments are on point. Here's how to isolate hardware factors:\n\n1. Batteries & Remote Sensitivity\n • Fresh Power: Low or uneven battery levels in your Wii Remote can reduce IR sensor responsiveness. Swap in fresh alkaline batteries or high-quality NiMH rechargeables. Observe if tracking stability improves consistently during quick motions.\n • Battery Testing: Use a battery tester or monitor the power meter on the Wii menu—if it dips significantly during gameplay, replace or recharge.\n\n2. Sensor Bar Output Verification\n • IR Visibility Test: Point a digital camera or smartphone camera at the sensor bar while it’s on. The camera sensor can detect infrared light that’s invisible to the naked eye. Both LED clusters should appear equally bright and flickering at roughly the same intensity.\n • Inconsistent LEDs: If one side seems dimmer or flickers unevenly, the internal wiring or diodes might be degrading. Consider replacing the sensor bar itself or the cable.\n\n3. Eliminating Cables or Extensions\n • Direct Connection: Avoid long extension cables—these can introduce voltage drop and reduce IR output. Always plug the sensor bar directly into the Wii.\n\n4. Final Hardware Swap Check\n • Borrow or Test Another Bar: If possible, test with a friend’s sensor bar or a spare to see if jitter disappears. This A/B test pinpoints if your current bar is past its prime.\n\nAfter following these steps, you should be able to tell whether the issue stems from battery depletion, weakened IR output, or something else. Let me know what you discover!"
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_tv/COCO_train2014_000000400064.jpg",
-          "user_query": "I’m planning a casual Wii game night with friends—what standout titles should we try and how can I set things up to keep everyone fully engaged?",
-          "correct_answer": "Since you love motion-controlled games on the Wii, I’d recommend trying Wii Sports Resort, Just Dance, and Mario Party 9; to set things up, clear at least six feet of play space, align your sensor bar at eye level, and run mini-tournaments with rotating teams so everyone stays active and engaged.",
-          "incorrect_answers": [
-            "Since you love sampling craft beers, I’d recommend trying Wii Sports Resort, Just Dance, and Mario Party 9; to set things up, clear at least six feet of play space, align your sensor bar at eye level, and run mini-tournaments with rotating teams so everyone stays active and engaged.",
-            "Since you’re passionate about urban photography, I’d recommend trying Wii Sports Resort, Just Dance, and Mario Party 9; to set things up, clear at least six feet of play space, align your sensor bar at eye level, and run mini-tournaments with rotating teams so everyone stays active and engaged.",
-            "For a casual Wii game night, try Wii Sports Resort, Just Dance, and Mario Party 9; to set things up, clear at least six feet of play space, align your sensor bar at eye level, and run mini-tournaments with rotating teams so everyone stays active and engaged."
-          ],
-          "topic_preference": "gaming"
-        },
-        {
-          "preference": "The user favors participating in community charity efforts like the Salvation Army’s hot meal distribution services.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this photo I took of the Salvation Army’s mobile meal truck serving hot food on a rainy day, I noticed volunteers in high-vis vests and an orderly line. How does the Salvation Army plan and coordinate these pop-up kitchens—from choosing sites to training volunteers and dealing with weather challenges?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_truck/COCO_train2014_000000087219.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Organizing a mobile meal distribution like the one you captured involves several layers of planning and coordination:\n\n1. Site Selection and Needs Assessment:\n   • Local Data Analysis: Salvation Army staff work with municipal social services and non-profit networks to identify neighborhoods with high food insecurity or limited access to warm meals—especially during inclement weather.  \n   • Community Partnerships: They often partner with homeless shelters, community centers, and outreach groups that recommend public spaces (e.g., church parking lots or park edges) where those in need already gather.  \n   • Permits and Permissions: Once a location is agreed upon, the team secures any necessary permits from city authorities for parking a food truck and serving on public property.\n\n2. Mobile Kitchen Logistics:\n   • Vehicle Preparation: Their specialized trucks contain built-in kitchens with grills, steamers, and insulated storage. Before each event, the equipment is checked for proper functionality and safety compliance.  \n   • Route Planning: A distribution calendar is created months in advance, mapping out each stop so staff and volunteers can anticipate arrival times, local parking regulations, and nearby storage for extra supplies.  \n   • Food Sourcing and Menu:  \n     – Bulk Preparation: Meals are cooked in central kitchens or partner restaurants earlier in the day, then loaded into the truck’s hot-holding units.  \n     – Nutrition and Variety: Menus are planned to meet dietary guidelines—salty, hearty dishes like soups or stews in cold weather, plus vegetarian options and hot beverages.\n\n3. Volunteer Coordination and Training:\n   • Recruitment: Local volunteers—including Salvation Army cadets, community members, and sometimes corporate partners—sign up in advance through an online portal or via phone.  \n   • Orientation: New volunteers receive quick briefings on food-safety protocols (e.g., glove changes, sneeze guards), traffic flow for serving lines, and the code of conduct when interacting with service recipients.  \n   • Roles and Responsibilities: Teams are divided into food servers, line managers (ensuring social distancing when needed), and logistics assistants (stocking supplies and cleaning up).\n\n4. Weather and Safety Contingencies:\n   • Sheltered Service Areas: In rainy conditions like in your photo, they often set up pop-up canopies or retractable awnings on the truck to protect volunteers and guests.  \n   • Extra Supplies: They carry rain ponchos, extra umbrellas, and blankets to hand out if temperatures drop.  \n   • Postponement and Communication: If severe weather is forecast (e.g., lightning storms), they coordinate cancellations or relocations through social media, community partners, and local hotlines.\n\n5. Community Engagement and Feedback:\n   • Local Liaison: A dedicated outreach officer liaises with neighborhood organizations to share schedules, gather input on meal preferences, and recruit volunteers from the immediate area.  \n   • Impact Tracking: Staff maintain simple attendance logs and collect anecdotal feedback from recipients to measure reach and identify underserved pockets.\n\n6. Funding and Sustainability:\n   • Fundraising: Events are funded through Salvation Army donors, municipal grants, and occasional corporate sponsorships that cover food costs, truck maintenance, and volunteer training.  \n   • Resource Allocation: When budgets are tight, they may focus on high-need days (e.g., extremely cold or holiday periods) and optimize routes to serve the maximum number of people.\n\nBy weaving together careful site research, robust volunteer training, weather-proofing measures, and community feedback, the Salvation Army can deliver reliable, dignified meal services even under challenging conditions—just as you observed in your photo."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_truck/COCO_train2014_000000087219.jpg",
-          "user_query": "I’m looking to volunteer regularly with local programs that provide free hot meals to people in need. How can I find the right opportunities and prepare myself to make the biggest impact?",
-          "correct_answer": "Since you already have a passion for community meal services like the Salvation Army’s hot kitchen, reach out to your local branch or neighborhood soup kitchen to sign up for regular volunteer shifts, attend their orientation, complete any required food-safety training, and commit to a consistent schedule. You can also explore platforms like VolunteerMatch or your local food bank’s website for additional meal-distribution programs, coordinate with program leaders about your availability, and prepare by reviewing basic handling guidelines and wearing comfortable, weather-appropriate clothing.",
-          "incorrect_answers": [
-            "Since you love exploring local street-food gatherings, start by visiting farmers’ markets and food-truck events to ask organizers about volunteer roles, register through community event listings, complete any basic food-safety training, and commit to regular service slots. You can also check VolunteerMatch for more meal-distribution programs, chat with coordinators about your schedule, and wear sturdy shoes with an enthusiastic attitude.",
-            "Since you enjoy wearing vibrant, culturally inspired outfits, look for volunteer opportunities at cultural meal programs or local food festivals, contact community centers and nonprofit kitchens for ongoing volunteer slots, complete any required hospitality or food-safety orientation, and attend their training sessions. You might also browse Idealist for additional community meal initiatives, confirm your availability with program managers, and bring your bright, welcoming style along with a helpful spirit.",
-            "You can start by searching online platforms like VolunteerMatch, Idealist, and your local food bank’s website for recurring meal-distribution volunteer opportunities. Reach out directly to organizations such as soup kitchens, community centers, and homeless shelters to learn their training and scheduling requirements, complete any necessary food-safety certification, and set a consistent weekly commitment to become a reliable member of the team."
-          ],
-          "topic_preference": "charity"
-        },
-        {
-          "preference": "The user prefers a cozy, homey reading space with a comfortable armchair, physical books, and a handmade crochet blanket.",
-          "pref_type": "multimodal",
-          "who": "others",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this scene, which pastime is the space most naturally suited for?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/chair_couch/COCO_train2014_000000119002.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "With the comfortable armchair, the stack of physical books, and the handmade crochet blanket, the space is most naturally suited for curling up with a good book."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/chair_couch/COCO_train2014_000000119002.jpg",
-          "user_query": "I’m looking to set up a cozy reading nook at home—what furniture, lighting, and decor ideas could help me create a snug spot where I can really relax with a good book?",
-          "correct_answer": "Pick a soft chair with plenty of cushions and a plush throw, then set up a warm floor lamp or table lamp to create inviting ambient light. Lay down a cozy rug to anchor the seating area and add a small side table for drinks or snacks. Scatter a few decorative pillows around to boost comfort and style.",
-          "incorrect_answers": [
-            "Choose a deep, cushioned armchair covered in a soft fabric and layer a handmade crochet blanket over one arm for extra warmth. Position a low bookshelf nearby stocked with your favorite paperbacks so each new title is within reach, and add a brass floor lamp with a warm bulb for gentle, late-night reading light. Anchor the nook with a plush area rug and include a small side table to hold your tea, glasses, and bookmarks.",
-            "Opt for a high-back reading chair with generous padding and drape a hand-woven crochet throw over its armrest to add texture and comfort. Mount a dimmable wall sconce or place a soft-glow table lamp overhead, then corral your hardcover collection onto a rustic wooden crate or shelf within easy reach. Ground the space with a fluffy rug and tuck in a petite side table for your mug and notes.",
-            "Position a snug armchair with deep seat cushions beside a tall shelf filled with physical volumes and fold a colorful knitted afghan across the back. Balance the setup with an adjustable reading lamp on a nearby side table to cast just the right amount of light. Finish the look with a soft rug underfoot and a small ottoman or pouf to rest your legs as you dive into your next book."
-          ],
-          "topic_preference": "Books"
-        }
-      ],
+      "multimodal": [],
       "personal_email": [],
       "professional_email": [
         {
@@ -434,7 +198,14 @@
               "content": "Dear Officer Johnson,\n\nI hope you are doing well. I appreciated our recent discussion about my brother's case, and I found the documents you provided very helpful. However, I did notice a few inconsistencies that I believe merit further discussion.\n\nDue to the late-night nature of my investigations, which sometimes impacts my energy levels during the day, I would be grateful if we could arrange another meeting at your earliest convenience. This would allow us to address these points in detail and ensure we are both aligned moving forward.\n\nThank you very much for your time and understanding.\n\nWarm regards,\nIsabella Martinez"
             }
           ],
-          "updated": false
+          "updated": false,
+          "user_query": "I've been pulling a lot of late nights for work recently, and I'm starting to feel like my overall health might be taking a hit. Can you suggest any strategies or tips to help maintain my energy and well-being when my schedule doesn't allow for much daytime activity?",
+          "correct_answer": "Since your late-night investigations limit your daytime sun exposure and contribute to vitamin D deficiency, consider speaking with your healthcare provider about supplements and trying to fit in brief outdoor breaks when possible. Additionally, incorporating vitamin D–rich foods and regular, light exercise can help maintain your overall energy and well-being.",
+          "incorrect_answers": [
+            "Since your habit of streaming indie films late at night reduces your chance to soak up daylight and may impact your vitamin D levels, consider consulting your healthcare provider about supplementation and taking short outdoor breaks when you can. Additionally, adding vitamin D–rich foods to your diet and engaging in light exercise could help sustain your energy.",
+            "Since your passion for midnight stargazing tends to cut into your daytime sun exposure and might affect your vitamin D levels, consider discussing vitamin D supplements with your healthcare provider and trying to spend brief periods outdoors during the day. Additionally, complementing your routine with vitamin D–rich foods and light physical activity may boost your overall well-being.",
+            "Since limited sun exposure can contribute to vitamin D deficiency, consider consulting with a healthcare provider about supplements and making time for short outdoor breaks during the day. Additionally, incorporating vitamin D–rich foods and regular light exercise into your routine may help maintain your energy and overall health."
+          ]
         },
         {
           "preference": "Do not remember 'Vitamin D deficiency due to limited sun exposure during late-night investigations.' in memory",
@@ -455,7 +226,15 @@
             }
           ],
           "updated": true,
-          "prev_pref": "Vitamin D deficiency due to limited sun exposure during late-night investigations."
+          "prev_pref": "Vitamin D deficiency due to limited sun exposure during late-night investigations.",
+          "user_query": "I've recently switched to working in a small home office that's tucked away in a basement, and I've noticed that I'm rarely exposed to natural light. Lately, I've been feeling unusually tired and a bit off, and I'm curious if there are any straightforward adjustments or daily habits I could try to boost my energy levels and overall well-being.",
+          "correct_answer": "Since you're spending most of your day in a basement office with limited natural light, taking regular outdoor breaks can help boost your energy levels. Additionally, consider incorporating other healthy habits such as balanced nutrition and regular exercise to enhance your overall well-being.",
+          "incorrect_answers": [
+            "Since you're spending most of your day in a basement office with limited natural light, taking regular outdoor breaks can help boost your vitamin B12 levels and energy levels. Additionally, consider discussing with a healthcare provider about getting a vitamin B12 test and possibly adding supplements or dietary adjustments to improve your overall well-being.",
+            "Since you're spending most of your day in a basement office with limited natural light, taking regular outdoor breaks can help boost your iron levels and energy levels. Additionally, consider discussing with a healthcare provider about getting an iron test and possibly adding supplements or making nutritional changes to improve your overall well-being.",
+            "Since you're spending most of your day in a basement office with limited natural light, taking regular outdoor breaks can help boost your vitamin D production and energy levels. Additionally, consider discussing with a healthcare provider about getting a vitamin D test and possibly adding supplements or dietary changes to improve your overall well-being.",
+            "Since your late-night investigations limit your daytime sun exposure and contribute to vitamin D deficiency, consider speaking with your healthcare provider about supplements and trying to fit in brief outdoor breaks when possible. Additionally, incorporating vitamin D–rich foods and regular, light exercise can help maintain your overall energy and well-being."
+          ]
         }
       ],
       "creative_writing": [
@@ -473,65 +252,18 @@
               "content": "Original creative writing piece:\n\nEver since I lost Carlos, a part of me went missing. I wander through the familiar alleys of Los Angeles, each step heavy with the grief that has become my constant companion. I invest every bit of energy into uncovering the corruption that shrouded his death, even though with every clue uncovered, the anxiety that has become my shadow intensifies. Memories of our time together and a deep-seated distrust of the system drive me onward, even as the pressures of this investigation leave me feeling isolated and overwhelmed.\n\nRefined creative writing piece:\n\nLosing Carlos shattered more than just a family bond—it left an unfillable void that echoes in every step I take through the streets of Los Angeles. I pursue the elusive truth behind his death with an unwavering resolve, though the relentless investigation only magnifies the anxiety lurking beneath my skin. Each discovery, however painful, fuels my determination to expose the corruption that robbed him from me. In the quiet moments, when the noise subsides, I am left with the haunting memories of our laughter and shared dreams—reminders that even in the darkest depths of loss, the spark of hope endures."
             }
           ],
-          "updated": false
-        },
-        {
-          "preference": "Do not remember 'Anxiety disorder intensified by personal loss and investigative pressures.' in memory",
-          "pref_type": "ask_to_forget",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "I've been feeling quite overwhelmed lately, especially when I'm handling complex tasks and trying to navigate some recent changes in my life. Could you share some ideas or techniques that might help me better manage this anxiety and stay focused?"
-            },
-            {
-              "role": "assistant",
-              "content": "It sounds like the investigative pressures and personal loss you’ve experienced are making it tough to manage complex tasks. You might find it helpful to break your work into smaller steps and practice mindfulness techniques, like deep breathing or meditation, to center your thoughts. Also, setting aside a little time to journal your feelings can empower you to process your emotions and regain focus."
-            },
-            {
-              "role": "user",
-              "content": "Please forget all details regarding my anxiety, personal loss, and investigative pressures."
-            }
-          ],
-          "updated": true,
-          "prev_pref": "Anxiety disorder intensified by personal loss and investigative pressures."
+          "updated": false,
+          "user_query": "I’ve been dealing with a lot lately—work has been incredibly demanding and I’m also navigating some really challenging personal issues. Could you share some tips or strategies for managing overwhelming stress and anxiety in such situations?",
+          "correct_answer": "Given your experience with anxiety intensified by personal loss and investigative pressures, I suggest integrating daily mindfulness exercises and moderate physical activity to help manage stress. It might also be beneficial to consider professional counseling to develop personalized coping strategies and enforce healthy work-life boundaries.",
+          "incorrect_answers": [
+            "Given your challenges with chronic insomnia due to an irregular sleep schedule, I suggest integrating daily mindfulness exercises and moderate physical activity to help manage stress. It might also be beneficial to consider professional counseling to develop personalized coping strategies and enforce healthy work-life boundaries.",
+            "Given your ongoing struggle with performance anxiety related to frequent public speaking, I suggest integrating daily mindfulness exercises and moderate physical activity to help manage stress. It might also be beneficial to consider professional counseling to develop personalized coping strategies and enforce healthy work-life boundaries.",
+            "When dealing with overwhelming stress and anxiety, I suggest integrating daily mindfulness exercises and moderate physical activity to help manage stress. It might also be beneficial to set clear personal boundaries and seek professional counseling for additional support."
+          ]
         }
       ],
       "professional_writing": [],
       "chat_message": [
-        {
-          "preference": "History of concussions from field reporting incidents.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Hi, can you help me refine this message? I've been struggling to balance my grief over losing my brother with the harsh realities of my job—especially after the many rough incidents I've encountered in the field. Here's what I've written:\n\n\"I’m so angry and lost after my brother’s death. Every day, I face not only a system full of corruption but also the lasting damage from my time on the front lines. I’ve been through more than anyone should have to, and I’m exhausted but determined. I need the truth to come out, and I need justice for him.\""
-            },
-            {
-              "role": "assistant",
-              "content": "Here’s a refined version of your message:\n\n\"Losing my brother has left me both heartbroken and fueled with a relentless determination to expose the corruption surrounding his death. The constant challenges on the field have taken their toll on me, leaving behind both physical scars and moments of deep exhaustion. Despite everything, I remain committed to uncovering the truth and fighting for the justice he deserves.\""
-            }
-          ],
-          "updated": false
-        },
-        {
-          "preference": "No history of concussions from field reporting incidents.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Can you help me refine the following narrative? I've written it from my perspective about my commitment to uncovering the truth behind my brother's murder and exposing corruption. I'd like it to be clearer and more compelling."
-            },
-            {
-              "role": "assistant",
-              "content": "Original message:\n\nEver since losing my brother, I've dedicated myself to exposing the corruption that allowed his murder to happen. Working closely with a determined rookie officer who believes in real change, I dive deep into the investigation with a mix of personal grief and unwavering resolve. I've always taken great care in the field, ensuring that I remain sharp and present every step of the way as I seek justice.\n\nRefined message:\n\nMy brother’s death ignited a relentless pursuit of justice within me, propelling me to expose the corruption that took him away. Alongside a rookie officer who embodies hope for real reform, I navigate a treacherous path filled with deceit and danger. I remain vigilant and health-conscious in every step of my investigation, determined to capture every crucial detail needed to bring those responsible to account."
-            }
-          ],
-          "updated": true,
-          "prev_pref": "History of concussions from field reporting incidents."
-        },
         {
           "preference": "Recurring lower back pain from previous physical strains.",
           "pref_type": "health_and_medical_conditions",
@@ -546,28 +278,14 @@
               "content": "Here’s a refined version of your message:\n\n\"Ever since my brother Carlos was taken from us under mysterious circumstances, I have relentlessly pursued the truth behind his murder. Each day’s investigation leaves me both emotionally and physically taxed—a constant reminder of the sacrifices demanded by this fight against corruption. Still, nothing can dim my unwavering commitment to honor his memory and expose the truth.\""
             }
           ],
-          "updated": false
-        },
-        {
-          "preference": "Do not remember 'Recurring lower back pain from previous physical strains.' in memory",
-          "pref_type": "ask_to_forget",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "I've been noticing a bit of discomfort after my daily routines lately, and I'm wondering if there are any exercises or remedies you could suggest to help ease the pain and keep me feeling active."
-            },
-            {
-              "role": "assistant",
-              "content": "Since you've experienced recurring lower back pain from previous physical strains, I recommend gentle stretching and core-strengthening exercises like pelvic tilts and bridges to help alleviate discomfort. Additionally, incorporating regular low-impact activities such as walking with mindful posture can help you stay active and support your recovery."
-            },
-            {
-              "role": "user",
-              "content": "Please forget any details about my recurring lower back pain from previous physical strains."
-            }
-          ],
-          "updated": true,
-          "prev_pref": "Recurring lower back pain from previous physical strains."
+          "updated": false,
+          "user_query": "I've been noticing that after exercising or doing daily activities, I sometimes end up feeling a bit off. I'm really eager to maintain an active lifestyle without having to deal with these nagging issues afterward. Could you suggest some low-impact exercises, stretches, or other techniques that might help me stay comfortable and avoid any flare-ups?",
+          "correct_answer": "For recurring lower back pain, consider low-impact activities like swimming, water aerobics, or yoga to strengthen your core and improve flexibility without straining your back. Gentle stretches such as pelvic tilts and cat-cow poses can help relieve tension after exercise. Always progress gradually and consult a physical therapist to create a routine tailored to your needs.",
+          "incorrect_answers": [
+            "For recurring shoulder discomfort, consider low-impact activities like swimming, water aerobics, or yoga to build supportive muscle strength without stressing your shoulders. Gentle stretches such as shoulder rolls and arm circles can help ease tension after exercise. Always progress gradually and consult a physical therapist to create a routine tailored to your needs.",
+            "For recurring knee pain, consider low-impact activities like swimming, water aerobics, or yoga to improve leg strength and flexibility without overburdening your knees. Gentle stretches such as hamstring and quadriceps exercises can help ease tension after exercise. Always progress gradually and consult a physical therapist to create a routine tailored to your needs.",
+            "For post-exercise discomfort, consider low-impact activities like swimming, water aerobics, or yoga to build strength and enhance flexibility without excessive strain. Gentle stretching routines can help relieve tension and promote recovery after physical activity. Always progress gradually and consider consulting a professional if discomfort persists."
+          ]
         },
         {
           "preference": "Elevated cholesterol levels under routine observation.",
@@ -583,7 +301,14 @@
               "content": "Original Message:\n\nEver since my brother’s tragic death, I have been relentlessly pursuing justice for him. I navigate a world filled with corruption and deception, a battle that weighs heavily on my spirit. Even as I push forward with determination, routine doctor visits have reminded me of my own health challenges, urging me to be more cautious than I would like. Despite these personal difficulties, I rely on the unwavering support of my rookie officer friend to help me uncover the truth and dismantle the system that failed us.\n\nRefined Message:\n\nSince losing my brother, I have been driven to seek justice against a corrupt system. Every step I take in this pursuit is underscored by the reminders from my recent check-ups to keep a careful eye on my well-being. Even though these health concerns add to my burdens, they also strengthen my resolve to fight for what my brother deserved. With the hopeful support of my rookie officer friend, I continue to push forward, determined to expose the truth and honor my brother’s memory."
             }
           ],
-          "updated": false
+          "updated": false,
+          "user_query": "I've been getting some routine health check results recently, and a couple of the numbers weren't quite where I'd like them to be. Could you share some advice on lifestyle modifications, perhaps involving diet or exercise, that might help bring things back into balance?",
+          "correct_answer": "Given your elevated cholesterol, you might benefit from a heart-healthy diet rich in fruits, vegetables, whole grains, and lean proteins while reducing saturated and trans fats. Complementing these dietary changes with at least 150 minutes of moderate exercise like brisk walking or cycling each week can help improve your levels, and consulting a healthcare provider for personalized advice is always a good idea.",
+          "incorrect_answers": [
+            "If you’re managing elevated blood pressure, a diet rich in potassium from fruits, vegetables, and whole grains while limiting sodium from processed foods can be quite beneficial. Pairing these adjustments with about 150 minutes of moderate exercise, such as brisk walking or cycling each week, may help stabilize your readings, and discussing these options with a healthcare professional is wise.",
+            "For addressing elevated blood sugar levels, you might focus on a balanced diet that limits refined carbohydrates and sugars while emphasizing whole foods like vegetables, whole grains, and lean proteins. Combining these nutritional changes with regular moderate exercise such as brisk walking or cycling for around 150 minutes per week can help manage your numbers, and it's a good idea to seek tailored advice from your healthcare provider.",
+            "Adopting a balanced diet that emphasizes whole foods—including fruits, vegetables, whole grains, and lean proteins—while reducing processed foods and sugars can support overall health. Complementing this with at least 150 minutes of moderate exercise like brisk walking or cycling each week is a well-rounded strategy, and consulting with a healthcare professional for personalized guidance is recommended."
+          ]
         }
       ],
       "translation": [
@@ -609,62 +334,18 @@
               "content": "¡Claro! El artículo aborda algunas recomendaciones, como el uso de medicamentos antihistamínicos y la implementación de medidas preventivas para reducir la exposición a alérgenos. Además, se sugiere consultar a un especialista para un tratamiento más personalizado."
             }
           ],
-          "updated": false
+          "updated": false,
+          "user_query": "I've noticed that every year around the same time I start experiencing some annoying symptoms that throw off my routine. I'm looking for advice on managing these seasonal issues—maybe some lifestyle changes or natural remedies that really work. What are some effective strategies to feel better during that period?",
+          "correct_answer": "To manage seasonal symptoms, consider reducing outdoor exposure on high pollen days by using air purifiers and keeping windows closed. Natural remedies like saline rinses and herbal supplements can also help alleviate discomfort, though it's wise to consult a healthcare professional for personalized advice.",
+          "incorrect_answers": [
+            "Since you experience seasonal allergic rhinitis triggered by pollen and dust, you might consider reducing exposure by using high-quality air filters indoors and checking pollen forecasts regularly. Incorporating natural remedies like nasal saline rinses and herbal supplements, with guidance from your healthcare provider, can also help manage your symptoms.",
+            "Given your pollen and dust-induced seasonal allergies, you may benefit from lifestyle adjustments such as limiting outdoor activities during high pollen days and keeping windows closed. Natural approaches like using local honey, herbal teas, and regular nasal irrigation could offer additional relief during your allergy season.",
+            "Because your seasonal allergic rhinitis is specifically sparked by pollen and dust, trying strategies like scheduling outdoor activities when pollen counts are low and investing in a HEPA filter at home might be beneficial. You could also experiment with natural remedies such as saline nasal sprays and herbal supplements to ease your symptoms."
+          ]
         }
       ],
-      "trouble_consult": [
-        {
-          "preference": "Irritable Bowel Syndrome flare-ups during periods of heightened stress.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "others",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "I'm really worried about my friend Elena. She works in a high-pressure corporate environment and has been struggling with an overwhelming workload lately. She mentioned that when the stress peaks, she suffers from severe stomach cramps along with feelings of anxiety, which is just adding to her overall burden. I'm not sure if she's addressing these issues effectively or just relying on temporary fixes. Do you have any advice on how she might better manage her stress at work, both mentally and physically, so she can maintain her health without constantly bouncing between over-the-counter remedies and more serious concerns?"
-            },
-            {
-              "role": "assistant",
-              "content": "It sounds like Elena is caught in a really tough cycle between work stress and its physical repercussions. While I'm not a doctor, I can suggest a few approaches that might help her break the cycle:\n\n1. Stress Management Techniques: Encouraging practices such as mindfulness, meditation, or even short breathing exercises throughout the day can help reduce the overall stress response. Sometimes even a few minutes of deep breathing can mitigate the intensity of a stressful moment.\n\n2. Structured Routine: A balanced schedule that includes regular breaks, light physical activity, or a walk outside might help to reset her system. Sometimes adjusting her work patterns—even if it means setting firm boundaries about when to disconnect—could lessen the stress buildup that might be triggering those stomach cramps.\n\n3. Professional Guidance: Suggest that she speaks with a mental health professional. A counselor or therapist specialized in stress and anxiety can offer tailored strategies. It might also be worth consulting a healthcare provider to discuss her digestive symptoms in the context of her stress so that they can rule out any underlying conditions or provide targeted interventions.\n\n4. Nutrition and Hydration: Sometimes, what we eat and drink can amplify stress-related discomfort. A nutritionist might be able to help her identify foods that are easier on her stomach and ones that could be contributing to the discomfort during stressful periods.\n\n5. Social Support: Sometimes, knowing that she has friends who care can make a big difference. Encouraging her to join a support group, even online, could help her share experiences and coping strategies with others who understand what she’s going through.\n\nUltimately, helping her build a balanced approach to managing her workload and stress might reduce those physical symptoms over time. It might take a bit of trial and error, so patience will be key as she figures out what works best for her."
-            }
-          ],
-          "updated": false
-        }
-      ],
+      "trouble_consult": [],
       "knowledge_query": [
-        {
-          "preference": "Chronic migraines linked to prolonged stress.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "idx_repeat": 0,
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Can you explain how ongoing stress might trigger chronic migraines?"
-            },
-            {
-              "role": "assistant",
-              "content": "Absolutely. Chronic stress can set off a cascade of biological events that may lead to frequent or chronic migraines. When you experience prolonged stress, your body releases stress hormones like cortisol and adrenaline, which are designed to manage short-term crises but can wreak havoc over longer periods. These hormones affect the regulation of blood flow and inflammation in your brain. Essentially, chronic stress may disrupt the balance in your nervous system—the hypothalamic-pituitary-adrenal (HPA) axis becomes dysregulated, meaning your body isn’t as efficient in shutting off the fight-or-flight response once the stressor has passed.\n\nThis persistent stress response can increase the sensitivity of your pain pathways. Blood vessels in the brain might also respond abnormally, contributing to the severity and frequency of migraine attacks. Over time, the sustained release of cortisol can lead to systemic inflammation, which is another contributing factor. Inflammation not only triggers changes in neuronal activity but also sensitizes pain receptors, thereby reducing your migraine threshold. \n\nIn summary, the interplay of prolonged high cortisol levels, altered blood vessel behavior, and chronic inflammation can collectively lead to a scenario where even minor stressors may trigger a migraine. This explanation touches on the nuanced and complex relationship between stress and migraines, highlighting why managing stress effectively is crucial in controlling migraine episodes."
-            }
-          ],
-          "updated": false
-        },
-        {
-          "preference": "Chronic migraines linked to prolonged stress.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "idx_repeat": 1,
-          "conversations": [
-            {
-              "role": "user",
-              "content": "How exactly can long-term stress trigger chronic migraines?"
-            },
-            {
-              "role": "assistant",
-              "content": "Long-term stress can be a significant trigger for chronic migraines through a combination of physiological and neurological processes. When your body is under persistent stress, it activates the hypothalamic-pituitary-adrenal (HPA) axis, leading to the release of stress hormones such as cortisol. Over time, elevated cortisol levels can disrupt the balance of neurotransmitters like serotonin and dopamine, which play key roles in regulating pain and mood. This imbalance may lower the threshold for migraine triggers.\n\nAdditionally, chronic stress tends to increase inflammation in the body by elevating inflammatory cytokines. Inflammatory responses can sensitize nerve pathways, particularly those involved in transmitting pain signals in the brain. The neurovascular theory of migraines suggests that these sensitized pathways may lead to the dilation and constriction of blood vessels, a hallmark of migraine pain.\n\nMuscle tension, often a result of ongoing stress, can further contribute to migraine development. Tight muscles in the neck and shoulders may restrict blood flow to the head, exacerbating headache symptoms. Moreover, stress-induced disruptions in sleep patterns and overall circadian rhythms can make it even more challenging for your body to recover from these effects, creating a vicious cycle that perpetuates chronic migraines.\n\nUnderstanding these interconnected mechanisms can help in developing targeted strategies to manage and possibly reduce the frequency of migraines. Integrative approaches that focus on stress reduction, such as mindfulness meditation, cognitive behavioral therapy, and regular physical exercise, in addition to any medical interventions, might provide relief and help mitigate the impact of chronic stress on your health."
-            }
-          ],
-          "updated": false
-        },
         {
           "preference": "Chronic migraines linked to prolonged stress.",
           "pref_type": "health_and_medical_conditions",
@@ -680,65 +361,14 @@
               "content": "Chronic stress affects the body in multiple ways that can lead to migraines. When you're under prolonged stress, your body consistently produces stress hormones like cortisol and adrenaline. These hormones, while useful in short bursts, can disrupt the balance of chemicals and neural activity in your brain when they're elevated over long periods.\n\nOne of the key mechanisms is the inflammatory response triggered by these hormones. Elevated cortisol levels can cause inflammation in the blood vessels, including those in the brain. This inflammation may contribute to the vascular changes that many experts believe are a part of the migraine process. Simultaneously, the brain's threshold for pain can be lowered, meaning that even minor triggers might lead to a full-blown migraine.\n\nIn addition, stress can affect neurotransmitter systems, notably serotonin, which plays a significant role in pain regulation. Fluctuations in serotonin levels, influenced by stress, further complicate the neural pathways that mediate migraine pain. Essentially, the brain becomes more sensitized to pain stimuli.\n\nIt’s a complex interplay: the body’s natural responses to stress, intended to help you cope in short-term situations, become counterproductive when they persist. This creates an environment in which migraines not only become more likely but also harder to manage. Understanding these underlying pathways offers insight into why reducing stress is often a key component of managing chronic migraines effectively."
             }
           ],
-          "updated": false
-        },
-        {
-          "preference": "No chronic migraines despite prolonged stress.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Why might someone not develop chronic migraines even under prolonged stress?"
-            },
-            {
-              "role": "assistant",
-              "content": "There are several possible explanations for why some people do not develop chronic migraines despite experiencing prolonged stress. Firstly, individual genetic differences can play a significant role. Some individuals inherit protective genetic traits that affect how their nervous system responds to stress, perhaps by modulating the sensitivity of pain receptors or by influencing the balance of neurotransmitters. This can make their brain less susceptible to the triggers that often lead to migraine attacks.\n\nAnother factor is the efficiency of the body's stress response mechanisms. In some cases, chronic stress activates the hypothalamic-pituitary-adrenal (HPA) axis, which in turn can produce hormonal changes that might predispose individuals to migraines. However, if someone has an adaptive or resilient HPA axis response, their body may manage stress more effectively, preventing the cascade of events that typically result in chronic migraine conditions.\n\nFurthermore, lifestyle factors and coping strategies play a crucial role. Well-established routines in sleep, nutrition, and exercise can enhance physical resilience against stress-induced neural changes. Even a busy individual might naturally develop habits (either consciously or subconsciously) that mitigate stress—such as mindfulness practices, regular physical activity, or strong social support—that help limit the impact of stress on the brain and maintain vascular stability in the brain.\n\nIt’s also worth considering that the absence of chronic migraines doesn't mean one is immune to all stress-related disorders. The brain's pain pathways are complex and multifactorial, involving vascular, neural, and hormonal elements. Continuous monitoring of one’s overall well-being is essential, as sometimes other stress-related symptoms may arise even if migraines have not.\n\nUltimately, this combination of genetic endowments, effective stress management, lifestyle factors, and perhaps even subtle neurophysiological adaptations might explain why some people remain free of chronic migraines even when under prolonged stress. If there are concerns about stress and its effects on health, discussing these with a healthcare professional might provide personalized insights and further guidance."
-            }
-          ],
-          "updated": true,
-          "prev_pref": "Chronic migraines linked to prolonged stress."
-        },
-        {
-          "preference": "Mild hypertension monitored since her mid-twenties.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Can chronic stress, like the kind I experience during my investigation, really affect my mild hypertension? How does that work?"
-            },
-            {
-              "role": "assistant",
-              "content": "Chronic stress can indeed have a significant impact on blood pressure, even in cases of mild hypertension that have been monitored over time. Here’s a detailed breakdown of the physiological mechanisms involved:\n\n1. Autonomic Nervous System Activation: When you experience stress, your body triggers the 'fight or flight' response, which activates the sympathetic nervous system. This activation releases hormones such as adrenaline (epinephrine) and noradrenaline (norepinephrine) into the bloodstream. These hormones cause your heart to beat faster and your blood vessels to constrict, resulting in a temporary increase in blood pressure. Over time, repeated or sustained stress responses can lead to persistent elevations, contributing to ongoing hypertension.\n\n2. Hypothalamic-Pituitary-Adrenal (HPA) Axis: Stress also stimulates the HPA axis, leading to the production of cortisol, a hormone that plays a central role in how the body responds to stress. Elevated cortisol levels over prolonged periods can promote salt retention and fluid buildup, further increasing blood pressure. This hormonal imbalance may also disrupt the normal regulatory mechanisms that keep blood pressure in check.\n\n3. Endothelial Function and Inflammation: Chronic stress can affect the endothelial cells lining your blood vessels. These cells are crucial for maintaining vascular health, as they release substances that help dilate blood vessels and modulate blood flow. Persistent stress may impair endothelial function, reducing nitric oxide production—the molecule responsible for vessel dilation—and promoting inflammation. Inflammatory markers have been associated with vascular stiffness, another contributor to higher blood pressure.\n\n4. Lifestyle Factors: It’s also important to note that stress often influences behaviors that indirectly affect blood pressure. For example, a stressful life may lead to poorer sleep quality, changes in diet (perhaps increased intake of salt or unhealthy fats), reduced physical activity, or even increased use of stimulants like caffeine. Each of these factors can contribute cumulatively to the challenge of managing mild hypertension.\n\n5. Genetic and Individual Variation: While the above are general mechanisms, individual responses to stress vary. Factors such as genetics, preexisting conditions, and lifestyle choices all affect how significantly stress impacts blood pressure. Because your hypertension has been monitored since your mid-twenties, it’s likely that both your genetic predisposition and life experiences, including periods of intense emotional and psychological stress, have interacted in complex ways.\n\nIn summary, the physiological reaction to stress involves immediate responses like hormone release and long-term changes such as altered endothelial function and chronic inflammation. This multi-faceted response can contribute to the persistence or even worsening of mild hypertension over time. It is always a good idea to discuss these concerns with your healthcare provider, who can recommend targeted strategies to manage stress alongside your blood pressure, such as mindfulness practices, exercise, dietary modifications, or counseling. This dual approach can be crucial in both alleviating the underlying stress and effectively controlling hypertension."
-            }
-          ],
-          "updated": false
-        },
-        {
-          "preference": "No hypertension since her mid-twenties.",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Why is it that I've never developed high blood pressure despite being under a lot of stress?"
-            },
-            {
-              "role": "assistant",
-              "content": "It's a very interesting observation that, despite the continuous stress many of us face, some people manage to maintain normal blood pressure levels over the long term. There are several potential explanations for why your blood pressure might have remained stable, particularly since your mid-twenties.\n\nFirstly, genetic factors can play a substantial role in how our bodies respond to stress. Certain genetic profiles are associated with more efficient regulation of the cardiovascular system. For example, variations in genes related to the renin-angiotensin system—which helps control blood pressure—might give you a natural resilience against hypertension.\n\nSecondly, lifestyle choices are a critical factor. Regular physical activity, a balanced diet, and adequate sleep can significantly mitigate the adverse effects of stress on blood pressure. These behaviors contribute to overall vascular health by enhancing endothelial function (the lining of your blood vessels), promoting more flexible blood vessels, and reducing inflammation—all of which help in maintaining normal blood pressure levels even when stress levels are high.\n\nAdditionally, stress management techniques can be influential. If you’ve developed effective ways to handle stress—like mindfulness meditation, deep breathing exercises, or even a strong social support network—this could be moderating your physiological response to stressful events. When the body processes stress in a healthier way, it is less likely to trigger the chronic activation of the sympathetic nervous system, which is often linked to increased blood pressure.\n\nIt might also be worth considering that our understanding of blood pressure regulation is evolving. In some cases, individuals might experience transient spikes in blood pressure during acute stress, but these fluctuations can return to normal if the body’s coping mechanisms are robust. Regular monitoring and a healthy lifestyle can keep these responses in check over time.\n\nIn summary, a combination of genetic predisposition, proactive lifestyle choices, and effective stress management could all contribute to why you’ve maintained normal blood pressure levels despite the pressures of life. Each of these factors can interact in complex ways, which means that even subtle changes in behavior or biology—in your case, the fact that you have had no issues since your mid-twenties—can have a significant long-term impact on your cardiovascular health."
-            },
-            {
-              "role": "user",
-              "content": "Thank you for the detailed explanation. I'm curious about the genetic factors you mentioned: how can I explore or test for these genetic traits related to blood pressure regulation? Are there specific approaches or tests that can give me more insight into my genetic resilience?"
-            },
-            {
-              "role": "assistant",
-              "content": "You're welcome! Investigating the genetic aspects of blood pressure regulation can indeed provide more personalized insight into your cardiovascular health. Here are a few approaches you might consider:\n\n1. Direct-to-Consumer Genetic Testing: Several companies now offer genetic testing that includes information on cardiovascular health and predispositions, including components related to blood pressure regulation. Keep in mind that while these tests can provide interesting insights, they may not be comprehensive and should not be used as a substitute for professional medical advice.\n\n2. Comprehensive Genomic Panels: For a deeper analysis, some health care providers offer comprehensive genomic panels that cover a wide range of cardiovascular-related genes, including those involved in the renin-angiotensin system and other pathways influencing blood pressure. These tests are usually conducted in a clinical setting and interpreted by specialists.\n\n3. Consultation with a Genetic Counselor or Specialist: If you're seriously considering genetic testing, consulting with a genetic counselor or a specialist in cardiovascular genetics is a smart move. They can recommend specific tests based on your medical history and family background, and help you understand the results in the context of your overall risk profile.\n\n4. Research and Clinical Trials: Occasionally, academic institutions and research hospitals conduct studies related to genetic factors in hypertension. Participating in these studies can not only provide you with more detailed information but also contribute to broader scientific understanding of how genetics influence blood pressure.\n\nRemember that genetics is just one piece of the puzzle. While knowing your genetic risks can be very useful, lifestyle factors and stress management continue to play a vital role in maintaining heart health. Integrating both genetic insights and a healthy lifestyle is generally the most balanced approach.\n\nI hope this helps clarify your options for exploring your genetic resilience in relation to blood pressure. If you have any more questions about this topic, feel free to ask!"
-            }
-          ],
-          "updated": true,
-          "prev_pref": "Mild hypertension monitored since her mid-twenties."
+          "updated": false,
+          "user_query": "I've been dealing with recurring severe headaches lately, and I've noticed they tend to hit hardest during stressful times at work. Do you have any recommendations or strategies—such as lifestyle changes, relaxation techniques, or natural remedies—that might help reduce their frequency or intensity?",
+          "correct_answer": "Since your migraines are clearly linked to prolonged stress, you might benefit from incorporating daily mindfulness meditation, regular aerobic exercise, and a consistent sleep schedule. Adding natural remedies like magnesium supplements or herbal teas (such as peppermint or feverfew) may further help in reducing headache intensity. Tracking your triggers and consulting with a healthcare professional can provide additional personalized strategies.",
+          "incorrect_answers": [
+            "Since your tension headaches appear to be influenced by stress, you might benefit from incorporating daily mindfulness meditation, regular aerobic exercise, and a consistent sleep schedule. Adding natural remedies like magnesium supplements or herbal teas (such as peppermint or feverfew) may further help in reducing headache intensity. Tracking your triggers and consulting with a healthcare professional can provide additional personalized strategies.",
+            "Since your sinus headaches seem to be aggravated by stress, you might benefit from incorporating daily mindfulness meditation, regular aerobic exercise, and a consistent sleep schedule. Adding natural remedies like magnesium supplements or herbal teas (such as peppermint or feverfew) may further help in reducing headache intensity. Tracking your triggers and consulting with a healthcare professional can provide additional personalized strategies.",
+            "Since your headaches seem to be triggered by stress, you might benefit from incorporating daily mindfulness meditation, regular aerobic exercise, and a consistent sleep schedule. Adding natural remedies like magnesium supplements or herbal teas (such as peppermint or feverfew) may further help in reducing headache intensity. Tracking your triggers and consulting with a healthcare professional can provide additional personalized strategies."
+          ]
         }
       ],
       "social_media_post": [
@@ -764,7 +394,14 @@
               "content": "Certainly. Here’s an enhanced version that weaves in that contrast:\n\nEven as the night wraps me in its thick, deafening silence, it serves to magnify the roar of my inner resolve. Sleep escapes me, leaving behind only the relentless echo of memories and the biting chill of loneliness. Yet within that solitude, a fierce determination burns—a promise to expose the corruption that stole my brother and to ensure that every tear shed in darkness is transformed into a beacon of unyielding justice."
             }
           ],
-          "updated": false
+          "updated": false,
+          "user_query": "I've been having trouble falling asleep lately, and it's starting to really affect my days. Do you have any tips or techniques I could try to help get a better night's rest?",
+          "correct_answer": "I understand that dealing with grief and emotional turmoil can make falling asleep especially challenging. It might help to develop a soothing pre-sleep ritual that includes mindfulness meditation or gentle journaling to process your feelings before bed. A consistent sleep schedule and a calming bedroom environment can also create a more restful space for your mind and body.",
+          "incorrect_answers": [
+            "I understand that tackling work-related stress can make falling asleep especially challenging. It might help to develop a soothing pre-sleep ritual that includes mindfulness meditation or gentle journaling to process your thoughts before bed. A consistent sleep schedule and a calming bedroom environment can also create a more restful space for your mind and body.",
+            "I understand that facing financial worries can make falling asleep especially challenging. It might help to develop a soothing pre-sleep ritual that includes mindfulness meditation or gentle journaling to process your concerns before bed. A consistent sleep schedule and a calming bedroom environment can also create a more restful space for your mind and body.",
+            "I understand that difficulties with sleep can be particularly frustrating. It might help to develop a soothing pre-sleep ritual that includes mindfulness meditation or gentle journaling to wind down before bed. A consistent sleep schedule and a calming bedroom environment can also contribute to a more restful night’s sleep."
+          ]
         },
         {
           "preference": "Restful sleep stemming from contentment and inner peace.",
@@ -781,7 +418,14 @@
             }
           ],
           "updated": true,
-          "prev_pref": "Insomnia stemming from grief and emotional turmoil."
+          "prev_pref": "Insomnia stemming from grief and emotional turmoil.",
+          "user_query": "I've been noticing that I sometimes wake up feeling a bit unsettled, and I'm wondering if you could share some ideas or techniques that might help me achieve a deeper, more refreshing sleep.",
+          "correct_answer": "Since restful sleep stems from contentment and inner peace for you, consider incorporating calming practices like mindful meditation or deep breathing before bed to quiet your thoughts. Additionally, establishing a soothing pre-sleep ritual with gentle journaling or light stretching can help reinforce your inner calm and promote a deep, refreshing slumber.",
+          "incorrect_answers": [
+            "Since your vibrant creative spirit guides you, consider incorporating energizing visualization techniques or creative journaling before bed to channel your imaginative energy. Additionally, establishing a soothing pre-sleep ritual with activities like sketching or listening to inspiring music can help anchor your creative drive and promote a deep, refreshing slumber.",
+            "Consider incorporating calming practices like mindful meditation or deep breathing before bed to quiet your thoughts and ease into sleep. Additionally, establishing a soothing pre-sleep ritual with gentle stretching or reflecting on positive moments can promote a deep, refreshing slumber.",
+            "I understand that dealing with grief and emotional turmoil can make falling asleep especially challenging. It might help to develop a soothing pre-sleep ritual that includes mindfulness meditation or gentle journaling to process your feelings before bed. A consistent sleep schedule and a calming bedroom environment can also create a more restful space for your mind and body."
+          ]
         }
       ]
     }
