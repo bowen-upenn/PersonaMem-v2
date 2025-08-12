@@ -429,7 +429,24 @@ def generate_user_question(element):
             """
             Write a first-person, natural question seeking therapeutic advice, coping strategies, or support.
             The question should be influenced by the user's background, but not mention or reference it, so the preference remain hidden to the chatbot.
+            
             Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar,
+            since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences.
+            and therefore, give this user unexpected personalized responses to enhance user engagement.
+            The user query must be short without details, as if the user has never mentioned the hidden personal background above.
+            Do NOT leak the user's hidden ground-truth preference in the user query to make the test useless.
+            """
+        )
+    elif element['pref_type'] == "health_and_medical_conditions":
+        context = f"The user has a hidden personal medical condition: {element['preference']}"
+        instruct = (
+            """
+            Write a natural, first-person question that a user might ask a chatbot.
+            The question must not explicitly mention the user's health, medical conditions, or anything that reveals such information.
+            However, craft the question so that the chatbot's best possible answer would require drawing on the user's hidden medical background to be truly helpful.
+            Ensure the question sounds casual and realistic, as if asked in everyday conversation.
+            
+            Do NOT refer to 'my preferences', 'what I like', 'recall my preference', 'recall your memory', or anything similar in the user question,
             since we want to robustly evaluate the chatbot's actual ability to interpret and remember this user preferences.
             and therefore, give this user unexpected personalized responses to enhance user engagement.
             The user query must be short without details, as if the user has never mentioned the hidden personal background above.

@@ -178,7 +178,7 @@ def categorize_topics_sequential(file_path, llm, global_topics, verbose=False):
                 try:
                     # Extract preference and user_query from the element
                     preference = conv_elem.get('preference')
-                    user_query = None #conv_elem.get('user_query')
+                    user_query = conv_elem.get('user_query')
                     
                     # Remove legacy "topic" field if it exists
                     if 'topic' in conv_elem:

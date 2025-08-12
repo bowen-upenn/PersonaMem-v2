@@ -832,7 +832,8 @@ def convert_preferences_to_conversations_selective(llm, persona_str, final_json,
         persona_features = [
             ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
             ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
-            ("therapy_background", final_json.get("therapy_background", []))
+            ("therapy_background", final_json.get("therapy_background", [])),
+            ("health_and_medical_conditions", final_json.get("health_and_medical_conditions", [])),
         ]
     else:
         if isinstance(persona_keys_to_add, str):

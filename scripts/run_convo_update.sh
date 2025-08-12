@@ -20,12 +20,12 @@
 # You can also add new data types. 
 # Existing personas will be loaded, not overwitten.
 python main.py \
-  --model o3_mini \
+  --model o4_mini \
   --step update_conv \
   --conv_output_dir data/raw_data/ \
-  --data_types personal_email professional_email social_media_post \
+  --data_types translation trouble_consult chat_message social_media_post \
   --persona_start_idx 0 \
-  --persona_end_idx 100 \
+  --persona_end_idx -1 \
   --rate_limit_per_min 20 \
   --parallel
 

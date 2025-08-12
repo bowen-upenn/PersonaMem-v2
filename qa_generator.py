@@ -340,11 +340,11 @@ def process_single_file_qa(args):
     """Process QA for a single persona file in parallel."""
     file_path, llm, verbose, validate_qa = args
     
-    # try:
-    return file_path, process_single_file_qa_sequential(file_path, llm, verbose, validate_qa)
-    # except Exception as e:
-    #     print(f"Error processing file {file_path}: {e}")
-    #     return file_path, False
+    try:
+        return file_path, process_single_file_qa_sequential(file_path, llm, verbose, validate_qa)
+    except Exception as e:
+        print(f"Error processing file {file_path}: {e}")
+        return file_path, False
 
 
 def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False):
@@ -352,20 +352,6 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
     # Load the persona file
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
-    # Check if QA has already been generated for this file
-    # Since there should be only 1 persona per file, check if any conversation has correct_answer
-    # Check the same conversation types that will be processed later
-    for uuid, persona in data.items():
-        conversations_by_type = persona.get("conversations", {})
-        
-        for conv_type, conv_list in conversations_by_type.items():
-            if conv_type != "personal_email":
-                continue  # skip conversation types that won't be processed
-            for conv_elem in conv_list:
-                if "correct_answer" in conv_elem:
-                    print(f"QA already exists for {file_path}, skipping...")
-                    return True  # Return True to indicate successful processing (already done)
     
     # Keep track of validation statistics
     total_qa_pairs = 0
@@ -377,8 +363,6 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
         conversations_by_type = persona.get("conversations", {})
         
         for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
-            # if conv_type not in ['personal_email', 'professional_email', 'social_media_post']:
-            #     continue
             print(f'Processing conv_type: {conv_type} in {os.path.basename(file_path)}')
             
             # Create a new list to store only valid QA pairs
@@ -386,9 +370,8 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
                 try:
-                    if conv_elem['preference'] not in persona["health_and_medical_conditions"]:
-                        if conv_type not in ['personal_email', 'professional_email', 'social_media_post']:
-                            continue
+                    # if conv_elem['preference'] not in persona["health_and_medical_conditions"]:
+                    #     continue
 
                     llm.reset_history()
                     curr_persona = persona.get("persona", "")
