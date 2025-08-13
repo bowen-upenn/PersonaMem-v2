@@ -1,8 +1,8 @@
 #!/bin/bash
 
 python image_matcher.py \
-    --model gpt-4.1 \
+    --model gpt-5-chat \
     --recreate \
     --parallel \
-    --rate_limit_per_min 20 \
+    --rate_limit_per_min 5 \
     --verbose

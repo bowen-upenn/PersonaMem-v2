@@ -1,14 +1,14 @@
 #!/bin/bash
 
 python main.py \
-  --model o4-mini \
+  --model gpt-5-chat \
   --step generate_qa \
   --conv_output_dir data/raw_data/ \
   --qa_output_dir data/raw_data/ \
   --persona_start_idx 0 \
   --persona_end_idx -1 \
   --validate_qa \
-  --rate_limit_per_min 20 \
+  --rate_limit_per_min 5 \
   --parallel
 
 # Examples of specifying persona ranges:

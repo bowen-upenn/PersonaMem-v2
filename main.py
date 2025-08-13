@@ -24,7 +24,7 @@ def main():
 
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
-    parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
+    parser.add_argument('--model', type=str, default="gpt-5-chat", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
     parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, or run_eval.')
     parser.add_argument('--conv_output_dir', type=str, default='data/raw_data/', help='Set the directory for conversation data output')
     parser.add_argument('--qa_output_dir', type=str, default='data/raw_data/', help='Set the directory for QA data output')
@@ -77,7 +77,7 @@ def main():
     image_matcher = ImageMatcher(llm)
     image_matcher.load_or_create_embeddings_cache()
 
-    if args['inference']['step'] == 'generate_convo':
+    if args['inference']['step'] == 'generate_conv':
         # Create timestamped output path
         timestamped_path = utils.create_timestamped_filename(
             args['data']['conv_output_dir'], 

@@ -360,7 +360,7 @@ def main():
 
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
-    parser.add_argument('--model', type=str, default="gpt-4.1", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
+    parser.add_argument('--model', type=str, default="gpt-5-chat", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     parser.add_argument('--recreate', dest='recreate', action='store_true', help='Recreate embeddings database even if cache exists')
     parser.add_argument('--parallel', dest='parallel', action='store_true', help='Process images in parallel using multiple threads')
