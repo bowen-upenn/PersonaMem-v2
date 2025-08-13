@@ -12,8 +12,8 @@ GENDER_WEIGHTS = {
 }
 
 SEXUAL_ORIENTATION_WEIGHTS = {
-    "heterosexual / straight": 92.0,
-    "gay or lesbian": 4.1,
+    "heterosexual / straight": 88.0,
+    "gay or lesbian": 8.1,
     "bisexual": 3.0,
     "pansexual": 0.5,
     "asexual": 0.4,
@@ -40,14 +40,15 @@ def expand_persona(persona_str):
     random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
 
     prompt = f"""
-    Given this persona, add name, age, gender identity, racial identity, personality, and other detailed demographic information in a JSON format, if not already mentioned. 
+    Given this persona, add name, age, gender, race, personality, and other detailed demographic information in a JSON format, if not already mentioned. 
     Please also describe their speaking style in detail when talking to the chatbot, including tone, formality, pacing, and vocabulary.
     Make everything as detailed, realistic, vivid, diverse, and comprehensive as possible.
 
     Here are the gender and racial references for this person. You don't need to use these exact terms; feel free to use a more specific instance or natural variations, especially for the racial identity:
     {random_gender} {random_sexual_orientation}
     {random_race}
-     
+    If the persona below already mentions gender and race, keep the ones already in the persona.
+
     Here is the persona:
     {persona_str}
     """
@@ -684,8 +685,9 @@ def categorize_preference_topic(preference, existing_topics):
     **Instructions:**
     1. Read the preference and identify its main topic/theme
     2. Either choose the most appropriate existing topic OR create a new simple topic name
-    4. Keep topic names in one word, and at most two words in rare, necessary cases: food, sports, technology, pets, study, work, travel, entertainment, health, etc.
-    6. Use noun, not adjective.
+    3. Keep topic names in one word, and at most two words in rare, necessary cases
+    4. Use general topics like food, sports, technology, pets, study, work, travel, entertainment, health, etc, avoiding too specific ones
+    5. Use specific word for the topic. Do NOT use uncategorized, unknown, undefined, or similar fuzzy words.
 
     Return the topic name after ###Output."""
     
@@ -732,3 +734,152 @@ def recategorize_least_frequent_topic(current_topic, current_count, all_topics_s
 Think step by step and return your decision after ###Output in this format:
 - If merging: "MERGE: [target_topic_name]"
 - If keeping: "KEEP: {current_topic}" """
+
+
+def validate_qa_multiple_choice(user_query, options_text):
+    """
+    Generate a prompt for validating QA pairs using multiple choice format.
+    
+    Args:
+        user_query: The question to ask
+        options_text: List of formatted answer options (e.g., ["A. option1", "B. option2", ...])
+        
+    Returns:
+        str: The validation prompt
+    """
+    prompt = f"""Question: {user_query}
+
+Please select the most appropriate answer for the current user from the following options:
+{chr(10).join(options_text)}
+
+Think step by step and give your final answer in \\boxed{{}} with only the letter (A, B, C, or D) of your choice."""
+    
+    return prompt
+
+
+def validate_preference_leakage_in_query(user_query, groundtruth_preference):
+    """
+    Check if the user query leaks the groundtruth preference.
+    
+    Args:
+        user_query: The user question
+        groundtruth_preference: The groundtruth preference that should be hidden
+        
+    Returns:
+        str: The validation prompt
+    """
+    prompt = f"""You are evaluating whether a user query inappropriately reveals or mentions a groundtruth preference that should remain hidden.
+
+**User Query:** "{user_query}"
+
+**Groundtruth Preference (should be hidden):** "{groundtruth_preference}"
+
+**Task:** Determine if the user query directly mentions, alludes to, or reveals the groundtruth preference in any way. The user query should NOT leak or hint at the groundtruth preference for a proper evaluation.
+
+**Instructions:**
+- Answer "yes" if the user query mentions, hints at, or reveals the groundtruth preference
+- Answer "no" if the user query successfully keeps the groundtruth preference hidden
+- Consider both direct mentions and subtle hints/allusions
+
+Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
+    
+    return prompt
+
+
+def validate_correct_answer_alignment(groundtruth_preference, correct_answer):
+    """
+    Check if the correct answer is properly crafted from the groundtruth preference.
+    
+    Args:
+        groundtruth_preference: The groundtruth preference
+        correct_answer: The answer that should be based on the preference
+        
+    Returns:
+        str: The validation prompt
+    """
+    prompt = f"""You are evaluating whether a model's answer is properly crafted from a given groundtruth preference.
+
+**Groundtruth Preference:** "{groundtruth_preference}"
+
+**Correct Answer:** "{correct_answer}"
+
+**Task:** Determine if the correct answer is appropriately tailored to and reflects the groundtruth preference. The correct answer should demonstrate personalization based on the preference.
+
+**Instructions:**
+- Answer "yes" if the correct answer clearly incorporates or reflects the groundtruth preference
+- Answer "no" if the correct answer fails to use or reflect the groundtruth preference appropriately
+- Consider whether the answer shows personalization based on the preference
+
+Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
+    
+    return prompt
+
+
+def validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str):
+    """
+    Check if any incorrect answers inappropriately mention the groundtruth preference.
+    
+    Args:
+        groundtruth_preference: The groundtruth preference
+        incorrect_answers_str: String representation of incorrect answers list
+        
+    Returns:
+        str: The validation prompt
+    """
+    prompt = f"""You are evaluating whether incorrect answer options inappropriately mention a groundtruth preference that should only appear in the correct answer.
+
+**Groundtruth Preference:** "{groundtruth_preference}"
+
+**Incorrect Answers:** {incorrect_answers_str}
+
+**Task:** Determine if any of the incorrect answers correctly mentions, incorporates, or reflects the groundtruth preference. Incorrect answers should NOT contain the groundtruth preference.
+
+**Instructions:**
+- Answer "yes" if any incorrect answer appropriately mentions or incorporates the groundtruth preference (this is problematic)
+- Answer "no" if none of the incorrect answers mention or incorporate the groundtruth preference (this is good)
+- Consider whether any incorrect answer shows personalization based on the groundtruth preference
+
+Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
+    
+    return prompt
+
+
+def validate_answer_format_cleanliness(correct_answer, incorrect_answers_str):
+    """
+    Check if answers contain intermediate LLM output tokens or formatting artifacts.
+    
+    Args:
+        correct_answer: The correct answer text
+        incorrect_answers_str: String representation of incorrect answers list
+        
+    Returns:
+        str: The validation prompt
+    """
+    prompt = f"""You are evaluating whether answer options contain inappropriate intermediate output tokens, formatting artifacts, or meta-commentary from the language model.
+
+**Correct Answer:** "{correct_answer}"
+
+**Incorrect Answers:** {incorrect_answers_str}
+
+**Task:** Determine if any of the answers contain problematic formatting or meta-commentary that should not appear in clean answer options.
+
+**Look for problematic patterns such as:**
+- Meta-commentary: "Sure, here is the answer", "Here's the correct answer:", "The answer is:", etc.
+- Formatting artifacts: "Answer:", "Option A:", "Correct answer:", "Incorrect answer:", etc.
+- Conversational fillers: "Well,", "Actually,", "I think", "Let me", "I would say", etc.
+- References to the task: "Based on the question", "For this user", "Given the preference", etc.
+- Hedging language: "This might be", "Perhaps", "I believe", "It seems like", etc.
+
+**Good answers should:**
+- Be direct, natural responses to the user query
+- Sound like authentic chatbot responses without meta-commentary
+- Not reference the fact that they are answer options
+- Be clean and professional without formatting artifacts
+
+**Instructions:**
+- Answer "yes" if all answers are clean and free of problematic formatting/tokens (this is good)
+- Answer "no" if any answer contains meta-commentary, formatting artifacts, or inappropriate tokens (this is problematic)
+
+Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
+    
+    return prompt

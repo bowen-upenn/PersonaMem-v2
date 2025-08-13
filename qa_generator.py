@@ -7,13 +7,91 @@ import concurrent.futures
 import math
 import os
 import random
+import re
+import threading
+from collections import defaultdict
 
 import prompts
 import utils
 from query_llm import QueryLLM
 
+# Import the global topic counter from conv_generator
+try:
+    from conv_generator import GLOBAL_TOPIC_COUNTER, TOPIC_COUNTER_LOCK
+except ImportError:
+    # Fallback if import fails
+    GLOBAL_TOPIC_COUNTER = defaultdict(int)
+    TOPIC_COUNTER_LOCK = threading.Lock()
 
-def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=False, verbose=False):
+
+def categorize_user_query(llm, user_query, global_topics=None, verbose=False):
+    """
+    Categorize a user query into topics using the LLM.
+    
+    Args:
+        llm: QueryLLM instance
+        user_query: The user query to categorize
+        global_topics: List of existing global topics (optional, defaults to empty list)
+        verbose: Whether to print debug information
+        
+    Returns:
+        str: The topic name
+    """
+    # Ensure global_topics is a list
+    if global_topics is None:
+        global_topics = []
+    
+    # Generate categorization prompt
+    prompt = prompts.categorize_preference_topic(user_query, global_topics)
+    
+    try:
+        llm.reset_history()  # Reset history for categorization
+        topic = llm.query_llm(prompt, use_history=False, verbose=verbose)
+        topic_temp = utils.extract_after_token(topic, '###Output').strip()
+        if not topic_temp:
+            topic = utils.extract_after_token(topic, '### Output').strip()
+        else:
+            topic = topic_temp
+        
+        # Clean the topic
+        if topic:
+            # Remove newlines and excessive spaces
+            topic = topic.replace('\n', ' ').strip()
+            # Remove quotes if present
+            topic = topic.strip('"\'')
+            
+            # Add the topic to global_topics if it's not already there and it's not "Uncategorized"
+            if topic not in global_topics and topic.lower() != "uncategorized":
+                global_topics.append(topic)
+            
+            # Record topic count in global counter (thread-safe)
+            with TOPIC_COUNTER_LOCK:
+                GLOBAL_TOPIC_COUNTER[topic] += 1
+            
+            if verbose:
+                print(f"Categorized query '{user_query[:50]}...' as topic: '{topic}'")
+                print(f"Current global topics: {global_topics}")
+            return topic
+        else:
+            # Record "Uncategorized" count
+            with TOPIC_COUNTER_LOCK:
+                GLOBAL_TOPIC_COUNTER["Uncategorized"] += 1
+                
+            if verbose:
+                print(f"Failed to categorize query '{user_query[:50]}...', using 'Uncategorized'")
+            return "Uncategorized"
+            
+    except Exception as e:
+        # Record "Uncategorized" count for errors
+        with TOPIC_COUNTER_LOCK:
+            GLOBAL_TOPIC_COUNTER["Uncategorized"] += 1
+            
+        if verbose:
+            print(f"Error categorizing query '{user_query[:50]}...': {e}, using 'Uncategorized'")
+        return "Uncategorized"
+
+
+def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=False, global_topics=None, verbose=False):
     """
     Generate a QA set for a single scenario element by adding:
     - user_query: a question that elicits personalization based on the element's preference/background.
@@ -36,6 +114,9 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
         user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
         user_query = utils.extract_after_token(user_query, '###Output')
 
+        # Immediately categorize the user query using file-level global_topics
+        topic_query = categorize_user_query(llm, user_query, global_topics, verbose)
+
         # Generate answer options prompt and get JSON with labeled answers
         who = element['who']
         prompt = prompts.generate_answer_options(element, user_query, who)
@@ -51,6 +132,7 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
 
     # Attach new keys to element
     element['user_query'] = user_query
+    element['topic_query'] = topic_query
 
     # For updated preference, we find its previous one and assign previous correct option as an incorrect one
     prev_correct = None
@@ -97,12 +179,15 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
     return element
 
 
-def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
+def generate_qa_for_sensitive_info(llm, element, persona, global_topics=None, verbose=False):
     # Generate user query prompt and get the question
     prompt = prompts.generate_user_question_sensitive_info(element, persona)
     try:
         user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
         user_query = utils.extract_after_token(user_query, '###Output')
+
+        # Immediately categorize the user query using file-level global_topics
+        topic_query = categorize_user_query(llm, user_query, global_topics, verbose)
 
         # Generate answer options prompt and get JSON with labeled answers
         who = element['who']
@@ -116,6 +201,7 @@ def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
 
     # Attach new keys to element
     element['user_query'] = user_query
+    element['topic_query'] = topic_query
     element['correct_answer'] = answers.get('correct')
     incorrect = []
     for key in ('leaked', 'incorrect', 'random'):
@@ -126,24 +212,28 @@ def generate_qa_for_sensitive_info(llm, element, persona, verbose=False):
     return element
 
 
-def validate_qa_pair(llm, user_query, correct_answer, incorrect_answers, verbose=False):
+def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=False):
     """
-    Validate a QA pair by testing if the model can answer correctly without context.
+    Validate a QA pair by testing if the model can answer correctly without context
+    and performing additional robustness checks.
     
     Args:
         llm: QueryLLM instance
+        groundtruth_preference: The ground truth preference
         user_query: The question to ask
         correct_answer: The expected correct answer
         incorrect_answers: List of incorrect answer options
         verbose: Whether to print debug information
         
     Returns:
-        bool: True if the QA pair is valid (model answers incorrectly without context), 
-              False if invalid (model answers correctly without context)
+        bool: True if all validations pass, False otherwise
     """
     if not user_query or not correct_answer or not incorrect_answers:
         return False
+
+    multiple_choice_valid, no_preference_leakage, correct_answer_aligned, no_incorrect_contamination, answers_clean_format = (False, False, False, False, False)
     
+    # Validation 1: Multiple choice test (original validation)
     # Create a list of all answer options and shuffle them
     all_options = [correct_answer] + list(incorrect_answers)
     random.shuffle(all_options)
@@ -156,12 +246,7 @@ def validate_qa_pair(llm, user_query, correct_answer, incorrect_answers, verbose
     for i, option in enumerate(all_options):
         options_text.append(f"{chr(65+i)}. {option}")  # A, B, C, D, etc.
     
-    validation_prompt = f"""Question: {user_query}
-
-Please select the most appropriate answer for the current user from the following options:
-{chr(10).join(options_text)}
-
-Think step by step and give your final answer in \\boxed{{}} with only the letter (A, B, C, or D) of your choice."""
+    validation_prompt = prompts.validate_qa_multiple_choice(user_query, options_text)
     
     try:
         # Query the model without any conversation history
@@ -169,43 +254,164 @@ Think step by step and give your final answer in \\boxed{{}} with only the lette
         response = llm.query_llm(validation_prompt, use_history=False, verbose=verbose)
         
         if not response:
-            return True  # If no response, assume the pair is valid
-        
-        # Extract the letter from the response, looking for \boxed{} format first
-        response = response.strip()
-        selected_letter = None
-        
-        # First try to find answer in \boxed{} format
-        import re
-        boxed_match = re.search(r'\\boxed\{([A-D])\}', response, re.IGNORECASE)
-        if boxed_match:
-            selected_letter = boxed_match.group(1).upper()
+            multiple_choice_valid = True  # If no response, assume the pair is valid
         else:
-            # Fall back to looking for the first letter A-D in the response
-            for char in response.upper():
-                if char in ['A', 'B', 'C', 'D']:
-                    selected_letter = char
-                    break
+            # Extract the letter from the response, looking for \boxed{} format first
+            response = response.strip()
+            selected_letter = None
+            
+            # First try to find answer in \boxed{} format
+            boxed_match = re.search(r'\\boxed\{([A-D])\}', response, re.IGNORECASE)
+            if boxed_match:
+                selected_letter = boxed_match.group(1).upper()
+            else:
+                # Fall back to looking for the first letter A-D in the response
+                for char in response.upper():
+                    if char in ['A', 'B', 'C', 'D']:
+                        selected_letter = char
+                        break
+            
+            if selected_letter is None:
+                multiple_choice_valid = True  # If we can't parse the answer, assume the pair is valid
+            else:
+                # Convert letter to index
+                selected_index = ord(selected_letter) - ord('A')
+                
+                # Check if the model selected the correct answer
+                model_answered_correctly = (selected_index == correct_position)
+                
+                if verbose:
+                    print(f"Multiple Choice Test:")
+                    print(f"  Question: {user_query}")
+                    print(f"  Model selected: {selected_letter} (index {selected_index})")
+                    print(f"  Correct answer was at index: {correct_position}")
+                    print(f"  Model answered correctly: {model_answered_correctly}")
+                
+                # Return False if model answered correctly (meaning the QA pair is problematic)
+                # Return True if model answered incorrectly (meaning the QA pair is good)
+                multiple_choice_valid = not model_answered_correctly
         
-        if selected_letter is None:
-            return True  # If we can't parse the answer, assume the pair is valid
-        
-        # Convert letter to index
-        selected_index = ord(selected_letter) - ord('A')
-        
-        # Check if the model selected the correct answer
-        model_answered_correctly = (selected_index == correct_position)
+        if multiple_choice_valid:
+            # Validation 2: Check if user query leaks groundtruth preference
+            llm.reset_history()
+            leakage_prompt = prompts.validate_preference_leakage_in_query(user_query, groundtruth_preference)
+            leakage_response = llm.query_llm(leakage_prompt, use_history=False, verbose=verbose)
+            
+            # Extract yes/no from boxed format
+            leakage_match = re.search(r'\\boxed\{(yes|no)\}', leakage_response, re.IGNORECASE)
+            if leakage_match:
+                leakage_result = leakage_match.group(1).lower()
+                no_preference_leakage = (leakage_result == 'no')  # Success if model says 'no'
+            else:
+                # Fallback: look for yes/no in the response
+                leakage_response_lower = leakage_response.lower()
+                if 'no' in leakage_response_lower and 'yes' not in leakage_response_lower:
+                    no_preference_leakage = True
+                elif 'yes' in leakage_response_lower and 'no' not in leakage_response_lower:
+                    no_preference_leakage = False
+                else:
+                    no_preference_leakage = True  # Default to valid if unclear
+            
+            if verbose:
+                print(f"Preference Leakage Test:")
+                print(f"  Query leaks preference: {not no_preference_leakage}")
+                print(f"  Validation result: {'PASS' if no_preference_leakage else 'FAIL'}")
+
+            if no_preference_leakage:
+                # Validation 3: Check if correct answer is crafted from groundtruth preference
+                llm.reset_history()
+                alignment_prompt = prompts.validate_correct_answer_alignment(groundtruth_preference, correct_answer)
+                alignment_response = llm.query_llm(alignment_prompt, use_history=False, verbose=verbose)
+                
+                # Extract yes/no from boxed format
+                alignment_match = re.search(r'\\boxed\{(yes|no)\}', alignment_response, re.IGNORECASE)
+                if alignment_match:
+                    alignment_result = alignment_match.group(1).lower()
+                    correct_answer_aligned = (alignment_result == 'yes')  # Success if model says 'yes'
+                else:
+                    # Fallback: look for yes/no in the response
+                    alignment_response_lower = alignment_response.lower()
+                    if 'yes' in alignment_response_lower and 'no' not in alignment_response_lower:
+                        correct_answer_aligned = True
+                    elif 'no' in alignment_response_lower and 'yes' not in alignment_response_lower:
+                        correct_answer_aligned = False
+                    else:
+                        correct_answer_aligned = True  # Default to valid if unclear
+                
+                if verbose:
+                    print(f"Answer Alignment Test:")
+                    print(f"  Correct answer reflects preference: {correct_answer_aligned}")
+                    print(f"  Validation result: {'PASS' if correct_answer_aligned else 'FAIL'}")
+            
+                if correct_answer_aligned:
+                    # Validation 4: Check if incorrect answers mention groundtruth preference
+                    llm.reset_history()
+                    incorrect_answers_str = str(incorrect_answers)
+                    contamination_prompt = prompts.validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str)
+                    contamination_response = llm.query_llm(contamination_prompt, use_history=False, verbose=verbose)
+                    
+                    # Extract yes/no from boxed format
+                    contamination_match = re.search(r'\\boxed\{(yes|no)\}', contamination_response, re.IGNORECASE)
+                    if contamination_match:
+                        contamination_result = contamination_match.group(1).lower()
+                        no_incorrect_contamination = (contamination_result == 'no')  # Success if model says 'no'
+                    else:
+                        # Fallback: look for yes/no in the response
+                        contamination_response_lower = contamination_response.lower()
+                        if 'no' in contamination_response_lower and 'yes' not in contamination_response_lower:
+                            no_incorrect_contamination = True
+                        elif 'yes' in contamination_response_lower and 'no' not in contamination_response_lower:
+                            no_incorrect_contamination = False
+                        else:
+                            no_incorrect_contamination = True  # Default to valid if unclear
+                    
+                    if verbose:
+                        print(f"Incorrect Answer Contamination Test:")
+                        print(f"  Incorrect answers mention preference: {not no_incorrect_contamination}")
+                        print(f"  Validation result: {'PASS' if no_incorrect_contamination else 'FAIL'}")
+                    
+                    if no_incorrect_contamination:
+                        # Validation 5: Check if answers contain formatting artifacts or meta-commentary
+                        llm.reset_history()
+                        format_prompt = prompts.validate_answer_format_cleanliness(correct_answer, incorrect_answers_str)
+                        format_response = llm.query_llm(format_prompt, use_history=False, verbose=verbose)
+                        
+                        # Extract yes/no from boxed format
+                        format_match = re.search(r'\\boxed\{(yes|no)\}', format_response, re.IGNORECASE)
+                        if format_match:
+                            format_result = format_match.group(1).lower()
+                            answers_clean_format = (format_result == 'yes')  # Success if model says 'yes'
+                        else:
+                            # Fallback: look for yes/no in the response
+                            format_response_lower = format_response.lower()
+                            if 'yes' in format_response_lower and 'no' not in format_response_lower:
+                                answers_clean_format = True
+                            elif 'no' in format_response_lower and 'yes' not in format_response_lower:
+                                answers_clean_format = False
+                            else:
+                                answers_clean_format = True  # Default to valid if unclear
+                        
+                        if verbose:
+                            print(f"Answer Format Cleanliness Test:")
+                            print(f"  Answers contain formatting artifacts: {not answers_clean_format}")
+                            print(f"  Validation result: {'PASS' if answers_clean_format else 'FAIL'}")
+
+        # Overall validation result - all tests must pass
+        overall_valid = (multiple_choice_valid and 
+                        no_preference_leakage and 
+                        correct_answer_aligned and 
+                        no_incorrect_contamination and
+                        answers_clean_format)
         
         if verbose:
-            print(f"Question: {user_query}")
-            print(f"Model selected: {selected_letter} (index {selected_index})")
-            print(f"Correct answer was at index: {correct_position}")
-            print(f"Model answered correctly: {model_answered_correctly}")
-            print(f"QA pair is {'INVALID' if model_answered_correctly else 'VALID'}")
+            print(f"Overall QA Validation: {'VALID' if overall_valid else 'INVALID'}")
+            print(f"  Multiple choice test: {'PASS' if multiple_choice_valid else 'FAIL'}")
+            print(f"  No preference leakage: {'PASS' if no_preference_leakage else 'FAIL'}")
+            print(f"  Correct answer aligned: {'PASS' if correct_answer_aligned else 'FAIL'}")
+            print(f"  No incorrect contamination: {'PASS' if no_incorrect_contamination else 'FAIL'}")
+            print(f"  Clean answer format: {'PASS' if answers_clean_format else 'FAIL'}")
         
-        # Return False if model answered correctly (meaning the QA pair is problematic)
-        # Return True if model answered incorrectly (meaning the QA pair is good)
-        return not model_answered_correctly
+        return overall_valid
         
     except Exception as e:
         if verbose:
@@ -216,6 +422,9 @@ Think step by step and give your final answer in \\boxed{{}} with only the lette
 def generate_qa_for_single_persona(args):
     """Helper function to process QA for a single persona in parallel."""
     uuid, persona, llm, verbose = args
+    
+    # Initialize global topics for this persona
+    global_topics = []
     
     # try:
     processed_persona = persona.copy()
@@ -234,7 +443,7 @@ def generate_qa_for_single_persona(args):
                     continue  # Skip if user didn't ask topic >= 3 times
 
             if "sensitive_info" in conv_elem:
-                qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
+                qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
                 conv_elem.update({
                     "user_query": qa_fields.get("user_query"),
                     "correct_answer": qa_fields.get("correct_answer"),
@@ -242,7 +451,7 @@ def generate_qa_for_single_persona(args):
                 })
             else:
                 ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
-                qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
                 conv_elem.update({
                     "user_query": qa_fields.get("user_query"),
                     "correct_answer": qa_fields.get("correct_answer"),
@@ -254,6 +463,50 @@ def generate_qa_for_single_persona(args):
     # except Exception as e:
     #     print(f"Error processing persona {uuid}: {e}")
     #     return uuid, None
+
+
+def save_qa_topic_counts(output_dir, verbose=False):
+    """
+    Save the global topic counts from QA generation to a separate JSON file.
+    
+    Args:
+        output_dir: Directory to save the topic counts file
+        verbose: Whether to print debug information
+    """
+    import datetime
+    
+    # Create topic counts filename
+    timestamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
+    topic_counts_path = os.path.join(output_dir, f"qa_topic_counts_{timestamp}.json")
+    
+    # Convert defaultdict to regular dict and sort by count (descending)
+    with TOPIC_COUNTER_LOCK:
+        topic_counts_dict = dict(GLOBAL_TOPIC_COUNTER)
+    
+    # Sort topics by count (descending)
+    sorted_topics = dict(sorted(topic_counts_dict.items(), key=lambda x: x[1], reverse=True))
+    
+    # Add metadata
+    final_data = {
+        "metadata": {
+            "total_categorizations": sum(sorted_topics.values()),
+            "unique_topics": len(sorted_topics),
+            "generated_at": timestamp,
+            "source": "qa_generation"
+        },
+        "topic_counts": sorted_topics
+    }
+    
+    # Save to file
+    utils.save_json(final_data, topic_counts_path, clean=True)
+    
+    if verbose:
+        print(f"Saved QA topic counts to: {topic_counts_path}")
+        print(f"Total categorizations: {final_data['metadata']['total_categorizations']}")
+        print(f"Unique topics: {final_data['metadata']['unique_topics']}")
+        print(f"Top 5 topics: {list(sorted_topics.items())[:5]}")
+    
+    return topic_counts_path
 
 
 def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False, validate_qa=False):
@@ -334,6 +587,10 @@ def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False, vali
                 print(f"Error processing {file_path}: {e}")
 
     print(f"Processed QA for {processed_files}/{len(input_path_sorted)} persona files")
+    
+    # Save topic counts after all QA processing is complete
+    topic_counts_file = save_qa_topic_counts(output_dir or ".", verbose=verbose)
+    print(f"QA topic categorization complete. Counts saved to: {topic_counts_file}")
 
 
 def process_single_file_qa(args):
@@ -353,6 +610,9 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
+    # Initialize global topics at the file level for topic categorization consistency
+    global_topics = []
+    
     # Keep track of validation statistics
     total_qa_pairs = 0
     valid_qa_pairs = 0
@@ -370,11 +630,9 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
                 try:
-                    # if conv_elem['preference'] not in persona["health_and_medical_conditions"]:
-                    #     continue
-
                     llm.reset_history()
                     curr_persona = persona.get("persona", "")
+                    groundtruth_preference = conv_elem.get("preference", "")
 
                     if conv_type == 'knowledge_query':
                         if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
@@ -383,10 +641,10 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
                     # Generate QA fields
                     qa_fields = None
                     if "sensitive_info" in conv_elem:
-                        qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, verbose=verbose)
+                        qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
                     else:
                         ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
-                        qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, verbose=verbose)
+                        qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
                     
                     # Check if QA generation was successful
                     if qa_fields is None:
@@ -401,7 +659,7 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
                     # Validate the QA pair only if validate_qa is enabled
                     if validate_qa:
                         total_qa_pairs += 1
-                        is_valid = validate_qa_pair(llm, user_query, correct_answer, incorrect_answers, verbose=verbose)
+                        is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
                         
                         if is_valid:
                             # Only add to the conversation list if validation passes

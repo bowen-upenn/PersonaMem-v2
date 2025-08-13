@@ -9,10 +9,64 @@ import math
 import os
 import re
 import glob
+from collections import defaultdict
 
 import prompts
 import utils
 from qa_generator import generate_qa_for_each_element
+
+# Global topic counter for tracking all categorizations across all personas
+GLOBAL_TOPIC_COUNTER = defaultdict(int)
+TOPIC_COUNTER_LOCK = threading.Lock()
+
+
+def save_topic_counts(output_path, verbose=False):
+    """
+    Save the global topic counts to a separate JSON file.
+    
+    Args:
+        output_path: Base output path to derive the topic counts filename
+        verbose: Whether to print debug information
+    """
+    # Create topic counts filename based on output path
+    output_dir = os.path.dirname(output_path)
+    base_name = os.path.basename(output_path)
+    
+    # Remove extension and add topic_counts suffix
+    if base_name.endswith('.json'):
+        base_name_no_ext = base_name[:-5]
+    else:
+        base_name_no_ext = base_name
+    
+    topic_counts_path = os.path.join(output_dir, f"{base_name_no_ext}_topic_counts.json")
+    
+    # Convert defaultdict to regular dict and sort by count (descending)
+    with TOPIC_COUNTER_LOCK:
+        topic_counts_dict = dict(GLOBAL_TOPIC_COUNTER)
+    
+    # Sort topics by count (descending)
+    sorted_topics = dict(sorted(topic_counts_dict.items(), key=lambda x: x[1], reverse=True))
+    
+    # Add metadata
+    final_data = {
+        "metadata": {
+            "total_categorizations": sum(sorted_topics.values()),
+            "unique_topics": len(sorted_topics),
+            "generated_at": utils.create_timestamped_filename("", "", timestamp=None).split('_')[-1]  # Get just timestamp
+        },
+        "topic_counts": sorted_topics
+    }
+    
+    # Save to file
+    utils.save_json(final_data, topic_counts_path, clean=True)
+    
+    if verbose:
+        print(f"Saved topic counts to: {topic_counts_path}")
+        print(f"Total categorizations: {final_data['metadata']['total_categorizations']}")
+        print(f"Unique topics: {final_data['metadata']['unique_topics']}")
+        print(f"Top 5 topics: {list(sorted_topics.items())[:5]}")
+    
+    return topic_counts_path
 
 
 def find_max_persona_index(output_path, clean=False):
@@ -59,9 +113,105 @@ def find_max_persona_index(output_path, clean=False):
     
     # Return next available index
     return max_index + 1 if max_index >= 0 else 0
+    """
+    Find the maximum existing persona index from existing files to avoid overwriting.
+    
+    Args:
+        output_path: The base output path for persona files
+        clean: If True, ignore existing files and start from 0
+    
+    Returns:
+        int: The starting index for new personas (max_existing + 1, or 0 if clean or no files found)
+    """
+    if clean:
+        return 0
+    
+    # Look for existing persona files in data/raw_data directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    raw_data_dir = os.path.join(current_dir, "data", "raw_data")
+    
+    # Extract base name from timestamped path
+    base_name = os.path.basename(output_path)
+    
+    # Remove timestamp and extension to get the clean base name
+    timestamp_pattern = r'_\d{6}_\d{6}'
+    clean_base_name = re.sub(timestamp_pattern, '', base_name)
+    if clean_base_name.endswith('.json'):
+        clean_base_name = clean_base_name[:-5]  # Remove .json
+    
+    # Search for existing persona files in raw_data directory with pattern: {clean_base_name}_*_persona*.json
+    search_pattern = os.path.join(raw_data_dir, f"{clean_base_name}*_persona*.json")
+    existing_files = glob.glob(search_pattern)
+    
+    max_index = -1
+    
+    # Extract persona indices from filenames
+    for file_path in existing_files:
+        filename = os.path.basename(file_path)
+        # Look for pattern like "interactions_250727_201452_persona607.json"
+        match = re.search(r'_persona(\d+)\.json$', filename)
+        if match:
+            index = int(match.group(1))
+            max_index = max(max_index, index)
+    
+    # Return next available index
+    return max_index + 1 if max_index >= 0 else 0
 
 
-def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
+def categorize_single_item(llm, text, global_topics, verbose=False):
+    """
+    Categorize a single text item (preference or query) into topics using the LLM.
+    
+    Args:
+        llm: QueryLLM instance
+        text: The text to categorize
+        global_topics: List of existing global topics
+        verbose: Whether to print debug information
+        
+    Returns:
+        str: The topic name
+    """
+    # Generate categorization prompt
+    prompt = prompts.categorize_preference_topic(text, global_topics)
+    
+    try:
+        llm.reset_history()  # Reset history for categorization
+        topic = llm.query_llm(prompt, use_history=False, verbose=verbose)
+        topic_temp = utils.extract_after_token(topic, '###Output').strip()
+        if not topic_temp:
+            topic = utils.extract_after_token(topic, '### Output').strip()
+        else:
+            topic = topic_temp
+
+        # Clean the topic
+        if topic:
+            # Record topic count in global counter (thread-safe)
+            with TOPIC_COUNTER_LOCK:
+                GLOBAL_TOPIC_COUNTER[topic] += 1
+            
+            if verbose:
+                print(f"Categorized '{text}' as topic: '{topic}'")
+            return topic
+        else:
+            # Record "Uncategorized" count
+            with TOPIC_COUNTER_LOCK:
+                GLOBAL_TOPIC_COUNTER["Uncategorized"] += 1
+                
+            if verbose:
+                print(f"Failed to categorize '{text}', using 'Uncategorized'")
+            return "Uncategorized"
+            
+    except Exception as e:
+        # Record "Uncategorized" count for errors
+        with TOPIC_COUNTER_LOCK:
+            GLOBAL_TOPIC_COUNTER["Uncategorized"] += 1
+            
+        if verbose:
+            print(f"Error categorizing '{text}': {e}, using 'Uncategorized'")
+        return "Uncategorized"
+
+
+def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbose=False):
     """
     Expand persona with demographic info and generate preferences and background.
     
@@ -76,32 +226,32 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
     # 2) stereotypical preferences
     prompt = prompts.generate_stereotypical_preferences()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done generating stereotypical preferences.")
+    print(f"Done generating stereotypical preferences for persona {persona_id}")
 
     # 3) anti-stereotypical preferences
     prompt = prompts.generate_anti_stereotypical_preferences()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done generating anti-stereotypical preferences.")
+    print(f"Done generating anti-stereotypical preferences for persona {persona_id}")
 
     # 4) verify conflicts
     prompt = prompts.verify_conflicts()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done verifying conflicts in preferences.")
+    print(f"Done verifying conflicts in preferences for persona {persona_id}")
 
     # 5) additional therapy-related personal history
     prompt = prompts.generate_therapy_related_history()
     llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done generating therapy-related personal history.")
+    print(f"Done generating therapy-related personal history for persona {persona_id}")
 
     # 6) additional health and medical-related personal history
     prompt = prompts.generate_health_and_medical_conditions()
     final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done generating health and medical-related personal history.")
+    print(f"Done generating health and medical-related personal history for persona {persona_id}")
 
     # 7) generate sensitive private information
     prompt = prompts.generate_sensitive_information()
     final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print("Done generating sensitive private information.")
+    print(f"Done generating sensitive private information for persona {persona_id}")
     if 'sorry' in final_json.lower():
         final_json = final_json_temp
 
@@ -120,6 +270,63 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
     if verbose:
         print({f"all keys in final_json": list(final_json.keys())})
 
+    # 9) Categorize all preferences and images immediately after generation
+    global_topics = []  # Track topics within this persona for consistency
+    
+    # Categorize stereotypical preferences
+    if 'stereotypical_preferences' in final_json:
+        for i, pref in enumerate(final_json['stereotypical_preferences']):
+            if pref:  # Only categorize non-empty preferences
+                topic = categorize_single_item(llm, pref, global_topics, verbose)
+                if topic not in global_topics:
+                    global_topics.append(topic)
+                # Store the topic in a parallel structure for later use
+                if 'stereotypical_preferences_topics' not in final_json:
+                    final_json['stereotypical_preferences_topics'] = []
+                # Ensure the topics list has the same length as preferences
+                while len(final_json['stereotypical_preferences_topics']) <= i:
+                    final_json['stereotypical_preferences_topics'].append("Uncategorized")
+                final_json['stereotypical_preferences_topics'][i] = topic
+
+    # Categorize anti-stereotypical preferences  
+    if 'anti_stereotypical_preferences' in final_json:
+        for i, pref in enumerate(final_json['anti_stereotypical_preferences']):
+            if pref:  # Only categorize non-empty preferences
+                topic = categorize_single_item(llm, pref, global_topics, verbose)
+                if topic not in global_topics:
+                    global_topics.append(topic)
+                # Store the topic in a parallel structure for later use
+                if 'anti_stereotypical_preferences_topics' not in final_json:
+                    final_json['anti_stereotypical_preferences_topics'] = []
+                # Ensure the topics list has the same length as preferences
+                while len(final_json['anti_stereotypical_preferences_topics']) <= i:
+                    final_json['anti_stereotypical_preferences_topics'].append("Uncategorized")
+                final_json['anti_stereotypical_preferences_topics'][i] = topic
+    
+    # Categorize therapy background
+    if 'therapy_background' in final_json:
+        for i, pref in enumerate(final_json['therapy_background']):
+            if pref:  # Only categorize non-empty preferences
+                topic = categorize_single_item(llm, pref, global_topics, verbose)
+                if topic not in global_topics:
+                    global_topics.append(topic)
+                # Store the topic in a parallel structure for later use
+                if 'therapy_background_topics' not in final_json:
+                    final_json['therapy_background_topics'] = []
+                # Ensure the topics list has the same length as preferences
+                while len(final_json['therapy_background_topics']) <= i:
+                    final_json['therapy_background_topics'].append("Uncategorized")
+                final_json['therapy_background_topics'][i] = topic
+    
+    # Categorize health and medical conditions
+    if 'health_and_medical_conditions' in final_json:
+        for i, pref in enumerate(final_json['health_and_medical_conditions']):
+            if pref:  # Only categorize non-empty preferences
+                topic = 'health_and_medical'
+                if topic not in global_topics:
+                    global_topics.append(topic)
+                final_json['health_and_medical_conditions_topics'][i] = topic
+
     return persona_str, final_json, matched_images if image_matcher else []
 
 
@@ -130,7 +337,7 @@ def verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=False)
     Returns:
         str: 'yes' if aligned, 'no' otherwise
     """
-    if not self_verify or pref_key == "therapy_background" or pref_key == "sensitive_information":
+    if not self_verify or pref_key not in ["stereotypical_pref", "anti_stereotypical_pref"]:
         return 'yes'
     
     # 1) Guess which persona fits the preference
@@ -162,7 +369,7 @@ def extend_to_multiturns(llm, conv_turns, verbose):
     return conv_turns
 
 
-def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose=False):
+def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, topic_preference=None, verbose=False):
     """
     Generate repetitive user knowledge queries to the chatbot.
     """
@@ -193,6 +400,11 @@ def generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, 
 
         if conv_turns:
             element = {'preference': pref, 'pref_type': pref_key, 'who': 'self', 'idx_repeat': idx_repeat, 'conversations': conv_turns, 'updated': False}
+            # Add topic information if available
+            if topic_preference:
+                element['topic_preference'] = topic_preference
+            else:
+                element['topic_preference'] = "Uncategorized"
             conversations[type].append(element)
     
     return element
@@ -213,7 +425,7 @@ def get_random_sensitive_info(sensitive_info, verbose=False):
     return random_sensitive_info
 
 
-def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, verbose=False):
+def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, conversations, is_others_pref, topic_preference=None, verbose=False):
     """
     Generate cross-domain user-chatbot conversations that implicitly encode user personas and preferences.
     """
@@ -244,6 +456,11 @@ def generate_cross_domain_conversations(llm, persona_str, pref, pref_key, type, 
 
     if conv_turns:
         element = {'preference': pref, 'pref_type': pref_key, 'who': who, 'conversations': conv_turns, 'updated': False}
+        # Add topic information if available
+        if topic_preference:
+            element['topic_preference'] = topic_preference
+        else:
+            element['topic_preference'] = "Uncategorized"
         conversations[type].append(element)
         return element
 
@@ -356,7 +573,7 @@ def find_preference_from_image_and_generate_conversations(llm, persona_str, imag
         return element
     
 
-def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_types, self_verify, verbose=False):
+def convert_preferences_to_conversations(llm, persona_str, persona_id, final_json, implicit_types, self_verify, verbose=False):
     """
     Process all preferences and generate conversations for each aligned preference.
     
@@ -367,6 +584,16 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
     for curr_type in implicit_types:
         conversations[curr_type] = []
     updates = {}
+
+    image_paths = final_json.get("matched_images", [])
+    for image_idx, image_path in enumerate(image_paths):
+        llm.reset_history()
+        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
+        # Generate preference and conversations as if the user is providing an image to the chatbot
+        try:
+            element = find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
+        except Exception as e:
+            continue
 
     # print(f"All keys in final_json: {list(final_json.keys())}")
     sensitive_info = final_json.get('sensitive_information', {})
@@ -401,10 +628,25 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         ("therapy_background", final_json.get("therapy_background", [])),
         ("health_and_medical_conditions", final_json.get("health_and_medical_conditions", []))
     ]:
-         for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences", total=len(pref_list)):
+        # Get the corresponding topics list
+        if pref_key == "stereotypical_pref":
+            topics_list = final_json.get("stereotypical_preferences_topics", [])
+        elif pref_key == "anti_stereotypical_pref":
+            topics_list = final_json.get("anti_stereotypical_preferences_topics", [])
+        elif pref_key == "therapy_background":
+            topics_list = final_json.get("therapy_background_topics", [])
+        elif pref_key == "health_and_medical_conditions":
+            topics_list = final_json.get("health_and_medical_conditions_topics", [])
+        else:
+            topics_list = []
+
+        for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for persona {persona_id}", total=len(pref_list)):
             llm.reset_history()
 
             try:
+                # Get the topic for this preference
+                topic_preference = topics_list[pref_idx] if pref_idx < len(topics_list) else "Uncategorized"
+                
                 # Verify preference alignment
                 alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
 
@@ -412,14 +654,28 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
                 if alignment == 'yes':
                     # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
                     is_others_pref = random.random() < 0.33
-                    random_type = random.choice(implicit_types)
+                    
+                    # Check if we're in the last num(implicit_types) preferences and if any type is empty
+                    remaining_prefs = len(pref_list) - pref_idx
+                    if remaining_prefs <= len(implicit_types):
+                        # Find empty conversation types
+                        empty_types = [t for t in implicit_types if len(conversations[t]) == 0]
+                        if empty_types:
+                            # Use the first empty type instead of random
+                            random_type = empty_types[0]
+                        else:
+                            # All types have conversations, use random
+                            random_type = random.choice(implicit_types)
+                    else:
+                        # Not in the final stretch, use random type
+                        random_type = random.choice(implicit_types)
 
                     # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
                     if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
-                        element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, verbose)
+                        element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, topic_preference, verbose)
                     else:
-                        # Generate cross-domain conversations in random types
-                        element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, random_type, conversations, is_others_pref, verbose)
+                        # Generate cross-domain conversations in selected type
+                        element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, random_type, conversations, is_others_pref, topic_preference, verbose)
 
                     has_asked_to_forget = False
                     if random.random() < 0.33 and not is_others_pref and element:
@@ -434,16 +690,6 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
             except Exception as e:
                 print(f"Error processing preference {pref_key} with value {pref}: {e}")
                 continue
-
-    image_paths = final_json.get("matched_images", [])
-    for image_idx, image_path in enumerate(image_paths):
-        llm.reset_history()
-        is_others_pref = image_idx > 0.67 * len(image_paths)   # sorted by the order of relevance
-        # Generate preference and conversations as if the user is providing an image to the chatbot
-        # try:
-        element = find_preference_from_image_and_generate_conversations(llm, str(final_json), image_path, conversations, is_others_pref, verbose=verbose)
-        # except Exception as e:
-        #     continue
         
     return conversations, updates
 
@@ -463,7 +709,7 @@ def update_aligned_preferences(final_json, conversations, updates):
     return final_json
 
 
-def process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose=False):
+def process_single_persona(llm, persona, persona_id, implicit_types, self_verify, image_matcher, verbose=False):
     """
     Process a single persona to generate all its interactions and conversations.
     
@@ -475,7 +721,7 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
         print(f"Persona: {persona_str}")
 
     # Expand persona info and generate preferences
-    persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, image_matcher, verbose)
+    persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
     try:
         final_json_response = utils.extract_json_from_response(final_json_response)
         final_json_response['matched_images'] = matched_images
@@ -490,7 +736,7 @@ def process_single_persona(llm, persona, implicit_types, self_verify, image_matc
             return None
 
     # Process preferences and generate conversations
-    conversations, updates = convert_preferences_to_conversations(llm, persona_str, final_json_response, implicit_types, self_verify, verbose)
+    conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
 
     # Update aligned preferences
     # if updates is not an empty dict
@@ -515,32 +761,32 @@ def process_single_persona_thread(args):
     """
     idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
     
-    # try:
-    # Process single persona
-    final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
-    
-    if final_json is not None:
-        persona_id = str(uuid4())
-        
-        # Create individual persona file path
-        output_dir = os.path.dirname(output_path)
-        base_name = os.path.basename(output_path)
-        
-        # Keep timestamp but remove extension from base name
-        if base_name.endswith('.json'):
-            base_name_no_ext = base_name[:-5]  # Remove .json
-        else:
-            base_name_no_ext = base_name
-        
-        full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
-        
-        return idx, persona_id, final_json, full_path
-    else:
-        return idx, None, None, None
+    try:
+        # Process single persona
+        final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
+
+        if final_json is not None:
+            persona_id = str(uuid4())
             
-    # except Exception as e:
-    #     print(f"Error processing persona {idx}: {e}")
-    #     return idx, None, None, None
+            # Create individual persona file path
+            output_dir = os.path.dirname(output_path)
+            base_name = os.path.basename(output_path)
+            
+            # Keep timestamp but remove extension from base name
+            if base_name.endswith('.json'):
+                base_name_no_ext = base_name[:-5]  # Remove .json
+            else:
+                base_name_no_ext = base_name
+            
+            full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
+            
+            return idx, persona_id, final_json, full_path
+        else:
+            return idx, None, None, None
+            
+    except Exception as e:
+        print(f"Error processing persona {idx}: {e}")
+        return idx, None, None, None
 
 
 def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, parallel=False, verbose=False):
@@ -612,14 +858,13 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
         for i in tqdm(range(num_persona), desc="Processing personas sequentially"):
             idx = persona_start_idx + i  # Use the adjusted index
             persona = random.choice(all_personas)
-            
-            # try:
-            # Process single persona
-            final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
-            
-            if final_json is not None:
-                persona_id = str(uuid4())
-                
+            try:
+                # Process single persona
+                final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
+
+                if final_json is not None:
+                    persona_id = str(uuid4())
+
                 # Create individual persona file path
                 output_dir = os.path.dirname(output_path)
                 base_name = os.path.basename(output_path)
@@ -640,7 +885,11 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                 utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
                 print(f"Saved persona {idx} to {full_path}")
                     
-            # except Exception as e:
-            #     print(f"Error processing persona {idx}: {e}")
+            except Exception as e:
+                print(f"Error processing persona {idx}: {e}")
+    
+    # Save topic counts after all processing is complete
+    topic_counts_file = save_topic_counts(output_path, verbose=verbose)
+    print(f"Topic categorization complete. Counts saved to: {topic_counts_file}")
     
     return output_dict

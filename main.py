@@ -6,7 +6,6 @@ import json
 
 from contexts_builder import build_context
 from qa_generator import generate_qa
-from categorize_topic import categorize_topics
 from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
 from conv_update import update_conversations_for_data_types
@@ -82,11 +81,11 @@ def main():
         # Create timestamped output path
         timestamped_path = utils.create_timestamped_filename(
             args['data']['conv_output_dir'], 
-            'interactions', 
+            'raw_data', 
             '.json'
         )
         
-        print(f"Saving interactions to: {timestamped_path}")
+        print(f"Saving raw data to: {timestamped_path}")
         
         output_dict = generate_interactions_from_persona(llm, all_personas, image_matcher, output_path=timestamped_path, implicit_types=args['data']['data_types'],
                                                          num_persona=args['data']['num_persona'], self_verify=args['data']['self_verify'], clean=args['data']['clean'], 
@@ -95,7 +94,7 @@ def main():
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(
             args['data']['conv_output_dir'],
-            'interactions',
+            'raw_data',
             args['data']['persona_start_idx'],
             args['data']['persona_end_idx']
         )
@@ -122,7 +121,7 @@ def main():
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(
             args['data']['conv_output_dir'],
-            'interactions',
+            'raw_data',
             args['data']['persona_start_idx'],
             args['data']['persona_end_idx']
         )
@@ -140,31 +139,12 @@ def main():
         generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], 
                    verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
 
-    elif args['inference']['step'] == 'categorize_topics':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'interactions',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
-        )
-        
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
-        
-        print(f"Found {len(persona_files)} persona files to categorize topics")
-        
-        # Categorize topics using the categorize_topics function
-        categorize_topics(llm, persona_files, output_dir=None, parallel=args['inference']['parallel'], 
-                         verbose=args['inference']['verbose'], refresh_mem=args['inference']['refresh_mem'])
-
     # Build long context
     elif args['inference']['step'] == 'build_context':
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(
             args['data']['conv_output_dir'],
-            'interactions',
+            'raw_data',
             args['data']['persona_start_idx'],
             args['data']['persona_end_idx']
         )

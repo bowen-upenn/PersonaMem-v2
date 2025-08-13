@@ -22,34 +22,23 @@
 
 
 python main.py \
-  --model o3_mini \
+  --model gpt-5-chat \
   --step generate_convo \
   --conv_output_dir data/raw_data/ \
-  --num_persona 1 \
+  --num_persona 5 \
   --data_types personal_email professional_email creative_writing professional_writing chat_message translation trouble_consult social_media_post knowledge_query \
-  --verbose
-  # --rate_limit_per_min 20 \
-  # --parallel
+  --rate_limit_per_min 5 \
+  --parallel \
+  # --verbose \
 
 python main.py \
-  --model o3-mini \
+  --model gpt-5-chat \
   --step generate_qa \
   --conv_output_dir data/raw_data/ \
   --qa_output_dir data/raw_data/ \
   --persona_start_idx 0 \
-  --persona_end_idx 0 \
+  --persona_end_idx -1 \
   --validate_qa \
-  --verbose
-  # --rate_limit_per_min 20 \
-  # --parallel
-
-python main.py \
-  --model gpt-4.1 \
-  --step categorize_topics \
-  --conv_output_dir data/raw_data/ \
-  --persona_start_idx 0 \
-  --persona_end_idx 0 \
-  --refresh_mem 100 \
-  --verbose
-  # --rate_limit_per_min 10 \
-  # --parallel \
+  --rate_limit_per_min 5 \
+  --parallel
+  # --verbose
