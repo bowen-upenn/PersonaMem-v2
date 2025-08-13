@@ -17,7 +17,7 @@ import prompts
 from query_llm import QueryLLM
 
 from dotenv import load_dotenv
-from openai import AzureOpenAI
+from openai import OpenAI, AzureOpenAI
 
 
 class ImageMatcher:
@@ -38,12 +38,25 @@ class ImageMatcher:
         azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED")
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION_EMBED")
 
-        self.sentence_model = AzureOpenAI(
-            azure_endpoint=azure_endpoint,
-            api_key=azure_key,
-            api_version=azure_api_version,
-        )
-        self.sentence_model_name = azure_deployment
+        if azure_endpoint and azure_key and azure_deployment and azure_api_version:
+            print("Using Azure OpenAI configuration")
+            self.sentence_model = AzureOpenAI(
+                azure_endpoint=azure_endpoint,
+                api_key=azure_key,
+                api_version=azure_api_version,
+            )
+            self.sentence_model_name = azure_deployment
+        else:
+            try:
+                print("Using OpenAI configuration")
+                self.sentence_model = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+                self.sentence_model_name = os.getenv("OPENAI_MODEL_EMBED")
+            except Exception as e:
+                raise ValueError(
+                    "No valid LLM configuration found. Please set either:\n"
+                    "Microsoft Azure with AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME_EMBED, and AZURE_OPENAI_API_VERSION_EMBED\n"
+                    "or OpenAI with OPENAI_KEY and OPENAI_MODEL_EMBED."
+                )
 
         # Database to store image paths and their corresponding embeddings
         self.image_database = {}

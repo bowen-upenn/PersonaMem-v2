@@ -32,12 +32,10 @@ class QueryLLM:
         # Check for Azure OpenAI configuration first
         azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         azure_key = os.getenv("AZURE_OPENAI_KEY")
-        if self.args['models']['llm_model'] == 'o4_mini':
-            azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_O4")
-        elif self.args['models']['llm_model'] == 'gpt-4.1':
-            azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_41")
-        else:
+        if self.args['models']['llm_model'] == 'gpt-5-chat':
             azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        else:
+            azure_deployment = self.args['models']['llm_model']
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
 
         print(f"Debug - Environment variables:")
@@ -45,7 +43,7 @@ class QueryLLM:
         print(f"  AZURE_OPENAI_DEPLOYMENT_NAME: {azure_deployment}")
         print(f"  AZURE_OPENAI_API_VERSION: {azure_api_version}")
 
-        if azure_endpoint and azure_key and azure_deployment:
+        if azure_endpoint and azure_key and azure_deployment and azure_api_version:
             print("Using Azure OpenAI configuration")
             self.client = AzureOpenAI(
                 azure_endpoint=azure_endpoint,
@@ -61,7 +59,7 @@ class QueryLLM:
             except Exception as e:
                 raise ValueError(
                     "No valid LLM configuration found. Please set either:\n"
-                    "Microsoft Azure with AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME\n"
+                    "Microsoft Azure with AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME, and AZURE_OPENAI_API_VERSION\n"
                     "or OpenAI with OPENAI_KEY."
                 )
 
