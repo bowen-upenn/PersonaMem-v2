@@ -107,10 +107,11 @@ def expand_persona_info(llm, persona_str, image_matcher=None, verbose=False):
 
     # 8) find images if image_matcher is provided that match the persona
     if image_matcher:
-        matched_images = image_matcher.find_most_similar_image(final_json, top_k=6)
+        random_num_images = random.randint(3, 8)
+        matched_images = image_matcher.find_most_similar_image(final_json, top_k=random_num_images)
         matched_images = [img_path for img_path, _ in matched_images]  # Filter out low similarity images
         if verbose:
-            print(f"Matched images: {matched_images}")
+            print(f"Matched images: {len(matched_images)}: {matched_images}")
         print("Done finding images that match the persona.")
 
     # Convert final json from a string to a JSON dictionary
@@ -363,8 +364,8 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
         tuple: (conversations, updates)
     """
     conversations = {'multimodal': []}
-    for type in implicit_types:
-        conversations[type] = []
+    for curr_type in implicit_types:
+        conversations[curr_type] = []
     updates = {}
 
     # print(f"All keys in final_json: {list(final_json.keys())}")
@@ -372,24 +373,24 @@ def convert_preferences_to_conversations(llm, persona_str, final_json, implicit_
     # Add conversations with sensitive information
     if sensitive_info:
         random_sensitive_info = get_random_sensitive_info(sensitive_info, verbose)
-        type = random.choice(implicit_types)
+        random_type = random.choice(implicit_types)
         if verbose:
-            print(f"Sensitive information: {random_sensitive_info} for type {type}")
-        prompt = prompts.generate_conversations_sensitive_info(persona_str, random_sensitive_info, type)
+            print(f"Sensitive information: {random_sensitive_info} for type {random_type}")
+        prompt = prompts.generate_conversations_sensitive_info(persona_str, random_sensitive_info, random_type)
         conv_turns = llm.query_llm(prompt, use_history=False, verbose=verbose)
 
         try:
             conv_turns = utils.extract_json_from_response(conv_turns)
             conv_turns = utils.merge_consecutive_roles(conv_turns)
             if conv_turns:
-                conversations[type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
+                conversations[random_type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
         except json.JSONDecodeError as e:
             try:
                 conv_turns = repair_json(conv_turns)
                 conv_turns = utils.extract_json_from_response(conv_turns)
                 conv_turns = utils.merge_consecutive_roles(conv_turns)
                 if conv_turns:
-                    conversations[type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
+                    conversations[random_type].append({'sensitive_info': random_sensitive_info, 'who': 'self', 'conversations': conv_turns})
             except json.JSONDecodeError as e:
                 print(f"Failed to parse knowledge query response: {e}")
                 sensitive_info = {}
@@ -612,34 +613,34 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
             idx = persona_start_idx + i  # Use the adjusted index
             persona = random.choice(all_personas)
             
-            try:
-                # Process single persona
-                final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+            # try:
+            # Process single persona
+            final_json = process_single_persona(llm, persona, implicit_types, self_verify, image_matcher, verbose)
+            
+            if final_json is not None:
+                persona_id = str(uuid4())
                 
-                if final_json is not None:
-                    persona_id = str(uuid4())
+                # Create individual persona file path
+                output_dir = os.path.dirname(output_path)
+                base_name = os.path.basename(output_path)
+                
+                # Keep timestamp but remove extension from base name
+                if base_name.endswith('.json'):
+                    base_name_no_ext = base_name[:-5]  # Remove .json
+                else:
+                    base_name_no_ext = base_name
+                
+                full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
+                
+                # Add to output dict
+                output_dict[persona_id] = final_json
+                
+                # Save individual file - only clean on first file if clean=True
+                should_clean = clean and idx == persona_start_idx
+                utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                print(f"Saved persona {idx} to {full_path}")
                     
-                    # Create individual persona file path
-                    output_dir = os.path.dirname(output_path)
-                    base_name = os.path.basename(output_path)
-                    
-                    # Keep timestamp but remove extension from base name
-                    if base_name.endswith('.json'):
-                        base_name_no_ext = base_name[:-5]  # Remove .json
-                    else:
-                        base_name_no_ext = base_name
-                    
-                    full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
-                    
-                    # Add to output dict
-                    output_dict[persona_id] = final_json
-                    
-                    # Save individual file - only clean on first file if clean=True
-                    should_clean = clean and idx == persona_start_idx
-                    utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
-                    print(f"Saved persona {idx} to {full_path}")
-                    
-            except Exception as e:
-                print(f"Error processing persona {idx}: {e}")
+            # except Exception as e:
+            #     print(f"Error processing persona {idx}: {e}")
     
     return output_dict

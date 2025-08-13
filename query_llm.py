@@ -99,7 +99,7 @@ class QueryLLM:
 
 
     # @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
-    def query_llm(self, prompt, use_history=False, image_path=None, verbose=False):
+    def query_llm(self, prompt, use_history=False, image=None, image_path=None, verbose=False):
         # print(f"Querying LLM with prompt: {prompt}\n\n")
         """
         Send a message to the LLM. If use_history is True,
@@ -107,15 +107,19 @@ class QueryLLM:
         Otherwise, `prompt` is a single string.
         """
         # Prepare messages for the API call
-        base64_image = None
-        if image_path:
+        if image:
+            base64_image = image
+        elif image_path:
             try:
                 with open(image_path, "rb") as image_file:
                     base64_image = base64.b64encode(image_file.read()).decode('utf-8')
             except Exception as e:
+                base64_image = None
                 print(f"Error reading image file {image_path}: {e}")
-        
-        if image_path and base64_image:
+        else:
+            base64_image = None
+
+        if base64_image:
             curr_message=[
                     {
                         "role": "user",

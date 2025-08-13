@@ -40,8 +40,9 @@ def expand_persona(persona_str):
     random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
 
     prompt = f"""
-    Given this persona, add name, age, gender identity, racial identity, and other detailed demographic information in a JSON format, if not already mentioned. 
-    Make it as detailed, diverse, and comprehensive as possible.
+    Given this persona, add name, age, gender identity, racial identity, personality, and other detailed demographic information in a JSON format, if not already mentioned. 
+    Please also describe their speaking style in detail when talking to the chatbot, including tone, formality, pacing, and vocabulary.
+    Make everything as detailed, realistic, vivid, diverse, and comprehensive as possible.
 
     Here are the gender and racial references for this person. You don't need to use these exact terms; feel free to use a more specific instance or natural variations, especially for the racial identity:
     {random_gender} {random_sexual_orientation}
