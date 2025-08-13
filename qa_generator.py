@@ -477,7 +477,7 @@ def save_qa_topic_counts(output_dir, verbose=False):
     
     # Create topic counts filename
     timestamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
-    topic_counts_path = os.path.join(output_dir, f"qa_topic_counts_{timestamp}.json")
+    topic_counts_path = "data/qa_topic_counts.json"
     
     # Convert defaultdict to regular dict and sort by count (descending)
     with TOPIC_COUNTER_LOCK:

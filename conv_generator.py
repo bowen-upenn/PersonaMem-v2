@@ -270,62 +270,43 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
     if verbose:
         print({f"all keys in final_json": list(final_json.keys())})
 
-    # 9) Categorize all preferences and images immediately after generation
+    # 9) Categorize all preferences for global topic counting only
     global_topics = []  # Track topics within this persona for consistency
     
-    # Categorize stereotypical preferences
+    # Categorize stereotypical preferences (for global counting only)
     if 'stereotypical_preferences' in final_json:
-        for i, pref in enumerate(final_json['stereotypical_preferences']):
+        for pref in final_json['stereotypical_preferences']:
             if pref:  # Only categorize non-empty preferences
                 topic = categorize_single_item(llm, pref, global_topics, verbose)
                 if topic not in global_topics:
                     global_topics.append(topic)
-                # Store the topic in a parallel structure for later use
-                if 'stereotypical_preferences_topics' not in final_json:
-                    final_json['stereotypical_preferences_topics'] = []
-                # Ensure the topics list has the same length as preferences
-                while len(final_json['stereotypical_preferences_topics']) <= i:
-                    final_json['stereotypical_preferences_topics'].append("Uncategorized")
-                final_json['stereotypical_preferences_topics'][i] = topic
 
-    # Categorize anti-stereotypical preferences  
+    # Categorize anti-stereotypical preferences (for global counting only)
     if 'anti_stereotypical_preferences' in final_json:
-        for i, pref in enumerate(final_json['anti_stereotypical_preferences']):
+        for pref in final_json['anti_stereotypical_preferences']:
             if pref:  # Only categorize non-empty preferences
                 topic = categorize_single_item(llm, pref, global_topics, verbose)
                 if topic not in global_topics:
                     global_topics.append(topic)
-                # Store the topic in a parallel structure for later use
-                if 'anti_stereotypical_preferences_topics' not in final_json:
-                    final_json['anti_stereotypical_preferences_topics'] = []
-                # Ensure the topics list has the same length as preferences
-                while len(final_json['anti_stereotypical_preferences_topics']) <= i:
-                    final_json['anti_stereotypical_preferences_topics'].append("Uncategorized")
-                final_json['anti_stereotypical_preferences_topics'][i] = topic
     
-    # Categorize therapy background
+    # Categorize therapy background (for global counting only)
     if 'therapy_background' in final_json:
-        for i, pref in enumerate(final_json['therapy_background']):
+        for pref in final_json['therapy_background']:
             if pref:  # Only categorize non-empty preferences
                 topic = categorize_single_item(llm, pref, global_topics, verbose)
                 if topic not in global_topics:
                     global_topics.append(topic)
-                # Store the topic in a parallel structure for later use
-                if 'therapy_background_topics' not in final_json:
-                    final_json['therapy_background_topics'] = []
-                # Ensure the topics list has the same length as preferences
-                while len(final_json['therapy_background_topics']) <= i:
-                    final_json['therapy_background_topics'].append("Uncategorized")
-                final_json['therapy_background_topics'][i] = topic
     
-    # Categorize health and medical conditions
+    # Categorize health and medical conditions (for global counting only)
     if 'health_and_medical_conditions' in final_json:
-        for i, pref in enumerate(final_json['health_and_medical_conditions']):
+        for pref in final_json['health_and_medical_conditions']:
             if pref:  # Only categorize non-empty preferences
                 topic = 'health_and_medical'
                 if topic not in global_topics:
                     global_topics.append(topic)
-                final_json['health_and_medical_conditions_topics'][i] = topic
+                # Add to global counter
+                with TOPIC_COUNTER_LOCK:
+                    GLOBAL_TOPIC_COUNTER[topic] += 1
 
     return persona_str, final_json, matched_images if image_matcher else []
 
@@ -622,30 +603,30 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
                 print(f"Failed to parse knowledge query response: {e}")
                 sensitive_info = {}
 
+    # Global topic list for this persona's conversation generation
+    global_topics = []
+    
     for pref_key, pref_list in [
         ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", [])),
         ("health_and_medical_conditions", final_json.get("health_and_medical_conditions", []))
     ]:
-        # Get the corresponding topics list
-        if pref_key == "stereotypical_pref":
-            topics_list = final_json.get("stereotypical_preferences_topics", [])
-        elif pref_key == "anti_stereotypical_pref":
-            topics_list = final_json.get("anti_stereotypical_preferences_topics", [])
-        elif pref_key == "therapy_background":
-            topics_list = final_json.get("therapy_background_topics", [])
-        elif pref_key == "health_and_medical_conditions":
-            topics_list = final_json.get("health_and_medical_conditions_topics", [])
-        else:
-            topics_list = []
-
         for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for persona {persona_id}", total=len(pref_list)):
             llm.reset_history()
 
             try:
-                # Get the topic for this preference
-                topic_preference = topics_list[pref_idx] if pref_idx < len(topics_list) else "Uncategorized"
+                # Categorize the preference inline during conversation generation
+                if pref_key == "health_and_medical_conditions":
+                    topic_preference = "health_and_medical"
+                    # Add to global counter for health/medical
+                    with TOPIC_COUNTER_LOCK:
+                        GLOBAL_TOPIC_COUNTER[topic_preference] += 1
+                else:
+                    # Categorize this preference dynamically
+                    topic_preference = categorize_single_item(llm, pref, global_topics, verbose)
+                    if topic_preference not in global_topics:
+                        global_topics.append(topic_preference)
                 
                 # Verify preference alignment
                 alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
@@ -670,8 +651,8 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
                         # Not in the final stretch, use random type
                         random_type = random.choice(implicit_types)
 
-                    # We assign around 1/3 preferences to induce knowledge-related queries, and assume repetitive queries indicate some interests
-                    if random.random() < 0.33 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                    # We assign around 15 percent of preferences to induce knowledge-related queries, and assume repetitive queries (1 to 6) indicate some interests
+                    if random.random() < 0.15 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
                         element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, topic_preference, verbose)
                     else:
                         # Generate cross-domain conversations in selected type
@@ -721,19 +702,14 @@ def process_single_persona(llm, persona, persona_id, implicit_types, self_verify
         print(f"Persona: {persona_str}")
 
     # Expand persona info and generate preferences
-    persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
-    try:
-        final_json_response = utils.extract_json_from_response(final_json_response)
-        final_json_response['matched_images'] = matched_images
-    except json.JSONDecodeError as e:
+    while True:
+        persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
         try:
-            final_json_response = repair_json(final_json_response)
             final_json_response = utils.extract_json_from_response(final_json_response)
-            if 'stereotypical_preferences' not in final_json_response:
-                return None
+            final_json_response['matched_images'] = matched_images
+            break
         except json.JSONDecodeError as e:
-            print("Failed to parse JSON:", e)
-            return None
+            print("Failed to parse JSON:", e, " trying again")
 
     # Process preferences and generate conversations
     conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
@@ -761,32 +737,32 @@ def process_single_persona_thread(args):
     """
     idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
     
-    try:
-        # Process single persona
-        final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
+    # try:
+    # Process single persona
+    final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
 
-        if final_json is not None:
-            persona_id = str(uuid4())
-            
-            # Create individual persona file path
-            output_dir = os.path.dirname(output_path)
-            base_name = os.path.basename(output_path)
-            
-            # Keep timestamp but remove extension from base name
-            if base_name.endswith('.json'):
-                base_name_no_ext = base_name[:-5]  # Remove .json
-            else:
-                base_name_no_ext = base_name
-            
-            full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
-            
-            return idx, persona_id, final_json, full_path
+    if final_json is not None:
+        persona_id = str(uuid4())
+        
+        # Create individual persona file path
+        output_dir = os.path.dirname(output_path)
+        base_name = os.path.basename(output_path)
+        
+        # Keep timestamp but remove extension from base name
+        if base_name.endswith('.json'):
+            base_name_no_ext = base_name[:-5]  # Remove .json
         else:
-            return idx, None, None, None
-            
-    except Exception as e:
-        print(f"Error processing persona {idx}: {e}")
+            base_name_no_ext = base_name
+        
+        full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
+        
+        return idx, persona_id, final_json, full_path
+    else:
         return idx, None, None, None
+            
+    # except Exception as e:
+    #     print(f"Error processing persona {idx}: {e}")
+    #     return idx, None, None, None
 
 
 def generate_interactions_from_persona(llm, all_personas, image_matcher, output_path, implicit_types, num_persona=1, self_verify=True, clean=False, parallel=False, verbose=False):
@@ -889,7 +865,7 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                 print(f"Error processing persona {idx}: {e}")
     
     # Save topic counts after all processing is complete
-    topic_counts_file = save_topic_counts(output_path, verbose=verbose)
+    topic_counts_file = save_topic_counts('data/preference_topic_counts.json', verbose=verbose)
     print(f"Topic categorization complete. Counts saved to: {topic_counts_file}")
     
     return output_dict

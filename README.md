@@ -71,14 +71,14 @@ Configure your API credentials in the `.env` file, following examples in `.env.e
 **Option 1: OpenAI Configuration**
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=o4-mini
+OPENAI_MODEL=gpt-5-chat
 ```
 
 **Option 2: Microsoft Azure OpenAI Configuration**
 ```bash
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=your_azure_openai_key_here
-AZURE_OPENAI_DEPLOYMENT_NAME=o4-mini
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-chat
 AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
 ```
 
@@ -100,29 +100,20 @@ Create image embeddings database for persona matching:
 bash scripts/run_prepare_images.sh
 ```
 
-#### 2. Generate Conversations
-Generate user personas, preferences, and convert them into user-chatbot conversations:
+#### 2. Generate Conversations and Q&A Pairs
+Generate user personas, preferences, convert them into user-chatbot conversations, and prepare Q&A pairs with quality validation processes:
 ```bash
-bash scripts/run_convo_gen.sh
-```
-
-#### 3. Generate Q&A Pairs
-Generate question-answer pairs from the conversations:
-```bash
-bash scripts/run_qa_gen.sh
+bash scripts/run_generate_all.sh
 ```
 
 ### 📋 Script Configuration
 
 - **`run_prepare_images.sh`**: Preprocesses images and creates embedding database
-- **`run_convo_gen.sh`**: Generates personas and conversations with configurable parameters:
+- **`run_generate_all.sh`**: Generates personas and conversations with configurable parameters:
   - `--num_persona`: Number of personas to generate
-  - `--data_types`: Conversation types (email, chat, writing, etc.)
-  - `--rate_limit_per_min`: API rate limit (default: 10 requests/minute)
-  - `--parallel`: Enable parallel processing for faster generation
-- **`run_qa_gen.sh`**: Generates Q&A pairs with persona range support:
+  - `--data_types`: User-chatbot conversation types (see the script for all supported types)
   - `--persona_start_idx` / `--persona_end_idx`: Process specific persona ranges
-  - `--rate_limit_per_min`: API rate limit (default: 10 requests/minute)
-  - `--parallel`: Enable parallel processing
+  - `--rate_limit_per_min`: API rate limit (default: 5 personas in parallel)
+  - `--parallel`: Enable parallel processing of multiple personas
 
 For detailed parameter customization, edit the scripts or run `python main.py --help`. 🌟
