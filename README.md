@@ -66,12 +66,13 @@ pip install -r requirements.txt
 
 ### ⚙️ API Keys Setup
 
-Configure your API credentials in the `.env` file, following examples in `.env.example`. We use OpenAI's [ChatGPT-5](https://platform.openai.com/docs/models/gpt-5-chat-latest) to generate all data samples in our benchmark.
+Configure your API credentials in the [.env](.env) file, following examples in [.env.example](.env.example) using. We use OpenAI's [ChatGPT-5](https://platform.openai.com/docs/models/gpt-5-chat-latest) to generate all data samples in our benchmark. Preparing multimodal samples also requires access to [text-embedding-3-large](https://platform.openai.com/docs/models/text-embedding-3-large). Choose only one of the following two options:
 
 **Option 1: OpenAI Configuration**
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-5-chat
+OPENAI_MODEL_EMBED=text-embedding-3-large
 ```
 
 **Option 2: Microsoft Azure OpenAI Configuration**
@@ -79,7 +80,9 @@ OPENAI_MODEL=gpt-5-chat
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=your_azure_openai_key_here
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-chat
-AZURE_OPENAI_API_VERSION=your_azure_openai_api_version
+AZURE_OPENAI_API_VERSION=your_azure_openai_api_version_of_gpt-5-chat
+AZURE_OPENAI_DEPLOYMENT_NAME_EMBED=text-embedding-3-large
+AZURE_OPENAI_API_VERSION_EMBED=your_azure_openai_api_version_of_text-embedding-3-large
 ```
 
 ### 📁 Data Setup

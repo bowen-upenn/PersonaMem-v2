@@ -489,27 +489,31 @@ def user_ask_to_forget(llm, element, conversations, type, verbose):
 
     prev_pref = element['preference']
     new_element = generate_qa_for_each_element(llm, element.copy(), verbose)
-    user_query = new_element['user_query']
-    correct_answer = new_element['correct_answer']
+    if new_element:
+        user_query = new_element['user_query']
+        correct_answer = new_element['correct_answer']
 
-    llm.reset_history()
-    prompt = prompts.user_ask_to_forget(user_query, prev_pref, correct_answer)
-    user_followup = llm.query_llm(prompt, use_history=False, verbose=verbose)
-    user_followup = utils.extract_after_token(user_followup, '####').strip()
+        if len(user_query) == 0:
+            user_query = new_element['conversations'][0]['content']
 
-    conv_turns = [{
-        "role": "user",
-        "content": user_query
-    }, {
-        "role": "assistant",
-        "content": correct_answer
-    }, {
-        "role": "user",
-        "content": user_followup
-    }]
+        llm.reset_history()
+        prompt = prompts.user_ask_to_forget(user_query, prev_pref, correct_answer)
+        user_followup = llm.query_llm(prompt, use_history=False, verbose=verbose)
+        user_followup = utils.extract_after_token(user_followup, '####').strip()
 
-    element = {'preference': f"Do not remember '{prev_pref}' in memory", 'pref_type': "ask_to_forget", 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': prev_pref}
-    conversations[type].append(element)
+        conv_turns = [{
+            "role": "user",
+            "content": user_query
+        }, {
+            "role": "assistant",
+            "content": correct_answer
+        }, {
+            "role": "user",
+            "content": user_followup
+        }]
+
+        element = {'preference': f"Do not remember '{prev_pref}' in memory", 'pref_type': "ask_to_forget", 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': prev_pref}
+        conversations[type].append(element)
 
 
 def find_preference_from_image_and_generate_conversations(llm, persona_str, image_path, conversations, is_others_pref, verbose=False):
@@ -660,8 +664,11 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
 
                     has_asked_to_forget = False
                     if random.random() < 0.33 and not is_others_pref and element:
-                        user_ask_to_forget(llm, element, conversations, random_type, verbose)
-                        has_asked_to_forget = True
+                        try:
+                            user_ask_to_forget(llm, element, conversations, random_type, verbose)
+                            has_asked_to_forget = True
+                        except Exception as e:
+                            print(f"Error asking user to forget: {e}")
 
                     # Generate preference updates
                     if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"] and not has_asked_to_forget:

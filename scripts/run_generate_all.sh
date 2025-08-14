@@ -6,8 +6,8 @@ python main.py \
   --conv_output_dir data/raw_data/ \
   --num_persona 1000 \
   --data_types personal_email professional_email creative_writing professional_writing chat_message translation trouble_consult social_media_post knowledge_query \
-  --rate_limit_per_min 5 \
   --self_verify \
+  --rate_limit_per_min 5 \
   --parallel
 
 python main.py \

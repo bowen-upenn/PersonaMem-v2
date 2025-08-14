@@ -115,6 +115,13 @@ def extract_after_token(text: str, token: str) -> str:
         # Return everything after the token, stripped of whitespace
         return text[start:].strip()
     except Exception as e:
+        # Special case: if token is "###Output", also try "### Output"
+        if token == "###Output":
+            try:
+                start = text.index("### Output") + len("### Output")
+                return text[start:].strip()
+            except Exception:
+                return ""
         # Token not found
         return ""
 
