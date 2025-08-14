@@ -113,49 +113,6 @@ def find_max_persona_index(output_path, clean=False):
     
     # Return next available index
     return max_index + 1 if max_index >= 0 else 0
-    """
-    Find the maximum existing persona index from existing files to avoid overwriting.
-    
-    Args:
-        output_path: The base output path for persona files
-        clean: If True, ignore existing files and start from 0
-    
-    Returns:
-        int: The starting index for new personas (max_existing + 1, or 0 if clean or no files found)
-    """
-    if clean:
-        return 0
-    
-    # Look for existing persona files in data/raw_data directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    raw_data_dir = os.path.join(current_dir, "data", "raw_data")
-    
-    # Extract base name from timestamped path
-    base_name = os.path.basename(output_path)
-    
-    # Remove timestamp and extension to get the clean base name
-    timestamp_pattern = r'_\d{6}_\d{6}'
-    clean_base_name = re.sub(timestamp_pattern, '', base_name)
-    if clean_base_name.endswith('.json'):
-        clean_base_name = clean_base_name[:-5]  # Remove .json
-    
-    # Search for existing persona files in raw_data directory with pattern: {clean_base_name}_*_persona*.json
-    search_pattern = os.path.join(raw_data_dir, f"{clean_base_name}*_persona*.json")
-    existing_files = glob.glob(search_pattern)
-    
-    max_index = -1
-    
-    # Extract persona indices from filenames
-    for file_path in existing_files:
-        filename = os.path.basename(file_path)
-        # Look for pattern like "interactions_250727_201452_persona607.json"
-        match = re.search(r'_persona(\d+)\.json$', filename)
-        if match:
-            index = int(match.group(1))
-            max_index = max(max_index, index)
-    
-    # Return next available index
-    return max_index + 1 if max_index >= 0 else 0
 
 
 def categorize_single_item(llm, text, global_topics, verbose=False):
@@ -606,7 +563,7 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
             except json.JSONDecodeError as e:
                 print(f"Failed to parse knowledge query response: {e}")
                 sensitive_info = {}
-
+    
     # Global topic list for this persona's conversation generation
     global_topics = []
     
@@ -714,20 +671,34 @@ def process_single_persona(llm, persona, persona_id, implicit_types, self_verify
         try:
             final_json_response = utils.extract_json_from_response(final_json_response)
             final_json_response['matched_images'] = matched_images
+            
+            # Sanity check: ensure required fields have non-empty values
+            required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
+            missing_fields = []
+            
+            for field in required_fields:
+                if field not in final_json_response or not final_json_response[field] or len(final_json_response[field]) < 10:
+                    missing_fields.append(field)
+                    break
+            
+            if missing_fields:
+                print(f"Missing or empty required fields: {missing_fields}. Retrying expand_persona_info...")
+                continue
+                
             break
         except json.JSONDecodeError as e:
             print("Failed to parse JSON:", e, " trying again")
 
-    # Process preferences and generate conversations
-    conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
+    # # Process preferences and generate conversations
+    # conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
 
-    # Update aligned preferences
-    # if updates is not an empty dict
-    if updates:
-        final_json_response = update_aligned_preferences(final_json_response, conversations, updates)
+    # # Update aligned preferences
+    # # if updates is not an empty dict
+    # if updates:
+    #     final_json_response = update_aligned_preferences(final_json_response, conversations, updates)
 
-    # Attach conversations to the final output
-    final_json_response["conversations"] = conversations
+    # # Attach conversations to the final output
+    # final_json_response["conversations"] = conversations
     
     return final_json_response
 

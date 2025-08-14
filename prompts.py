@@ -61,6 +61,7 @@ def generate_stereotypical_preferences():
     Those stereotypical preferences should match the generic population mean of this person's demographic information, 
     but not necessary the current individual, to help us discover biases in the model.
     Add them to the JSON file under the key "stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the full JSON in the end.
+    List all 30 stereotypical preferences completely.
     """
     return prompt
 
@@ -71,6 +72,7 @@ def generate_anti_stereotypical_preferences():
     that is the opposite of the generic population mean of their demographic groups.
     **Must avoid conflicts with previous stereotypical preferences of the same person.** 
     Add them to the JSON file under the key "anti_stereotypical_preferences" whose value is a list of strings. Let us think step by step and output the **full** JSON in the end.
+    List all 30 anti-stereotypical preferences completely.
     """
     return prompt
 
