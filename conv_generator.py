@@ -182,21 +182,50 @@ def verify_conflicts_structured(llm, final_json_response, persona_id, verbose=Fa
     # Get initial preference lists
     stereotypical_prefs = final_json_response.get("stereotypical_preferences", [])
     anti_stereotypical_prefs = final_json_response.get("anti_stereotypical_preferences", [])
+    neutral_prefs = final_json_response.get("neutral_preferences", [])
     
     if verbose:
-        print(f"Initial counts - Stereotypical: {len(stereotypical_prefs)}, Anti-stereotypical: {len(anti_stereotypical_prefs)}")
-    
-    # Clean stereotypical preferences first
+        print(f"Initial counts - Stereotypical: {len(stereotypical_prefs)}, Anti-stereotypical: {len(anti_stereotypical_prefs)}, Neutral: {len(neutral_prefs)}")
+
+    # Clean neutral preferences first
+    cleaned_neutral = []
+    for pref in neutral_prefs:
+        if not pref or not pref.strip():
+            continue
+
+        # Check against existing cleaned preferences and other preference lists
+        existing_neutral_str = "\n".join([f"- {p}" for p in cleaned_neutral])
+        existing_stereo_str = "\n".join([f"- {p}" for p in stereotypical_prefs])
+        existing_anti_str = "\n".join([f"- {p}" for p in anti_stereotypical_prefs])
+
+        prompt = prompts.verify_neutral_preference(pref, existing_neutral_str, existing_stereo_str, existing_anti_str)
+        try:
+            response = llm.query_llm(prompt, use_history=False, verbose=verbose)
+            decision = utils.extract_after_token(response, '###Decision').strip().upper()
+        except Exception as e:
+            if verbose:
+                print(f"Error verifying neutral preference '{pref}': {e}")
+            continue
+
+        if "KEEP" in decision or not decision:  # Default to keep if unclear
+            cleaned_neutral.append(pref)
+            if verbose:
+                print(f"✓ Keeping neutral: '{pref[:50]}...'")
+        elif verbose:
+            print(f"✗ Removing neutral: '{pref[:50]}...'")
+
+    # Clean stereotypical preferences second
     cleaned_stereotypical = []
     for pref in stereotypical_prefs:
         if not pref or not pref.strip():
             continue
             
-        # Check against existing cleaned preferences and anti-stereotypical list
+        # Check against existing cleaned preferences and other preference lists
+        existing_neutral_str = "\n".join([f"- {p}" for p in cleaned_neutral])
         existing_stereo_str = "\n".join([f"- {p}" for p in cleaned_stereotypical])
         existing_anti_str = "\n".join([f"- {p}" for p in anti_stereotypical_prefs])
         
-        prompt = prompts.verify_stereotypical_preference(pref, existing_stereo_str, existing_anti_str)
+        prompt = prompts.verify_stereotypical_preference(pref, existing_stereo_str, existing_anti_str, existing_neutral_str)
         try:
             response = llm.query_llm(prompt, use_history=False, verbose=verbose)
             decision = utils.extract_after_token(response, '###Decision').strip().upper()
@@ -212,7 +241,7 @@ def verify_conflicts_structured(llm, final_json_response, persona_id, verbose=Fa
         elif verbose:
             print(f"✗ Removing stereotypical: '{pref[:50]}...'")
     
-    # Clean anti-stereotypical preferences against cleaned stereotypical list
+    # Clean anti-stereotypical preferences last
     cleaned_anti_stereotypical = []
     for pref in anti_stereotypical_prefs:
         if not pref or not pref.strip():
@@ -220,8 +249,9 @@ def verify_conflicts_structured(llm, final_json_response, persona_id, verbose=Fa
             
         existing_anti_str = "\n".join([f"- {p}" for p in cleaned_anti_stereotypical])
         existing_stereo_str = "\n".join([f"- {p}" for p in cleaned_stereotypical])
+        existing_neutral_str = "\n".join([f"- {p}" for p in cleaned_neutral])
 
-        prompt = prompts.verify_anti_stereotypical_preference(pref, existing_stereo_str, existing_anti_str)
+        prompt = prompts.verify_anti_stereotypical_preference(pref, existing_anti_str, existing_stereo_str, existing_neutral_str)
         try:
             response = llm.query_llm(prompt, use_history=False, verbose=verbose)
             decision = utils.extract_after_token(response, '###Decision').strip().upper()
@@ -237,15 +267,17 @@ def verify_conflicts_structured(llm, final_json_response, persona_id, verbose=Fa
         elif verbose:
             print(f"✗ Removing anti-stereotypical: '{pref[:50]}...'")
     
-    # Update the response
+    # Update the response with all three cleaned preference lists
     final_json_response["stereotypical_preferences"] = cleaned_stereotypical
     final_json_response["anti_stereotypical_preferences"] = cleaned_anti_stereotypical
+    final_json_response["neutral_preferences"] = cleaned_neutral
     
     if verbose:
         removed_stereo = len(stereotypical_prefs) - len(cleaned_stereotypical)
         removed_anti = len(anti_stereotypical_prefs) - len(cleaned_anti_stereotypical)
-        print(f"Final counts - Stereotypical: {len(cleaned_stereotypical)}, Anti-stereotypical: {len(cleaned_anti_stereotypical)}")
-        print(f"Removed {removed_stereo} stereotypical and {removed_anti} anti-stereotypical preferences")
+        removed_neutral = len(neutral_prefs) - len(cleaned_neutral)
+        print(f"Final counts - Stereotypical: {len(cleaned_stereotypical)}, Anti-stereotypical: {len(cleaned_anti_stereotypical)}, Neutral: {len(cleaned_neutral)}")
+        print(f"Removed {removed_stereo} stereotypical, {removed_anti} anti-stereotypical, and {removed_neutral} neutral preferences")
     
     return final_json_response
 
@@ -263,10 +295,10 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
         prompt = prompts.expand_persona(persona_str)
         persona_str = llm.query_llm(prompt, use_history=True, verbose=verbose)
         
-        # 2) stereotypical and anti-stereotypical preferences
-        prompt = prompts.generate_stereotypical_and_antistereotypical_preferences()
+        # 2) stereotypical, anti-stereotypical, and neutral preferences
+        prompt = prompts.generate_stereotypical_and_antistereotypical_preferences(persona_str)
         final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
-        print(f"Done generating stereotypical and anti-stereotypical preferences for persona {persona_id}")
+        print(f"Done generating stereotypical, anti-stereotypical, and neutral preferences for persona {persona_id}")
 
         # 3) verify conflicts - structured approach
         final_json_temp = utils.extract_json_from_response(final_json_temp)
@@ -295,7 +327,7 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
         final_json = utils.extract_json_from_response(final_json)
 
         # Sanity check: ensure required fields have non-empty values
-        required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
+        required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "neutral_preferences", "therapy_background", "health_and_medical_conditions"]
         missing_fields = []
         
         for field in required_fields:
@@ -339,7 +371,15 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
                 topic = categorize_single_item(llm, pref, global_topics, verbose)
                 if topic not in global_topics:
                     global_topics.append(topic)
-    
+
+    # Categorize neutral preferences (for global counting only)
+    if 'neutral_preferences' in final_json:
+        for pref in final_json['neutral_preferences']:
+            if pref:  # Only categorize non-empty preferences
+                topic = categorize_single_item(llm, pref, global_topics, verbose)
+                if topic not in global_topics:
+                    global_topics.append(topic)
+
     # Categorize therapy background (for global counting only)
     if 'therapy_background' in final_json:
         for pref in final_json['therapy_background']:
@@ -664,6 +704,7 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
     for pref_key, pref_list in [
         ("stereotypical_pref", final_json.get("stereotypical_preferences", [])),
         ("anti_stereotypical_pref", final_json.get("anti_stereotypical_preferences", [])),
+        ("neutral_preferences", final_json.get("neutral_preferences", [])),
         ("therapy_background", final_json.get("therapy_background", [])),
         ("health_and_medical_conditions", final_json.get("health_and_medical_conditions", []))
     ]:
@@ -733,21 +774,6 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
     return conversations, updates
 
 
-def update_aligned_preferences(final_json, conversations, updates):
-    """
-    Update final_json to only include aligned preferences.
-    """
-    # # Update final_json to only include aligned preferences
-    # aligned_stereo = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'stereotypical_pref']
-    # aligned_anti = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'anti_stereotypical_pref']
-
-    # final_json['stereotypical_preferences'] = list(set(aligned_stereo))     # the repeated calls on knowledge_query may introduce repeated preferences in the previous step
-    # final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
-    final_json['preference_updates'] = updates
-
-    return final_json
-
-
 def process_single_persona(llm, persona, persona_id, implicit_types, self_verify, image_matcher, verbose=False):
     """
     Process a single persona to generate all its interactions and conversations.
@@ -766,9 +792,8 @@ def process_single_persona(llm, persona, persona_id, implicit_types, self_verify
     conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
 
     # Update aligned preferences
-    # if updates is not an empty dict
     if updates:
-        final_json_response = update_aligned_preferences(final_json_response, conversations, updates)
+        final_json_response['preference_updates'] = updates
 
     # Attach conversations to the final output
     final_json_response["conversations"] = conversations
