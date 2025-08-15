@@ -310,9 +310,13 @@ class ImageMatcher:
             return []
         
         # Get embedding for the persona
-        persona_embedding = self._get_sentence_embedding(persona_str)
-        persona_embedding = persona_embedding.reshape(1, -1)
-        
+        try:
+            persona_embedding = self._get_sentence_embedding(persona_str)
+            persona_embedding = persona_embedding.reshape(1, -1)
+        except Exception as e:
+            print(f"Error getting persona embedding: {e}")
+            return []
+
         # Calculate cosine similarity with all image embeddings
         similarities = cosine_similarity(persona_embedding, self.embeddings_matrix)[0]
         

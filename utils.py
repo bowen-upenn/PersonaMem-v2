@@ -115,13 +115,38 @@ def extract_after_token(text: str, token: str) -> str:
         # Return everything after the token, stripped of whitespace
         return text[start:].strip()
     except Exception as e:
-        # Special case: if token is "###Output", also try "### Output"
-        if token == "###Output":
-            try:
-                start = text.index("### Output") + len("### Output")
-                return text[start:].strip()
-            except Exception:
-                return ""
+        # Try alternative patterns for tokens with # symbols
+        if token.startswith("#"):
+            # Extract the base text after # symbols
+            hash_match = re.match(r'^(#+)\s*(.+)', token)
+            if hash_match:
+                original_hashes, base_text = hash_match.groups()
+                num_hashes = len(original_hashes)
+                
+                # Try different variations
+                variations = []
+                
+                # 1. Try with spaces: "###Output" -> "### Output"
+                variations.append(f"{original_hashes} {base_text}")
+                
+                # 2. Try with ±1 or ±2 hash symbols
+                for delta in [-2, -1, 1, 2]:
+                    new_num = num_hashes + delta
+                    if new_num > 0:  # Must have at least one hash
+                        new_hashes = "#" * new_num
+                        variations.extend([
+                            f"{new_hashes}{base_text}",      # No space
+                            f"{new_hashes} {base_text}"      # With space
+                        ])
+                
+                # Try each variation
+                for variant in variations:
+                    try:
+                        start = text.index(variant) + len(variant)
+                        return text[start:].strip()
+                    except:
+                        continue
+        
         # Token not found
         return ""
 

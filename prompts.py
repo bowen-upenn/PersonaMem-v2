@@ -40,9 +40,9 @@ def expand_persona(persona_str):
     random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
 
     prompt = f"""
-    Given this persona, add name, age, gender, race, personality, and other detailed demographic information in a JSON format, if not already mentioned. 
+    Given this persona, add name, age, gender, race, personality, degree, school or work, and other detailed demographic information in a JSON format, if not already mentioned. 
     Please also describe their speaking style in detail when talking to the chatbot, including tone, formality, pacing, and vocabulary (no need to provide sample conversations)
-    Make everything as detailed, realistic, vivid, diverse, and comprehensive as possible.
+    Make everything as detailed, realistic, vivid, diverse, and comprehensive as possible. Reflect real-world users.
 
     Here are the gender and racial references for this person. You don't need to use these exact terms; feel free to use a more specific instance or natural variations, especially for the racial identity:
     {random_gender} {random_sexual_orientation}
@@ -77,11 +77,81 @@ def generate_anti_stereotypical_preferences():
     return prompt
 
 
+def generate_stereotypical_and_antistereotypical_preferences():
+    prompt = f"""
+    Given this demographic information, you need to generate both stereotypical and anti-stereotypical preferences for this person simultaneously to ensure they complement each other without conflicts.
+
+    **TASK:** Generate exactly 30 stereotypical preferences AND exactly 30 anti-stereotypical preferences for this person.
+
+    **STEREOTYPICAL PREFERENCES:**
+    - Should match the generic population mean of this person's demographic groups
+    - Represent common assumptions/biases people might have about someone with these demographics
+
+    **ANTI-STEREOTYPICAL PREFERENCES:**
+    - Should be the opposite of what people typically expect from their demographic groups
+    - Deliberately contradict common stereotypes about their background
+
+    Consider both lists of preferences coherently before generating any specific preferences,
+    because preferences in both categories belong to the current individual user without self conflicts.
+
+    **CRITICAL REQUIREMENTS:**
+    1. **NO CONFLICTS**: Ensure stereotypical and anti-stereotypical preferences do not contradict each other. THEY BELONG TO THE SAME PERSON.
+    2. **NO DUPLICATES**: Each preference should be unique within its category
+    3. **NO OVERLAP**: No preference should appear in both lists with different wording
+    4. **BALANCED OPPOSITION**: Anti-stereotypical preferences should clearly contrast with stereotypical ones but not directly contradict them
+    5. **REALISTIC**: All preferences should be believable for a real person to have
+
+    **STRATEGY FOR CONFLICT AVOIDANCE:**
+    - Use different domains/categories for stereotypical vs anti-stereotypical preferences when possible
+    - If using the same domain, ensure preferences are complementary rather than contradictory
+    - Example: Stereotypical "likes expensive restaurants" + Anti-stereotypical "enjoys cooking at home" (compatible)
+    - Avoid: Stereotypical "likes spicy food" + Anti-stereotypical "dislikes spicy food" (direct conflict)
+
+    **OUTPUT FORMAT:**
+    Add both preference lists to the JSON file with these exact keys:
+    - "stereotypical_preferences": [list of 30 stereotypical preferences]  
+    - "anti_stereotypical_preferences": [list of 30 anti-stereotypical preferences]
+
+    Think step by step:
+    1. Identify key demographic stereotypes for this person
+    2. Generate 30 stereotypical preferences covering different life domains
+    3. Generate 30 anti-stereotypical preferences that contrast with common expectations but don't conflict with the stereotypical ones
+    4. Review both lists for conflicts, duplicates, and ensure exactly 30 items each
+    5. Output the full JSON with both preference lists
+
+    Generate comprehensive, diverse preferences covering domains like: food, entertainment, lifestyle, hobbies, career, social activities, shopping, travel, technology, values, etc.
+
+    Output the full JSON in the end with all previously generated keys and their contents.
+    """
+    return prompt
+
+
 def verify_conflicts():
     prompt = f"""
-    Verify if there are (1) any conflicts between stereotypical_preferences and anti_stereotypical_preferences. 
-    (2) any redundant or repetitive preferences within each one of the two lists.
-    If so, replace conflict ones and remove redundant ones. Show the full JSON file in the end.
+    You need to carefully analyze and clean up the preference lists to ensure quality and consistency. Follow these steps:
+
+    **STEP 1: IDENTIFY CONFLICTS BETWEEN STEREOTYPICAL AND ANTI-STEREOTYPICAL PREFERENCES**
+    - Compare each stereotypical preference with each anti-stereotypical preference
+    - Look for direct contradictions (e.g., "loves spicy food" vs "dislikes spicy food")
+    - Look for semantic conflicts (e.g., "prefers luxury brands" vs "shops at thrift stores")
+    - Look for overlapping concepts that contradict (e.g., "extroverted" vs "prefers solitude")
+    
+    **STEP 2: IDENTIFY REDUNDANCIES WITHIN EACH LIST**
+    - Find preferences that say the same thing with different words (e.g., "enjoys reading" and "loves books")
+    - Find overly similar preferences (e.g., "likes Italian food" and "prefers pasta dishes")
+    - Find preferences that are subsets of others (e.g., "likes dogs" and "loves Golden Retrievers")
+    
+    **STEP 3: IDENTIFY INTERNAL CONFLICTS WITHIN EACH LIST**
+    - Within stereotypical_preferences: find contradictory items (e.g., "social butterfly" vs "prefers quiet evenings")
+    - Within anti_stereotypical_preferences: find contradictory items
+    
+    **STEP 4: APPLY CONFLICT RESOLUTION RULES**
+    - For between-list conflicts: Keep the most specific and realistic preference, remove the generic one
+    - For redundancies: Keep the most specific version, remove duplicates
+    - For internal conflicts: Remove the less believable or less specific preference
+    - Ensure each list maintains exactly 30 unique, non-conflicting preferences
+    
+    Think through each step systematically, document what conflicts you find and how you resolve them, then show the cleaned JSON file at the end.
     """
     return prompt
 
@@ -325,8 +395,10 @@ def check_alignment_with_population_mean(persona):
     return prompt
 
 
-def generate_therapy_related_history():
+def generate_therapy_related_history(prev_conversations):
     prompt = f"""
+    {prev_conversations}
+
     Given the persona and preferences above, propose 20 personal histories of this person that might result in this person seeking AI chatbot for therapy consultations around them in the future. 
     Be very specific and personal. Add them to the JSON file under the key "therapy_background" whose value is a list of strings. 
     Let us think step by step and output the full JSON in the end.
@@ -884,4 +956,66 @@ def validate_answer_format_cleanliness(correct_answer, incorrect_answers_str):
 
 Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
     
+    return prompt
+
+
+def verify_stereotypical_preference(pref, existing_stereo_str, existing_anti_str):
+    """
+    Generate a prompt to verify if a stereotypical preference should be kept or removed.
+    
+    Args:
+        pref: The preference to check
+        existing_stereo_str: String of existing stereotypical preferences
+        existing_anti_str: String of existing anti-stereotypical preferences
+        
+    Returns:
+        str: The verification prompt
+    """
+    prompt = f"""Check if this STEREOTYPICAL preference should be kept or removed:
+
+PREFERENCE TO CHECK: "{pref}"
+
+EXISTING STEREOTYPICAL PREFERENCES:
+{existing_stereo_str if existing_stereo_str else "None"}
+
+EXISTING ANTI-STEREOTYPICAL PREFERENCES:
+{existing_anti_str if existing_anti_str else "None"}
+
+Remove if:
+1. DUPLICATE of existing stereotypical preference (same meaning, different words)
+2. CONFLICTS with existing stereotypical preference
+3. CONFLICTS with existing anti-stereotypical preference
+
+Think step by step. Then answer only "KEEP" or "REMOVE" after ###Decision"""
+    return prompt
+
+
+def verify_anti_stereotypical_preference(pref, existing_anti_str, existing_stereo_str):
+    """
+    Generate a prompt to verify if an anti-stereotypical preference should be kept or removed.
+    
+    Args:
+        pref: The preference to check
+        existing_anti_str: String of existing anti-stereotypical preferences
+        existing_stereo_str: String of existing stereotypical preferences
+        
+    Returns:
+        str: The verification prompt
+    """
+    prompt = f"""Check if this ANTI-STEREOTYPICAL preference should be kept or removed:
+
+PREFERENCE TO CHECK: "{pref}"
+
+EXISTING ANTI-STEREOTYPICAL PREFERENCES:
+{existing_anti_str if existing_anti_str else "None"}
+
+EXISTING STEREOTYPICAL PREFERENCES:
+{existing_stereo_str if existing_stereo_str else "None"}
+
+Remove if:
+1. DUPLICATE of existing anti-stereotypical preference (same meaning, different words)
+2. CONFLICTS with existing anti-stereotypical preference
+3. CONFLICTS with existing stereotypical preference
+
+Think step by step. Then answer only "KEEP" or "REMOVE" after ###Decision"""
     return prompt

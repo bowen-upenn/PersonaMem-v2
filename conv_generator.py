@@ -173,6 +173,82 @@ def categorize_single_item(llm, text, global_topics, verbose=False):
         return "Uncategorized"
 
 
+def verify_conflicts_structured(llm, final_json_response, persona_id, verbose=False):
+    """
+    Verify conflicts and duplicates in preferences using a structured approach.
+    Processes each preference individually against existing lists.
+    """    
+    # Get initial preference lists
+    stereotypical_prefs = final_json_response.get("stereotypical_preferences", [])
+    anti_stereotypical_prefs = final_json_response.get("anti_stereotypical_preferences", [])
+    
+    if verbose:
+        print(f"Initial counts - Stereotypical: {len(stereotypical_prefs)}, Anti-stereotypical: {len(anti_stereotypical_prefs)}")
+    
+    # Clean stereotypical preferences first
+    cleaned_stereotypical = []
+    for pref in stereotypical_prefs:
+        if not pref or not pref.strip():
+            continue
+            
+        # Check against existing cleaned preferences and anti-stereotypical list
+        existing_stereo_str = "\n".join([f"- {p}" for p in cleaned_stereotypical])
+        existing_anti_str = "\n".join([f"- {p}" for p in anti_stereotypical_prefs])
+        
+        prompt = prompts.verify_stereotypical_preference(pref, existing_stereo_str, existing_anti_str)
+        try:
+            response = llm.query_llm(prompt, use_history=False, verbose=verbose)
+            decision = utils.extract_after_token(response, '###Decision').strip().upper()
+        except Exception as e:
+            if verbose:
+                print(f"Error verifying stereotypical preference '{pref}': {e}")
+            continue
+
+        if "KEEP" in decision or not decision:  # Default to keep if unclear
+            cleaned_stereotypical.append(pref)
+            if verbose:
+                print(f"✓ Keeping stereotypical: '{pref[:50]}...'")
+        elif verbose:
+            print(f"✗ Removing stereotypical: '{pref[:50]}...'")
+    
+    # Clean anti-stereotypical preferences against cleaned stereotypical list
+    cleaned_anti_stereotypical = []
+    for pref in anti_stereotypical_prefs:
+        if not pref or not pref.strip():
+            continue
+            
+        existing_anti_str = "\n".join([f"- {p}" for p in cleaned_anti_stereotypical])
+        existing_stereo_str = "\n".join([f"- {p}" for p in cleaned_stereotypical])
+
+        prompt = prompts.verify_anti_stereotypical_preference(pref, existing_stereo_str, existing_anti_str)
+        try:
+            response = llm.query_llm(prompt, use_history=False, verbose=verbose)
+            decision = utils.extract_after_token(response, '###Decision').strip().upper()
+        except Exception as e:
+            if verbose:
+                print(f"Error verifying anti-stereotypical preference '{pref}': {e}")
+            continue
+
+        if "KEEP" in decision or not decision:  # Default to keep if unclear
+            cleaned_anti_stereotypical.append(pref)
+            if verbose:
+                print(f"✓ Keeping anti-stereotypical: '{pref[:50]}...'")
+        elif verbose:
+            print(f"✗ Removing anti-stereotypical: '{pref[:50]}...'")
+    
+    # Update the response
+    final_json_response["stereotypical_preferences"] = cleaned_stereotypical
+    final_json_response["anti_stereotypical_preferences"] = cleaned_anti_stereotypical
+    
+    if verbose:
+        removed_stereo = len(stereotypical_prefs) - len(cleaned_stereotypical)
+        removed_anti = len(anti_stereotypical_prefs) - len(cleaned_anti_stereotypical)
+        print(f"Final counts - Stereotypical: {len(cleaned_stereotypical)}, Anti-stereotypical: {len(cleaned_anti_stereotypical)}")
+        print(f"Removed {removed_stereo} stereotypical and {removed_anti} anti-stereotypical preferences")
+    
+    return final_json_response
+
+
 def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbose=False):
     """
     Expand persona with demographic info and generate preferences and background.
@@ -180,54 +256,66 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
     Returns:
         tuple: (expanded_persona_str, final_json)
     """
-    # 1) demographic info
-    prompt = prompts.expand_persona(persona_str)
-    llm.reset_history()
-    persona_str = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    while True:
+        llm.reset_history()
+        # 1) demographic info
+        prompt = prompts.expand_persona(persona_str)
+        persona_str = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        
+        # 2) stereotypical and anti-stereotypical preferences
+        prompt = prompts.generate_stereotypical_and_antistereotypical_preferences()
+        final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        print(f"Done generating stereotypical and anti-stereotypical preferences for persona {persona_id}")
 
-    # 2) stereotypical preferences
-    prompt = prompts.generate_stereotypical_preferences()
-    llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done generating stereotypical preferences for persona {persona_id}")
+        # 3) verify conflicts - structured approach
+        final_json_temp = utils.extract_json_from_response(final_json_temp)
+        final_json_temp = verify_conflicts_structured(llm, final_json_temp, persona_id, verbose)
+        print(f"Done verifying conflicts in preferences for persona {persona_id}")
 
-    # 3) anti-stereotypical preferences
-    prompt = prompts.generate_anti_stereotypical_preferences()
-    llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done generating anti-stereotypical preferences for persona {persona_id}")
+        # 4) additional therapy-related personal history
+        final_json_temp = json.dumps(final_json_temp)
+        prompt = prompts.generate_therapy_related_history(final_json_temp)
+        llm.query_llm(prompt, use_history=True, verbose=verbose)
+        print(f"Done generating therapy-related personal history for persona {persona_id}")
 
-    # 4) verify conflicts
-    prompt = prompts.verify_conflicts()
-    llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done verifying conflicts in preferences for persona {persona_id}")
+        # 5) additional health and medical-related personal history
+        prompt = prompts.generate_health_and_medical_conditions()
+        final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        print(f"Done generating health and medical-related personal history for persona {persona_id}")
 
-    # 5) additional therapy-related personal history
-    prompt = prompts.generate_therapy_related_history()
-    llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done generating therapy-related personal history for persona {persona_id}")
+        # 6) generate sensitive private information
+        prompt = prompts.generate_sensitive_information()
+        final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
+        print(f"Done generating sensitive private information for persona {persona_id}")
+        if 'sorry' in final_json.lower():
+            final_json = final_json_temp
 
-    # 6) additional health and medical-related personal history
-    prompt = prompts.generate_health_and_medical_conditions()
-    final_json_temp = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done generating health and medical-related personal history for persona {persona_id}")
+        # Convert final json from a string to a JSON dictionary
+        final_json = utils.extract_json_from_response(final_json)
 
-    # 7) generate sensitive private information
-    prompt = prompts.generate_sensitive_information()
-    final_json = llm.query_llm(prompt, use_history=True, verbose=verbose)
-    print(f"Done generating sensitive private information for persona {persona_id}")
-    if 'sorry' in final_json.lower():
-        final_json = final_json_temp
+        # Sanity check: ensure required fields have non-empty values
+        required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in final_json or not final_json[field] or len(final_json[field]) < 5:
+                missing_fields.append(field)
+        
+        if len(missing_fields) > 0:
+            print(f"Missing or empty required fields: {missing_fields}. Retrying expand_persona_info...")
+        else:
+            break
 
     # 8) find images if image_matcher is provided that match the persona
+    matched_images = []
     if image_matcher:
         random_num_images = random.randint(3, 8)
-        matched_images = image_matcher.find_most_similar_image(final_json, top_k=random_num_images)
+        matched_images = image_matcher.find_most_similar_image(persona_str, top_k=random_num_images)
         matched_images = [img_path for img_path, _ in matched_images]  # Filter out low similarity images
         if verbose:
             print(f"Matched images: {len(matched_images)}: {matched_images}")
         print("Done finding images that match the persona.")
-
-    # Convert final json from a string to a JSON dictionary
-    final_json = utils.extract_json_from_response(final_json)
+    final_json['matched_images'] = matched_images
 
     if verbose:
         print({f"all keys in final_json": list(final_json.keys())})
@@ -270,7 +358,7 @@ def expand_persona_info(llm, persona_str, persona_id, image_matcher=None, verbos
                 with TOPIC_COUNTER_LOCK:
                     GLOBAL_TOPIC_COUNTER[topic] += 1
 
-    return persona_str, final_json, matched_images if image_matcher else []
+    return persona_str, final_json
 
 
 def verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=False):
@@ -289,7 +377,7 @@ def verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=False)
 
     # 2) Check alignment of guessed persona with actual persona
     prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
-    resp_check = llm.query_llm(prompt_check, use_history=True,verbose=verbose)
+    resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
     # Extract the final answer after '####Final Answer'
     alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
     
@@ -595,7 +683,7 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
                         global_topics.append(topic_preference)
                 
                 # Verify preference alignment
-                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=verbose)
+                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
 
                 # Only generate conversations for aligned preferences
                 if alignment == 'yes':
@@ -666,36 +754,12 @@ def process_single_persona(llm, persona, persona_id, implicit_types, self_verify
     Returns:
         dict: Complete persona data with conversations
     """
-    # Reset history for this thread to ensure clean state
-    llm.reset_history()
-    
     # Expand persona info and generate preferences
-    while True:
-        persona_str = json.dumps(persona, ensure_ascii=False)
-        if verbose:
-            print(f"Persona: {persona_str}")
+    persona_str = json.dumps(persona, ensure_ascii=False)
+    if verbose:
+        print(f"Persona: {persona_str}")
 
-        persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
-        try:
-            final_json_response = utils.extract_json_from_response(final_json_response)
-            final_json_response['matched_images'] = matched_images
-        except json.JSONDecodeError as e:
-            print("Failed to parse JSON:", e, " trying again")
-            
-        # Sanity check: ensure required fields have non-empty values
-        required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
-        missing_fields = []
-        
-        for field in required_fields:
-            if field not in final_json_response or not final_json_response[field] or len(final_json_response[field]) < 10:
-                missing_fields.append(field)
-
-        # print("persona_id", persona_id, "persona_str", persona_str)
-
-        if missing_fields:
-            print(f"Missing or empty required fields: {missing_fields}. Retrying expand_persona_info...")
-        else:
-            break
+    persona_str, final_json_response = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
 
     # Process preferences and generate conversations
     conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
@@ -722,6 +786,9 @@ def process_single_persona_thread(args):
         tuple: (idx, persona_id, final_json, full_path) or (idx, None, None, None) if failed
     """
     idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose = args
+    
+    # Set a unique random seed for this thread to ensure different random choices
+    random.seed(int(time.time() * 1000000) + idx)
     
     # try:
     # Process single persona
