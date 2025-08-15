@@ -625,11 +625,43 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
         for i, (conv_type, conv_list) in enumerate(conversations_by_type.items()):
             print(f'Processing conv_type: {conv_type} in {os.path.basename(file_path)}')
             
+            # First pass: identify preferences that should be skipped for Q&A generation
+            skip_preferences = set()
+            
+            # Find all prev_pref of elements with pref_type == "ask_to_forget"
+            for conv_elem in conv_list:
+                if conv_elem.get('pref_type') == "ask_to_forget":
+                    prev_pref = conv_elem.get('prev_pref')
+                    if prev_pref:
+                        skip_preferences.add(prev_pref)
+                        if verbose:
+                            print(f"  Skipping Q&A for prev_pref '{prev_pref}' (referenced by ask_to_forget)")
+                
+                # Also skip preferences with updated == True
+                if conv_elem.get('updated') == True:
+                    preference = conv_elem.get('preference')
+                    if preference:
+                        skip_preferences.add(preference)
+                        if verbose:
+                            print(f"  Skipping Q&A for preference '{preference}' (updated == True)")
+            
+            if verbose and skip_preferences:
+                print(f"  Total preferences to skip: {len(skip_preferences)}")
+            
             # Create a new list to store only valid QA pairs
             valid_conv_list = []
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
                 try:
+                    # Check if this preference should be skipped
+                    preference = conv_elem.get('preference')
+                    if preference in skip_preferences:
+                        if verbose:
+                            print(f"  Skipping Q&A generation for preference: '{preference}'")
+                        # Add the element without Q&A fields
+                        valid_conv_list.append(conv_elem)
+                        continue
+                    
                     llm.reset_history()
                     curr_persona = persona.get("persona", "")
                     groundtruth_preference = conv_elem.get("preference", "")
