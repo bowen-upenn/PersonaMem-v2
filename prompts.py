@@ -1,34 +1,39 @@
 import random
 
 GENDER_WEIGHTS = {
-    "woman": 42.5,
-    "man": 44.6,
+    "woman": 42,
+    "man": 42,
     "nonbinary": 3.5,
-    "genderqueer": 1.2,
+    "genderqueer": 1.5,
     "agender": 1.0,
-    "genderfluid": 0.8,
-    "transgender woman": 3.8,
-    "transgender man": 2.6,
+    "genderfluid": 0.5,
+    "transgender woman": 4.5,
+    "transgender man": 3.5,
+    "intersex": 0.5
 }
 
 SEXUAL_ORIENTATION_WEIGHTS = {
-    "heterosexual / straight": 88.0,
-    "gay or lesbian": 8.1,
-    "bisexual": 3.0,
-    "pansexual": 0.5,
-    "asexual": 0.4,
+    "heterosexual / straight": 86.0,
+    "gay or lesbian": 10.0,
+    "bisexual": 2.0,
+    "pansexual": 1.5,
+    "asexual": 0.5,
 }
 
 RACE_WEIGHTS = {
     "South Asian": 15.0,
     "East Asian": 18.0,
-    "Southeast Asian": 9.0,
+    "Southeast Asian": 10.0,
     "Central Asian": 1.0,
     "Middle Eastern / North African": 5.0,
     "Jewish": 1.5,
-    "Sub-Saharan African": 15.0,
-    "White / European": 20.0,
-    "Latino / Hispanic": 8.0,
+    "White / Northern European": 4.5,
+    "White / Western European": 6.0,
+    "White / Southern European": 4.0,
+    "White / Eastern European": 5.5,
+    "White / Australasia": 2.0,
+    "Sub-Saharan African": 10.0,
+    "Latino / Hispanic": 10.0,
     "Indigenous Americas": 1.5,
     "Native Hawaiian / Other Pacific Islander": 0.5,
     "Mixed race / multiethnic": 5.5,
@@ -39,7 +44,7 @@ def expand_persona(persona_str):
     random_gender = random.choices(list(GENDER_WEIGHTS.keys()), weights=GENDER_WEIGHTS.values())[0]
     random_race = random.choices(list(RACE_WEIGHTS.keys()), weights=RACE_WEIGHTS.values())[0]
     
-    if random_gender in ["nonbinary", "genderqueer", "genderfluid", "agender"]:
+    if random_gender in ["nonbinary", "genderqueer", "genderfluid", "agender", "intersex"]:
         orientation_options = {k: v for k, v in SEXUAL_ORIENTATION_WEIGHTS.items() if k != "heterosexual / straight"}
         random_sexual_orientation = random.choices(list(orientation_options.keys()), weights=list(orientation_options.values()))[0]
     else:
