@@ -13,12 +13,15 @@ from tqdm.asyncio import tqdm_asyncio, tqdm
 import asyncio
 import time
 import base64
+import threading
+from collections import defaultdict
 
 
 class QueryLLM:
     def __init__(self, args, rate_limit_per_min=50):
         self.args = args
-        self.history = []
+        # Use thread-safe dictionary to store history for each thread
+        self.thread_histories = defaultdict(list)
         self.request_times = []
         self.rate_limit_per_min = rate_limit_per_min
         self.semaphore = asyncio.Semaphore(rate_limit_per_min)  # Max number of concurrent requests
@@ -64,8 +67,12 @@ class QueryLLM:
                 )
 
 
-    def reset_history(self):
-        self.history = []
+    def reset_history(self, thread_id=None):
+        """Reset conversation history for a specific thread or current thread."""
+        if thread_id is None:
+            thread_id = threading.get_ident()
+        
+        self.thread_histories[thread_id] = []
 
 
     def search_images(self, pref: str):
@@ -97,13 +104,17 @@ class QueryLLM:
 
 
     # @timeout_decorator.timeout(60, timeout_exception=TimeoutError)  # Set timeout to 60 seconds
-    def query_llm(self, prompt, use_history=False, image=None, image_path=None, verbose=False):
+    def query_llm(self, prompt, use_history=False, image=None, image_path=None, verbose=False, thread_id=None):
         # print(f"Querying LLM with prompt: {prompt}\n\n")
         """
         Send a message to the LLM. If use_history is True,
         `prompt` should be a list of message dicts [{'role': ..., 'content': ...}, ...].
         Otherwise, `prompt` is a single string.
         """
+        # Get thread ID for history management
+        if thread_id is None:
+            thread_id = threading.get_ident()
+        
         # Prepare messages for the API call
         if image:
             base64_image = image
@@ -132,16 +143,12 @@ class QueryLLM:
                         ],
                     }
                 ]
-            # "type": "image_url",
-            # "image_url": {
-            #     "url": f"data:image/jpeg;base64,{base64_image}"
-            # }
         else:
             curr_message = [{"role": "user", "content": prompt}]
 
         if use_history:
-            self.history.extend(curr_message)
-            messages = self.history
+            self.thread_histories[thread_id].extend(curr_message)
+            messages = self.thread_histories[thread_id].copy()
         else:
             messages = curr_message
 
@@ -159,7 +166,7 @@ class QueryLLM:
             content = None
 
         if use_history:
-            self.history.append({"role": "assistant", "content": content})
+            self.thread_histories[thread_id].append({"role": "assistant", "content": content})
 
         if verbose:
             print(f'{utils.Colors.OKGREEN}Model Response:{utils.Colors.ENDC} {content}')
@@ -193,7 +200,7 @@ class QueryLLM:
 
 
     # @timeout_decorator.timeout(180, timeout_exception=TimeoutError)  # Set timeout to 180 seconds
-    async def query_llm_async(self, prompt, use_history=False, image=None, verbose=False):
+    async def query_llm_async(self, prompt, use_history=False, image=None, verbose=False, thread_id=None):
     
         """
         Async version of query_llm with rate limiting and concurrency control.
@@ -203,6 +210,7 @@ class QueryLLM:
             use_history: Whether to use conversation history
             image: Base64 encoded image string (optional)
             verbose: Whether to print debug information
+            thread_id: Thread ID for history management (optional)
         Returns:
             LLM response text
             
@@ -211,6 +219,10 @@ class QueryLLM:
         """
         async with self.semaphore:  # Limit concurrent requests
             await self._wait_for_rate_limit()  # Respect rate limit
+            
+            # Get thread ID for history management
+            if thread_id is None:
+                thread_id = threading.get_ident()
             
             # Prepare messages for the API call
             if image:
@@ -231,8 +243,8 @@ class QueryLLM:
                 curr_message = [{"role": "user", "content": prompt}]
 
             if use_history:
-                self.history.extend(curr_message)
-                messages = self.history
+                self.thread_histories[thread_id].extend(curr_message)
+                messages = self.thread_histories[thread_id].copy()
             else:
                 messages = curr_message
 
@@ -250,7 +262,7 @@ class QueryLLM:
                 content = None
 
             if use_history:
-                self.history.append({"role": "assistant", "content": content})
+                self.thread_histories[thread_id].append({"role": "assistant", "content": content})
 
             if verbose:
                 print(f'{utils.Colors.OKGREEN}Model Response:{utils.Colors.ENDC} {content}')
@@ -263,8 +275,9 @@ class QueryLLM:
         Query LLM in parallel with multiple prompts for the same action while respecting rate limits.
         
         Args:
-            action: The action to perform (e.g., 'persona_extraction') - same for all prompts
             prompts: List of prompts to send to the LLM
+            use_history: Whether to use conversation history
+            image: Base64 encoded image string (optional)
             verbose: Whether to log verbose output
 
         Returns:
@@ -272,9 +285,10 @@ class QueryLLM:
             
         Example:
             prompts = ["Hello world", "I love coding", "This is a long text..."]
-            results = await llm.query_llm_parallel("persona_extraction", prompts)
+            results = await llm.query_llm_parallel(prompts)
         """
         async def process_request(prompt):
+            # Each async task gets its own thread ID
             return await self.query_llm_async(
                 prompt=prompt,
                 use_history=use_history,

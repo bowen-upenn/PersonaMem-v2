@@ -66,7 +66,7 @@ pip install -r requirements.txt
 
 ### ⚙️ API Keys Setup
 
-Configure your API credentials in the [.env](.env) file, following examples in [.env.example](.env.example). We use OpenAI's [ChatGPT-5](https://platform.openai.com/docs/models/gpt-5-chat-latest) to generate all data samples in our benchmark. Preparing multimodal samples for the very first time also requires [text-embedding-3-large](https://platform.openai.com/docs/models/text-embedding-3-large). Choose only one of the following two options:
+Configure your API credentials in the [.env](.env) file, following examples in [.env.example](.env.example). We use OpenAI's [GPT-5](https://platform.openai.com/docs/models/gpt-5-chat-latest) to generate all data samples in our benchmark. Preparing multimodal samples for the very first time also requires [text-embedding-3-large](https://platform.openai.com/docs/models/text-embedding-3-large). Choose only one of the following two options:
 
 **Option 1: OpenAI Configuration**
 ```bash

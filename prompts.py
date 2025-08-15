@@ -20,17 +20,17 @@ SEXUAL_ORIENTATION_WEIGHTS = {
 }
 
 RACE_WEIGHTS = {
-    "South Asian": 20.0,
-    "East Asian": 15.0,
+    "South Asian": 15.0,
+    "East Asian": 18.0,
     "Southeast Asian": 9.0,
     "Central Asian": 1.0,
     "Middle Eastern / North African": 6.0,
-    "Sub-Saharan African": 17.0,
+    "Sub-Saharan African": 16.0,
     "White / European": 20.0,
     "Latino / Hispanic": 8.0,
     "Indigenous Americas": 0.8,
     "Native Hawaiian / Other Pacific Islander": 0.5,
-    "Mixed race / multiethnic": 2.7,
+    "Mixed race / multiethnic": 4.7,
 }
 
 def expand_persona(persona_str):
@@ -41,7 +41,7 @@ def expand_persona(persona_str):
 
     prompt = f"""
     Given this persona, add name, age, gender, race, personality, and other detailed demographic information in a JSON format, if not already mentioned. 
-    Please also describe their speaking style in detail when talking to the chatbot, including tone, formality, pacing, and vocabulary.
+    Please also describe their speaking style in detail when talking to the chatbot, including tone, formality, pacing, and vocabulary (no need to provide sample conversations)
     Make everything as detailed, realistic, vivid, diverse, and comprehensive as possible.
 
     Here are the gender and racial references for this person. You don't need to use these exact terms; feel free to use a more specific instance or natural variations, especially for the racial identity:

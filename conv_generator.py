@@ -10,6 +10,8 @@ import os
 import re
 import glob
 from collections import defaultdict
+import time
+import threading
 
 import prompts
 import utils
@@ -18,6 +20,9 @@ from qa_generator import generate_qa_for_each_element
 # Global topic counter for tracking all categorizations across all personas
 GLOBAL_TOPIC_COUNTER = defaultdict(int)
 TOPIC_COUNTER_LOCK = threading.Lock()
+
+# File saving lock to prevent race conditions during parallel file saves
+FILE_SAVE_LOCK = threading.Lock()
 
 
 def save_topic_counts(output_path, verbose=False):
@@ -284,7 +289,7 @@ def verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=False)
 
     # 2) Check alignment of guessed persona with actual persona
     prompt_check = prompts.check_alignment_with_population_mean(guessed_persona)
-    resp_check = llm.query_llm(prompt_check, use_history=True, verbose=verbose)
+    resp_check = llm.query_llm(prompt_check, use_history=True,verbose=verbose)
     # Extract the final answer after '####Final Answer'
     alignment = utils.extract_after_token(resp_check, '####Final Answer').strip().lower()
     
@@ -590,7 +595,7 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
                         global_topics.append(topic_preference)
                 
                 # Verify preference alignment
-                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
+                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose=verbose)
 
                 # Only generate conversations for aligned preferences
                 if alignment == 'yes':
@@ -661,44 +666,47 @@ def process_single_persona(llm, persona, persona_id, implicit_types, self_verify
     Returns:
         dict: Complete persona data with conversations
     """
-    persona_str = json.dumps(persona, ensure_ascii=False)
-    if verbose:
-        print(f"Persona: {persona_str}")
-
+    # Reset history for this thread to ensure clean state
+    llm.reset_history()
+    
     # Expand persona info and generate preferences
     while True:
+        persona_str = json.dumps(persona, ensure_ascii=False)
+        if verbose:
+            print(f"Persona: {persona_str}")
+
         persona_str, final_json_response, matched_images = expand_persona_info(llm, persona_str, persona_id, image_matcher, verbose)
         try:
             final_json_response = utils.extract_json_from_response(final_json_response)
             final_json_response['matched_images'] = matched_images
-            
-            # Sanity check: ensure required fields have non-empty values
-            required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
-            missing_fields = []
-            
-            for field in required_fields:
-                if field not in final_json_response or not final_json_response[field] or len(final_json_response[field]) < 10:
-                    missing_fields.append(field)
-                    break
-            
-            if missing_fields:
-                print(f"Missing or empty required fields: {missing_fields}. Retrying expand_persona_info...")
-                continue
-                
-            break
         except json.JSONDecodeError as e:
             print("Failed to parse JSON:", e, " trying again")
+            
+        # Sanity check: ensure required fields have non-empty values
+        required_fields = ["stereotypical_preferences", "anti_stereotypical_preferences", "therapy_background", "health_and_medical_conditions"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in final_json_response or not final_json_response[field] or len(final_json_response[field]) < 10:
+                missing_fields.append(field)
 
-    # # Process preferences and generate conversations
-    # conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
+        # print("persona_id", persona_id, "persona_str", persona_str)
 
-    # # Update aligned preferences
-    # # if updates is not an empty dict
-    # if updates:
-    #     final_json_response = update_aligned_preferences(final_json_response, conversations, updates)
+        if missing_fields:
+            print(f"Missing or empty required fields: {missing_fields}. Retrying expand_persona_info...")
+        else:
+            break
 
-    # # Attach conversations to the final output
-    # final_json_response["conversations"] = conversations
+    # Process preferences and generate conversations
+    conversations, updates = convert_preferences_to_conversations(llm, persona_str, persona_id, final_json_response, implicit_types, self_verify, verbose)
+
+    # Update aligned preferences
+    # if updates is not an empty dict
+    if updates:
+        final_json_response = update_aligned_preferences(final_json_response, conversations, updates)
+
+    # Attach conversations to the final output
+    final_json_response["conversations"] = conversations
     
     return final_json_response
 
@@ -720,8 +728,6 @@ def process_single_persona_thread(args):
     final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
 
     if final_json is not None:
-        persona_id = str(uuid4())
-        
         # Create individual persona file path
         output_dir = os.path.dirname(output_path)
         base_name = os.path.basename(output_path)
@@ -734,9 +740,9 @@ def process_single_persona_thread(args):
         
         full_path = os.path.join(output_dir, f"{base_name_no_ext}_persona{idx}.json")
         
-        return idx, persona_id, final_json, full_path
+        return idx, final_json, full_path
     else:
-        return idx, None, None, None
+        return idx, None, None
             
     # except Exception as e:
     #     print(f"Error processing persona {idx}: {e}")
@@ -763,10 +769,14 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
     
     if parallel:
         # Parallel processing
+        import time
         # Prepare arguments for each persona
         persona_args = []
         for i in range(num_persona):
             idx = persona_start_idx + i  # Use the adjusted index
+            # Set a unique seed for this specific persona selection
+            temp_seed = int(time.time() * 1000000) + idx
+            random.seed(temp_seed)
             persona = random.choice(all_personas)
             persona_args.append((idx, persona, llm, implicit_types, self_verify, image_matcher, output_path, clean, verbose))
         
@@ -792,16 +802,17 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                                  desc=f"Batch {batch_idx + 1} personas", 
                                  total=len(batch_args)):
                     # try:
-                    idx, persona_id, final_json, full_path = future.result()
+                    persona_id, final_json, full_path = future.result()
                     
                     if final_json is not None:
                         # Add to output dict
                         output_dict[persona_id] = final_json
                         
-                        # Save individual file - only clean on first file if clean=True
-                        should_clean = clean and idx == persona_start_idx
-                        utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
-                        print(f"Saved persona {idx} to {full_path}")
+                        # Thread-safe file saving - only clean on first file if clean=True
+                        with FILE_SAVE_LOCK:
+                            should_clean = clean and persona_id == persona_start_idx
+                            utils.save_json({persona_id: final_json}, full_path, clean=should_clean)
+                            print(f"Saved persona {persona_id} to {full_path}")
                         
                     # except Exception as e:
                     #     args = future_to_args[future]
@@ -809,15 +820,19 @@ def generate_interactions_from_persona(llm, all_personas, image_matcher, output_
                     #     print(f"Error in future for persona {idx}: {e}")
     else:
         # Sequential processing
+        import time
         for i in tqdm(range(num_persona), desc="Processing personas sequentially"):
             idx = persona_start_idx + i  # Use the adjusted index
+            # Set unique random seed for each iteration
+            random.seed(int(time.time() * 1000000) + idx)
             persona = random.choice(all_personas)
             try:
                 # Process single persona
                 final_json = process_single_persona(llm, persona, idx, implicit_types, self_verify, image_matcher, verbose)
 
                 if final_json is not None:
-                    persona_id = str(uuid4())
+                    # Generate a truly unique persona ID
+                    persona_id = f"{uuid4()}-{int(time.time() * 1000000)}-{idx}"
 
                 # Create individual persona file path
                 output_dir = os.path.dirname(output_path)
