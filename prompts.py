@@ -37,7 +37,13 @@ def expand_persona(persona_str):
     # Sample one gender and racial identity based on their weights
     random_gender = random.choices(list(GENDER_WEIGHTS.keys()), weights=GENDER_WEIGHTS.values())[0]
     random_race = random.choices(list(RACE_WEIGHTS.keys()), weights=RACE_WEIGHTS.values())[0]
-    random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
+    
+    # If gender is non-binary or genderqueer, exclude heterosexual/straight from orientation options
+    if random_gender in ["nonbinary", "genderqueer", "genderfluid", "agender"]:
+        orientation_options = {k: v for k, v in SEXUAL_ORIENTATION_WEIGHTS.items() if k != "heterosexual / straight"}
+        random_sexual_orientation = random.choices(list(orientation_options.keys()), weights=list(orientation_options.values()))[0]
+    else:
+        random_sexual_orientation = random.choices(list(SEXUAL_ORIENTATION_WEIGHTS.keys()), weights=SEXUAL_ORIENTATION_WEIGHTS.values())[0]
 
     prompt = f"""
     Given this persona, add name, age, gender, race, personality, degree, school or work, and other detailed demographic information in a JSON format, if not already mentioned. 
@@ -981,7 +987,8 @@ EXISTING STEREOTYPICAL PREFERENCES:
 EXISTING ANTI-STEREOTYPICAL PREFERENCES:
 {existing_anti_str if existing_anti_str else "None"}
 
-Remove if:
+Iterate through EXISTING STEREOTYPICAL PREFERENCES and EXISTING ANTI-STEREOTYPICAL PREFERENCES one by one. 
+Remove the current PREFERENCE TO CHECK if:
 1. DUPLICATE of existing stereotypical preference (same meaning, different words)
 2. CONFLICTS with existing stereotypical preference
 3. CONFLICTS with existing anti-stereotypical preference

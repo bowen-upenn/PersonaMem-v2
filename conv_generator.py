@@ -17,6 +17,7 @@ import prompts
 import utils
 from qa_generator import generate_qa_for_each_element
 
+
 # Global topic counter for tracking all categorizations across all personas
 GLOBAL_TOPIC_COUNTER = defaultdict(int)
 TOPIC_COUNTER_LOCK = threading.Lock()
@@ -736,12 +737,12 @@ def update_aligned_preferences(final_json, conversations, updates):
     """
     Update final_json to only include aligned preferences.
     """
-    # Update final_json to only include aligned preferences
-    aligned_stereo = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'stereotypical_pref']
-    aligned_anti = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'anti_stereotypical_pref']
+    # # Update final_json to only include aligned preferences
+    # aligned_stereo = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'stereotypical_pref']
+    # aligned_anti = [c['preference'] for convs in conversations.values() for c in convs if c.get('pref_type') == 'anti_stereotypical_pref']
 
-    final_json['stereotypical_preferences'] = list(set(aligned_stereo))     # the repeated calls on knowledge_query may introduce repeated preferences in the previous step
-    final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
+    # final_json['stereotypical_preferences'] = list(set(aligned_stereo))     # the repeated calls on knowledge_query may introduce repeated preferences in the previous step
+    # final_json['anti_stereotypical_preferences'] = list(set(aligned_anti))
     final_json['preference_updates'] = updates
 
     return final_json
