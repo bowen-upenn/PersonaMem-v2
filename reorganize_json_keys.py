@@ -2,6 +2,7 @@
 """
 Script to reorganize JSON persona files by moving all keys that appear before 
 "short_persona" to positions right before "stereotypical_preferences".
+Also removes any "alternate_personas" or "alternate_persona" keys from the files.
 """
 
 import json
@@ -14,6 +15,7 @@ def reorganize_persona_keys(data):
     """
     Reorganize the keys in a persona dictionary by moving keys that appear 
     before "short_persona" to positions right before "stereotypical_preferences".
+    Also removes any "alternate_personas" or "alternate_persona" keys.
     
     Args:
         data (dict): The persona data dictionary
@@ -31,22 +33,35 @@ def reorganize_persona_keys(data):
         if not isinstance(persona_info, dict):
             reorganized_data[persona_id] = persona_info
             continue
+        
+        # Remove alternate_personas or alternate_persona keys if they exist
+        keys_to_remove = ['alternate_personas', 'alternate_persona', 'persona_variations', 'persona_variation']
+        persona_info_copy = persona_info.copy()
+        removed_keys = []
+        
+        for key_to_remove in keys_to_remove:
+            if key_to_remove in persona_info_copy:
+                del persona_info_copy[key_to_remove]
+                removed_keys.append(key_to_remove)
+        
+        if removed_keys:
+            print(f"  Removed keys {removed_keys} from persona {persona_id}")
             
         # Find the position of "short_persona" and "stereotypical_preferences"
-        keys_list = list(persona_info.keys())
+        keys_list = list(persona_info_copy.keys())
         
         try:
             short_persona_idx = keys_list.index("short_persona")
         except ValueError:
             # If "short_persona" doesn't exist, keep the original order
-            reorganized_data[persona_id] = persona_info
+            reorganized_data[persona_id] = persona_info_copy
             continue
             
         try:
             stereotypical_prefs_idx = keys_list.index("stereotypical_preferences")
         except ValueError:
             # If "stereotypical_preferences" doesn't exist, keep the original order
-            reorganized_data[persona_id] = persona_info
+            reorganized_data[persona_id] = persona_info_copy
             continue
         
         # Identify keys that come before "short_persona"
@@ -58,16 +73,16 @@ def reorganize_persona_keys(data):
         # First, add "short_persona" and all keys after it until "stereotypical_preferences"
         for i in range(short_persona_idx, stereotypical_prefs_idx):
             key = keys_list[i]
-            new_ordered_dict[key] = persona_info[key]
+            new_ordered_dict[key] = persona_info_copy[key]
             
         # Then, add the keys that were originally before "short_persona"
         for key in keys_before_short_persona:
-            new_ordered_dict[key] = persona_info[key]
+            new_ordered_dict[key] = persona_info_copy[key]
             
         # Finally, add "stereotypical_preferences" and all remaining keys
         for i in range(stereotypical_prefs_idx, len(keys_list)):
             key = keys_list[i]
-            new_ordered_dict[key] = persona_info[key]
+            new_ordered_dict[key] = persona_info_copy[key]
             
         reorganized_data[persona_id] = new_ordered_dict
     
