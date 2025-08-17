@@ -151,26 +151,26 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
         incorrect = []
         if ask_to_forget:
             element['correct_answer'] = answers.get('generic')
-            for key in ('random1', 'random2', 'correct'):
+            for key in ('random', 'stereotypical', 'correct'):
                 if key in answers:
                     incorrect.append(answers[key])
             incorrect.append(prev_correct)
         elif prev_correct:    # only happen with who == self
             element['correct_answer'] = answers.get('correct')
-            for key in ('random1', 'generic'):
+            for key in ('random', 'stereotypical'):
                 if key in answers:
                     incorrect.append(answers[key])
             incorrect.append(prev_correct)
         else:
             element['correct_answer'] = answers.get('correct')
-            for key in ('random1', 'random2', 'generic'):
+            for key in ('random', 'stereotypical', 'generic'):
                 if key in answers:
                     incorrect.append(answers[key])
         element['incorrect_answers'] = incorrect
     else:
         element['correct_answer'] = answers.get('incorrect')
         incorrect = []
-        for key in ('correct1', 'correct2', 'correct3'):
+        for key in ('correct1', 'correct2', 'stereotypical'):
             if key in answers:
                 incorrect.append(answers[key])
 
