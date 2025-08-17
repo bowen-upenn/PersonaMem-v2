@@ -59,6 +59,7 @@ def expand_persona(persona_str):
     {random_gender} {random_sexual_orientation}
     {random_race}
     If the persona below already mentions gender and race, keep the ones already in the persona.
+    Do NOT generate alternate personas or personas of other people. Focus on this specific user.
 
     Here is the persona which should also be kept in the expanded version under the key "short_persona":
     {persona_str}
@@ -673,7 +674,7 @@ def generate_user_question_sensitive_info(element, persona):
     )
 
 
-def generate_answer_options(element, user_query, who):
+def generate_answer_options(element, user_query, who, persona):
     """
     Prompts the LLM to generate 4 answers to the user_query, all with the same wording/structure,
     but each reflecting a different use of personalization:
@@ -693,8 +694,18 @@ def generate_answer_options(element, user_query, who):
 
     if who == 'self':
         prompt = (
-            f"Given this user background and preference: {user_bg}\n"
-            f"User question: {user_query}\n\n"
+            f"Given this user persona:
+            
+            {persona} 
+            
+            and this specific user preference: 
+            
+            {user_bg}
+            "
+            f"User question: 
+            
+            {user_query}
+
             "You are creating a multiple-choice benchmark."
             "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
             "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
@@ -714,8 +725,18 @@ def generate_answer_options(element, user_query, who):
         )
     else:
         prompt = (
-            f"Given this user background and preference: {user_bg}\n"
-            f"User question: {user_query}\n\n"
+            f"Given this user persona:
+            
+            {persona} 
+            
+            and this specific user preference: 
+            
+            {user_bg}
+            "
+            f"User question: 
+            
+            {user_query}
+
             "You are creating a multiple-choice benchmark. We need to prepare more than one correct answers for diversity."
             "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
             "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"

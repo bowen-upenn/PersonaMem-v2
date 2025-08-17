@@ -91,7 +91,7 @@ def categorize_user_query(llm, user_query, global_topics=None, verbose=False):
         return "Uncategorized"
 
 
-def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=False, global_topics=None, verbose=False):
+def generate_qa_for_each_element(llm, element, persona, conv_list=None, ask_to_forget=False, global_topics=None, verbose=False):
     """
     Generate a QA set for a single scenario element by adding:
     - user_query: a question that elicits personalization based on the element's preference/background.
@@ -119,7 +119,7 @@ def generate_qa_for_each_element(llm, element, conv_list=None, ask_to_forget=Fal
 
         # Generate answer options prompt and get JSON with labeled answers
         who = element['who']
-        prompt = prompts.generate_answer_options(element, user_query, who)
+        prompt = prompts.generate_answer_options(element, user_query, who, persona)
 
         answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
         answers = utils.extract_json_from_response(answers)
@@ -436,7 +436,12 @@ def generate_qa_for_single_persona(args):
         
         for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} for {uuid}", disable=not verbose):
             llm.reset_history()
-            curr_persona = persona.get("persona", "")
+            # Concatenate all keys in persona before 'stereotypical_preferences' as a string
+            persona_keys = list(persona.keys())
+            idx = persona_keys.index('stereotypical_preferences')
+            keys_before = persona_keys[:idx]
+            curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+            curr_persona = str(curr_persona_dict)
 
             if conv_type == 'knowledge_query':
                 if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
@@ -451,7 +456,7 @@ def generate_qa_for_single_persona(args):
                 })
             else:
                 ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
-                qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
                 conv_elem.update({
                     "user_query": qa_fields.get("user_query"),
                     "correct_answer": qa_fields.get("correct_answer"),
@@ -663,7 +668,12 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
                         continue
                     
                     llm.reset_history()
-                    curr_persona = persona.get("persona", "")
+                    # Concatenate all keys in persona before 'stereotypical_preferences' as a string
+                    persona_keys = list(persona.keys())
+                    idx = persona_keys.index('stereotypical_preferences')
+                    keys_before = persona_keys[:idx]
+                    curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+                    curr_persona = str(curr_persona_dict)
                     groundtruth_preference = conv_elem.get("preference", "")
 
                     if conv_type == 'knowledge_query':
@@ -676,7 +686,7 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
                         qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
                     else:
                         ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
-                        qa_fields = generate_qa_for_each_element(llm, conv_elem, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                        qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
                     
                     # Check if QA generation was successful
                     if qa_fields is None:

@@ -35,7 +35,7 @@ def reorganize_persona_keys(data):
             continue
         
         # Remove alternate_personas or alternate_persona keys if they exist
-        keys_to_remove = ['alternate_personas', 'alternate_persona', 'persona_variations', 'persona_variation']
+        keys_to_remove = ['alternate_personas', 'alternate_persona', 'persona_variations', 'persona_variation', 'alternative_personas', 'alternative_persona']
         persona_info_copy = persona_info.copy()
         removed_keys = []
         
