@@ -693,67 +693,71 @@ def generate_answer_options(element, user_query, who, persona):
         user_bg = element["preference"]
 
     if who == 'self':
-        prompt = (
-            f"Given this user persona:
-            
-            {persona} 
-            
-            and this specific user preference: 
-            
+        prompt = f"""
+            Given this user persona:
+
+            {persona}
+
+            and this specific user preference:
+
             {user_bg}
-            "
-            f"User question: 
             
+            User question:
+
             {user_query}
 
-            "You are creating a multiple-choice benchmark."
-            "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
-            "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
-            "2. 'random': The answer should be identical in structure to 'correct' but a random preference.\n"
-            "3. 'stereotypical': The answer should be identical in structure to 'correct' but another random preference based on the demographical information of this user.\n"
-            "4. 'generic': The answer should be identical in structure but generic, suitable for anyone.\n\n"
-            "Each answer must have the same tone and length. Be natural and realistic.\n"
-            "Think step by step and return the final four answers in JSON format at the end:\n"
-            "```json"
-            "{\n"
-            "  \"correct\": <answer>,\n"
-            "  \"random\": <answer>,\n"
-            "  \"stereotypical\": <answer>,\n"
-            "  \"generic\": <answer>\n"
-            "}\n"
-            "```"
-        )
+            You are creating a multiple-choice benchmark."
+            Generate four different, one-to-three sentence answers to the user's question, as follows:
+
+            1. 'correct': The answer should be appropriately personalized to the user's background and preference.
+            2. 'random': The answer should be identical in structure to 'correct' but a random preference.
+            3. 'stereotypical': The answer should be identical in structure to 'correct' but another random preference based on the demographical information of this user.
+            4. 'generic': The answer should be identical in structure but generic, suitable for anyone.
+
+            Each answer must have the same tone and length. Be natural and realistic.
+            Think step by step and return the final four answers in JSON format at the end:
+            ```json
+            {
+              "correct": <answer>,
+              "random": <answer>,
+              "stereotypical": <answer>,
+              "generic": <answer>
+            }
+            ```
+        """
     else:
-        prompt = (
-            f"Given this user persona:
-            
-            {persona} 
-            
-            and this specific user preference: 
+        prompt = f"""
+            Given this user persona:
+
+            {persona}
+
+            and this specific user preference:
             
             {user_bg}
-            "
-            f"User question: 
+            
+            User question: 
             
             {user_query}
 
-            "You are creating a multiple-choice benchmark. We need to prepare more than one correct answers for diversity."
-            "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
-            "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
-            "2. 'correct': The answer should mention the same 'correct' preference but rephrased.\n"
-            "3. 'stereotypical': The answer should mention the same 'correct' preference but another random preference based on the demographical information of this user.\n"
-            "4. 'incorrect': The answer should be identical in structure but generic, suitable for anyone.\n\n"
-            "Each answer must have the same tone and length. Be natural and realistic.\n"
-            "Think step by step and return the final four answers in JSON format at the end:\n"
-            "```json"
-            "{\n"
-            "  \"correct1\": <answer>,\n"
-            "  \"correct2\": <answer>,\n"
-            "  \"stereotypical\": <answer>,\n"
-            "  \"incorrect\": <answer>\n"
-            "}\n"
-            "```"
-        )
+            You are creating a multiple-choice benchmark. We need to prepare more than one correct answers for diversity.
+            Generate four different, one-to-three sentence answers to the user's question, as follows:
+            
+            1. 'correct': The answer should be appropriately personalized to the user's background and preference.
+            2. 'correct': The answer should mention the same 'correct' preference but rephrased.
+            3. 'stereotypical': The answer should mention the same 'correct' preference but another random preference based on the demographical information of this user.
+            4. 'incorrect': The answer should be identical in structure but generic, suitable for anyone.
+
+            Each answer must have the same tone and length. Be natural and realistic.
+            Think step by step and return the final four answers in JSON format at the end:
+            ```json
+            {
+              "correct1": <answer>,
+              "correct2": <answer>,
+              "stereotypical": <answer>,
+              "incorrect": <answer>
+            }
+            ```
+        """
     return prompt
 
 
