@@ -426,48 +426,48 @@ def generate_qa_for_single_persona(args):
     # Initialize global topics for this persona
     global_topics = []
     
-    # try:
-    processed_persona = persona.copy()
-    conversations_by_type = persona.get("conversations", {})
-    
-    for conv_type, conv_list in conversations_by_type.items():
-        if verbose:
-            print(f'Processing conv_type: {conv_type} for {uuid}')
+    try:
+        processed_persona = persona.copy()
+        conversations_by_type = persona.get("conversations", {})
         
-        for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} for {uuid}", disable=not verbose):
-            llm.reset_history()
-            # Concatenate all keys in persona before 'stereotypical_preferences' as a string
-            persona_keys = list(persona.keys())
-            idx = persona_keys.index('stereotypical_preferences')
-            keys_before = persona_keys[:idx]
-            curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
-            curr_persona = str(curr_persona_dict)
+        for conv_type, conv_list in conversations_by_type.items():
+            if verbose:
+                print(f'Processing conv_type: {conv_type} for {uuid}')
+            
+            for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} for {uuid}", disable=not verbose):
+                llm.reset_history()
+                # Concatenate all keys in persona before 'stereotypical_preferences' as a string
+                persona_keys = list(persona.keys())
+                idx = persona_keys.index('stereotypical_preferences')
+                keys_before = persona_keys[:idx]
+                curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+                curr_persona = str(curr_persona_dict)
 
-            if conv_type == 'knowledge_query':
-                if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
-                    continue  # Skip if user didn't ask topic >= 3 times
+                if conv_type == 'knowledge_query':
+                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                        continue  # Skip if user didn't ask topic >= 3 times
 
-            if "sensitive_info" in conv_elem:
-                qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
-                conv_elem.update({
-                    "user_query": qa_fields.get("user_query"),
-                    "correct_answer": qa_fields.get("correct_answer"),
-                    "incorrect_answers": qa_fields.get("incorrect_answers"),
-                })
-            else:
-                ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
-                qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
-                conv_elem.update({
-                    "user_query": qa_fields.get("user_query"),
-                    "correct_answer": qa_fields.get("correct_answer"),
-                    "incorrect_answers": qa_fields.get("incorrect_answers"),
-                })
-    
-    return uuid, processed_persona
+                if "sensitive_info" in conv_elem:
+                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
+                    conv_elem.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
+                else:
+                    ask_to_forget = conv_elem['pref_type'] == "ask_to_forget"
+                    qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                    conv_elem.update({
+                        "user_query": qa_fields.get("user_query"),
+                        "correct_answer": qa_fields.get("correct_answer"),
+                        "incorrect_answers": qa_fields.get("incorrect_answers"),
+                    })
         
-    # except Exception as e:
-    #     print(f"Error processing persona {uuid}: {e}")
-    #     return uuid, None
+        return uuid, processed_persona
+        
+    except Exception as e:
+        print(f"Error processing persona {uuid}: {e}")
+        return uuid, None
 
 
 def save_qa_topic_counts(output_dir, verbose=False):
@@ -563,20 +563,20 @@ def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False, vali
                 for future in tqdm(concurrent.futures.as_completed(future_to_args), 
                                  desc=f"QA File Batch {batch_idx + 1}", 
                                  total=len(batch_args)):
-                    # try:
-                    file_path, success = future.result()
-                    
-                    if success:
-                        processed_files += 1
-                        if verbose:
-                            print(f"Processed QA for {file_path}")
-                    else:
-                        print(f"Failed to process QA for {file_path}")
+                    try:
+                        file_path, success = future.result()
                         
-                    # except Exception as e:
-                    #     args = future_to_args[future]
-                    #     file_path = args[0]
-                    #     print(f"Error in QA future for {file_path}: {e}")
+                        if success:
+                            processed_files += 1
+                            if verbose:
+                                print(f"Processed QA for {file_path}")
+                        else:
+                            print(f"Failed to process QA for {file_path}")
+                        
+                    except Exception as e:
+                        args = future_to_args[future]
+                        file_path = args[0]
+                        print(f"Error in QA future for {file_path}: {e}")
     else:
         # Sequential processing - process one file at a time
         for file_path in tqdm(input_path_sorted, desc="Processing persona files sequentially"):
@@ -657,88 +657,88 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
             valid_conv_list = []
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
-                # try:
-                # Check if this preference should be skipped
-                preference = conv_elem.get('preference')
-                if preference in skip_preferences:
-                    if verbose:
-                        print(f"  Skipping Q&A generation for preference: '{preference}'")
-                    # Add the element without Q&A fields
-                    valid_conv_list.append(conv_elem)
-                    continue
-                
-                llm.reset_history()
-                # Concatenate all keys in persona before 'stereotypical_preferences' as a string
-                persona_keys = list(persona.keys())
-                idx = persona_keys.index('stereotypical_preferences')
-                keys_before = persona_keys[:idx]
-                curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
-                curr_persona = str(curr_persona_dict)
-                groundtruth_preference = conv_elem.get("preference", "")
-
-                if conv_type == 'knowledge_query':
-                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
-                        continue  # Skip if user didn't ask topic >= 3 times
-
-                # Generate QA fields
-                qa_fields = None
-                if "sensitive_info" in conv_elem:
-                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
-                else:
-                    ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
-                    qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
-                
-                # Check if QA generation was successful
-                if qa_fields is None:
-                    if verbose:
-                        print(f"QA generation failed for element: {conv_elem.get('preference', 'Unknown preference')}")
-                    continue  # Skip this element if QA generation failed
-                
-                user_query = qa_fields.get("user_query")
-                correct_answer = qa_fields.get("correct_answer")
-                incorrect_answers = qa_fields.get("incorrect_answers")
-                
-                # Validate the QA pair only if validate_qa is enabled
-                if validate_qa:
-                    total_qa_pairs += 1
-                    is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
+                try:
+                    # Check if this preference should be skipped
+                    preference = conv_elem.get('preference')
+                    if preference in skip_preferences:
+                        if verbose:
+                            print(f"  Skipping Q&A generation for preference: '{preference}'")
+                        # Add the element without Q&A fields
+                        valid_conv_list.append(conv_elem)
+                        continue
                     
-                    if is_valid:
-                        # Only add to the conversation list if validation passes
+                    llm.reset_history()
+                    # Concatenate all keys in persona before 'stereotypical_preferences' as a string
+                    persona_keys = list(persona.keys())
+                    idx = persona_keys.index('stereotypical_preferences')
+                    keys_before = persona_keys[:idx]
+                    curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+                    curr_persona = str(curr_persona_dict)
+                    groundtruth_preference = conv_elem.get("preference", "")
+
+                    if conv_type == 'knowledge_query':
+                        if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                            continue  # Skip if user didn't ask topic >= 3 times
+
+                    # Generate QA fields
+                    qa_fields = None
+                    if "sensitive_info" in conv_elem:
+                        qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
+                    else:
+                        ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
+                        qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                    
+                    # Check if QA generation was successful
+                    if qa_fields is None:
+                        if verbose:
+                            print(f"QA generation failed for element: {conv_elem.get('preference', 'Unknown preference')}")
+                        continue  # Skip this element if QA generation failed
+                    
+                    user_query = qa_fields.get("user_query")
+                    correct_answer = qa_fields.get("correct_answer")
+                    incorrect_answers = qa_fields.get("incorrect_answers")
+                    
+                    # Validate the QA pair only if validate_qa is enabled
+                    if validate_qa:
+                        total_qa_pairs += 1
+                        is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
+                        
+                        if is_valid:
+                            # Only add to the conversation list if validation passes
+                            conv_elem.update({
+                                "user_query": user_query,
+                                "correct_answer": correct_answer,
+                                "incorrect_answers": incorrect_answers,
+                            })
+                            valid_conv_list.append(conv_elem)
+                            valid_qa_pairs += 1
+                            if verbose:
+                                print(f"✓ QA pair VALID - Added to dataset")
+                        else:
+                            invalid_qa_pairs += 1
+                            if verbose:
+                                print(f"✗ QA pair INVALID - Skipped (model can answer without context)")
+                    else:
+                        # Skip validation, add all QA pairs
                         conv_elem.update({
                             "user_query": user_query,
                             "correct_answer": correct_answer,
                             "incorrect_answers": incorrect_answers,
                         })
                         valid_conv_list.append(conv_elem)
+                        total_qa_pairs += 1
                         valid_qa_pairs += 1
-                        if verbose:
-                            print(f"✓ QA pair VALID - Added to dataset")
-                    else:
-                        invalid_qa_pairs += 1
-                        if verbose:
-                            print(f"✗ QA pair INVALID - Skipped (model can answer without context)")
-                else:
-                    # Skip validation, add all QA pairs
-                    conv_elem.update({
-                        "user_query": user_query,
-                        "correct_answer": correct_answer,
-                        "incorrect_answers": incorrect_answers,
-                    })
-                    valid_conv_list.append(conv_elem)
-                    total_qa_pairs += 1
-                    valid_qa_pairs += 1
             
-                # except Exception as e:
-                #     if "sensitive_info" in conv_elem:
-                #         print(f"Error processing persona conv_type {conv_elem.get('preference', 'Unknown')}: {e} with sensitive info {conv_elem.get('sensitive_info', 'Unknown')}")
-                #     else:
-                #         pref_info = conv_elem.get('preference', 'Unknown preference')
-                #         pref_type = conv_elem.get('pref_type', 'Unknown type')
-                #         print(f"Error processing persona conv_type '{pref_info}' (type: {pref_type}): {e}")
-                #         if verbose:
-                #             print(f"  Full element keys: {list(conv_elem.keys())}")
-                #     continue
+                except Exception as e:
+                    if "sensitive_info" in conv_elem:
+                        print(f"Error processing persona conv_type {conv_elem.get('preference', 'Unknown')}: {e} with sensitive info {conv_elem.get('sensitive_info', 'Unknown')}")
+                    else:
+                        pref_info = conv_elem.get('preference', 'Unknown preference')
+                        pref_type = conv_elem.get('pref_type', 'Unknown type')
+                        print(f"Error processing persona conv_type '{pref_info}' (type: {pref_type}): {e}")
+                        if verbose:
+                            print(f"  Full element keys: {list(conv_elem.keys())}")
+                    continue
             
             # Replace the original conversation list with the filtered valid one
             conversations_by_type[conv_type] = valid_conv_list
