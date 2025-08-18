@@ -572,14 +572,14 @@ def generate_preference_updates(llm, persona_str, pref, pref_key, type, conversa
         conversations[type].append({'preference': updated_pref, 'pref_type': pref_key, 'who': 'self', 'conversations': conv_turns, 'updated': True, 'prev_pref': pref})
 
 
-def user_ask_to_forget(llm, element, conversations, type, verbose):
+def user_ask_to_forget(llm, element, conversations, persona, type, verbose):
     """
     Handle user requests to forget a specific preference.
     """
     llm.reset_history()
 
     prev_pref = element['preference']
-    new_element = generate_qa_for_each_element(llm, element.copy(), verbose)
+    new_element = generate_qa_for_each_element(llm, element.copy(), persona, verbose)
     if new_element:
         user_query = new_element['user_query']
         correct_answer = new_element['correct_answer']
@@ -711,65 +711,65 @@ def convert_preferences_to_conversations(llm, persona_str, persona_id, final_jso
         for pref_idx, pref in tqdm(enumerate(pref_list), desc=f"Processing {pref_key} preferences for persona {persona_id}", total=len(pref_list)):
             llm.reset_history()
 
-            try:
-                # Categorize the preference inline during conversation generation
-                if pref_key == "health_and_medical_conditions":
-                    topic_preference = "health_and_medical"
-                    # Add to global counter for health/medical
-                    with TOPIC_COUNTER_LOCK:
-                        GLOBAL_TOPIC_COUNTER[topic_preference] += 1
-                else:
-                    # Categorize this preference dynamically
-                    topic_preference = categorize_single_item(llm, pref, global_topics, verbose)
-                    if topic_preference not in global_topics:
-                        global_topics.append(topic_preference)
+            # try:
+            # Categorize the preference inline during conversation generation
+            if pref_key == "health_and_medical_conditions":
+                topic_preference = "health_and_medical"
+                # Add to global counter for health/medical
+                with TOPIC_COUNTER_LOCK:
+                    GLOBAL_TOPIC_COUNTER[topic_preference] += 1
+            else:
+                # Categorize this preference dynamically
+                topic_preference = categorize_single_item(llm, pref, global_topics, verbose)
+                if topic_preference not in global_topics:
+                    global_topics.append(topic_preference)
+            
+            # Verify preference alignment
+            alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
+
+            # Only generate conversations for aligned preferences
+            if alignment == 'yes':
+                # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
+                is_others_pref = random.random() < 0.33
                 
-                # Verify preference alignment
-                alignment = verify_preference_alignment(llm, pref, pref_key, self_verify, verbose)
-
-                # Only generate conversations for aligned preferences
-                if alignment == 'yes':
-                    # Set both the user's own preferences and other people's preferences mentioned by this user, for example, to test the llm
-                    is_others_pref = random.random() < 0.33
-                    
-                    # Check if we're in the last num(implicit_types) preferences and if any type is empty
-                    remaining_prefs = len(pref_list) - pref_idx
-                    if remaining_prefs <= len(implicit_types):
-                        # Find empty conversation types
-                        empty_types = [t for t in implicit_types if len(conversations[t]) == 0]
-                        if empty_types:
-                            # Use the first empty type instead of random
-                            random_type = empty_types[0]
-                        else:
-                            # All types have conversations, use random
-                            random_type = random.choice(implicit_types)
+                # Check if we're in the last num(implicit_types) preferences and if any type is empty
+                remaining_prefs = len(pref_list) - pref_idx
+                if remaining_prefs <= len(implicit_types):
+                    # Find empty conversation types
+                    empty_types = [t for t in implicit_types if len(conversations[t]) == 0]
+                    if empty_types:
+                        # Use the first empty type instead of random
+                        random_type = empty_types[0]
                     else:
-                        # Not in the final stretch, use random type
+                        # All types have conversations, use random
                         random_type = random.choice(implicit_types)
+                else:
+                    # Not in the final stretch, use random type
+                    random_type = random.choice(implicit_types)
 
-                    # We assign around 15 percent of preferences to induce knowledge-related queries, and assume repetitive queries (1 to 6) indicate some interests
-                    if random.random() < 0.15 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
-                        element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, topic_preference, verbose)
-                    else:
-                        # Generate cross-domain conversations in selected type
-                        element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, random_type, conversations, is_others_pref, topic_preference, verbose)
+                # We assign around 15 percent of preferences to induce knowledge-related queries, and assume repetitive queries (1 to 6) indicate some interests
+                if random.random() < 0.15 and pref_key != "therapy_background" and 'knowledge_query' in implicit_types:
+                    element = generate_knowledge_queries(llm, persona_str, pref, pref_key, conversations, topic_preference, verbose)
+                else:
+                    # Generate cross-domain conversations in selected type
+                    element = generate_cross_domain_conversations(llm, persona_str, pref, pref_key, random_type, conversations, is_others_pref, topic_preference, verbose)
 
-                    has_asked_to_forget = False
-                    if random.random() < 0.33 and not is_others_pref and element:
-                        try:
-                            user_ask_to_forget(llm, element, conversations, random_type, verbose)
-                            has_asked_to_forget = True
-                        except Exception as e:
-                            print(f"Error asking user to forget: {e}")
+                has_asked_to_forget = False
+                if random.random() < 0.33 and not is_others_pref and element:
+                    # try:
+                    user_ask_to_forget(llm, element, conversations, persona_str, random_type, verbose)
+                    has_asked_to_forget = True
+                    # except Exception as e:
+                    #     print(f"Error asking user to forget: {e}")
 
-                    # Generate preference updates
-                    if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"] and not has_asked_to_forget:
-                        random_type = random.choice(implicit_types) if pref_key == "therapy_background" or 'knowledge_query' not in implicit_types else 'knowledge_query'
-                        generate_preference_updates(llm, persona_str, pref, pref_key, random_type, conversations, updates, is_others_pref, verbose)
+                # Generate preference updates
+                if random.random() < 0.67 and not is_others_pref and pref_key not in ["therapy_background", "knowledge_query"] and not has_asked_to_forget:
+                    random_type = random.choice(implicit_types) if pref_key == "therapy_background" or 'knowledge_query' not in implicit_types else 'knowledge_query'
+                    generate_preference_updates(llm, persona_str, pref, pref_key, random_type, conversations, updates, is_others_pref, verbose)
 
-            except Exception as e:
-                print(f"Error processing preference {pref_key} with value {pref}: {e}")
-                continue
+            # except Exception as e:
+            #     print(f"Error processing preference {pref_key} with value {pref}: {e}")
+            #     continue
         
     return conversations, updates
 

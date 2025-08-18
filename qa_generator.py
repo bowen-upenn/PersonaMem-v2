@@ -110,22 +110,22 @@ def generate_qa_for_each_element(llm, element, persona, conv_list=None, ask_to_f
     
     # Generate user query prompt and get the question
     prompt = prompts.generate_user_question(element)
-    try:
-        user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
-        user_query = utils.extract_after_token(user_query, '###Output')
+    # try:
+    user_query = llm.query_llm(prompt, use_history=False, verbose=verbose)
+    user_query = utils.extract_after_token(user_query, '###Output')
 
-        # Immediately categorize the user query using file-level global_topics
-        topic_query = categorize_user_query(llm, user_query, global_topics, verbose)
+    # Immediately categorize the user query using file-level global_topics
+    topic_query = categorize_user_query(llm, user_query, global_topics, verbose)
 
-        # Generate answer options prompt and get JSON with labeled answers
-        who = element['who']
-        prompt = prompts.generate_answer_options(element, user_query, who, persona)
+    # Generate answer options prompt and get JSON with labeled answers
+    who = element['who']
+    prompt = prompts.generate_answer_options(element, user_query, who, persona)
 
-        answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
-        answers = utils.extract_json_from_response(answers)
-    except Exception as e:
-        print(f"Error generating qa for element {element}: {e}")
-        return None 
+    answers = llm.query_llm(prompt, use_history=True, verbose=verbose)
+    answers = utils.extract_json_from_response(answers)
+    # except Exception as e:
+    #     print(f"Error generating qa for element {element}: {e}")
+    #     return None 
 
     # Set up correct and incorrect answers based on whether the preference belongs to the user themselves or others
     who = element.get("who", [])
@@ -657,88 +657,88 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
             valid_conv_list = []
             
             for conv_elem in tqdm(conv_list, desc=f"Processing {conv_type} in {os.path.basename(file_path)}", leave=False):
-                try:
-                    # Check if this preference should be skipped
-                    preference = conv_elem.get('preference')
-                    if preference in skip_preferences:
-                        if verbose:
-                            print(f"  Skipping Q&A generation for preference: '{preference}'")
-                        # Add the element without Q&A fields
-                        valid_conv_list.append(conv_elem)
-                        continue
-                    
-                    llm.reset_history()
-                    # Concatenate all keys in persona before 'stereotypical_preferences' as a string
-                    persona_keys = list(persona.keys())
-                    idx = persona_keys.index('stereotypical_preferences')
-                    keys_before = persona_keys[:idx]
-                    curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
-                    curr_persona = str(curr_persona_dict)
-                    groundtruth_preference = conv_elem.get("preference", "")
+                # try:
+                # Check if this preference should be skipped
+                preference = conv_elem.get('preference')
+                if preference in skip_preferences:
+                    if verbose:
+                        print(f"  Skipping Q&A generation for preference: '{preference}'")
+                    # Add the element without Q&A fields
+                    valid_conv_list.append(conv_elem)
+                    continue
+                
+                llm.reset_history()
+                # Concatenate all keys in persona before 'stereotypical_preferences' as a string
+                persona_keys = list(persona.keys())
+                idx = persona_keys.index('stereotypical_preferences')
+                keys_before = persona_keys[:idx]
+                curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+                curr_persona = str(curr_persona_dict)
+                groundtruth_preference = conv_elem.get("preference", "")
 
-                    if conv_type == 'knowledge_query':
-                        if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
-                            continue  # Skip if user didn't ask topic >= 3 times
+                if conv_type == 'knowledge_query':
+                    if 'idx_repeat' not in conv_elem or conv_elem['idx_repeat'] < 2:
+                        continue  # Skip if user didn't ask topic >= 3 times
 
-                    # Generate QA fields
-                    qa_fields = None
-                    if "sensitive_info" in conv_elem:
-                        qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
-                    else:
-                        ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
-                        qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                # Generate QA fields
+                qa_fields = None
+                if "sensitive_info" in conv_elem:
+                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem, curr_persona, global_topics, verbose=verbose)
+                else:
+                    ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
+                    qa_fields = generate_qa_for_each_element(llm, conv_elem, curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                
+                # Check if QA generation was successful
+                if qa_fields is None:
+                    if verbose:
+                        print(f"QA generation failed for element: {conv_elem.get('preference', 'Unknown preference')}")
+                    continue  # Skip this element if QA generation failed
+                
+                user_query = qa_fields.get("user_query")
+                correct_answer = qa_fields.get("correct_answer")
+                incorrect_answers = qa_fields.get("incorrect_answers")
+                
+                # Validate the QA pair only if validate_qa is enabled
+                if validate_qa:
+                    total_qa_pairs += 1
+                    is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
                     
-                    # Check if QA generation was successful
-                    if qa_fields is None:
-                        if verbose:
-                            print(f"QA generation failed for element: {conv_elem.get('preference', 'Unknown preference')}")
-                        continue  # Skip this element if QA generation failed
-                    
-                    user_query = qa_fields.get("user_query")
-                    correct_answer = qa_fields.get("correct_answer")
-                    incorrect_answers = qa_fields.get("incorrect_answers")
-                    
-                    # Validate the QA pair only if validate_qa is enabled
-                    if validate_qa:
-                        total_qa_pairs += 1
-                        is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
-                        
-                        if is_valid:
-                            # Only add to the conversation list if validation passes
-                            conv_elem.update({
-                                "user_query": user_query,
-                                "correct_answer": correct_answer,
-                                "incorrect_answers": incorrect_answers,
-                            })
-                            valid_conv_list.append(conv_elem)
-                            valid_qa_pairs += 1
-                            if verbose:
-                                print(f"✓ QA pair VALID - Added to dataset")
-                        else:
-                            invalid_qa_pairs += 1
-                            if verbose:
-                                print(f"✗ QA pair INVALID - Skipped (model can answer without context)")
-                    else:
-                        # Skip validation, add all QA pairs
+                    if is_valid:
+                        # Only add to the conversation list if validation passes
                         conv_elem.update({
                             "user_query": user_query,
                             "correct_answer": correct_answer,
                             "incorrect_answers": incorrect_answers,
                         })
                         valid_conv_list.append(conv_elem)
-                        total_qa_pairs += 1
                         valid_qa_pairs += 1
-                
-                except Exception as e:
-                    if "sensitive_info" in conv_elem:
-                        print(f"Error processing persona conv_type {conv_elem.get('preference', 'Unknown')}: {e} with sensitive info {conv_elem.get('sensitive_info', 'Unknown')}")
-                    else:
-                        pref_info = conv_elem.get('preference', 'Unknown preference')
-                        pref_type = conv_elem.get('pref_type', 'Unknown type')
-                        print(f"Error processing persona conv_type '{pref_info}' (type: {pref_type}): {e}")
                         if verbose:
-                            print(f"  Full element keys: {list(conv_elem.keys())}")
-                    continue
+                            print(f"✓ QA pair VALID - Added to dataset")
+                    else:
+                        invalid_qa_pairs += 1
+                        if verbose:
+                            print(f"✗ QA pair INVALID - Skipped (model can answer without context)")
+                else:
+                    # Skip validation, add all QA pairs
+                    conv_elem.update({
+                        "user_query": user_query,
+                        "correct_answer": correct_answer,
+                        "incorrect_answers": incorrect_answers,
+                    })
+                    valid_conv_list.append(conv_elem)
+                    total_qa_pairs += 1
+                    valid_qa_pairs += 1
+            
+                # except Exception as e:
+                #     if "sensitive_info" in conv_elem:
+                #         print(f"Error processing persona conv_type {conv_elem.get('preference', 'Unknown')}: {e} with sensitive info {conv_elem.get('sensitive_info', 'Unknown')}")
+                #     else:
+                #         pref_info = conv_elem.get('preference', 'Unknown preference')
+                #         pref_type = conv_elem.get('pref_type', 'Unknown type')
+                #         print(f"Error processing persona conv_type '{pref_info}' (type: {pref_type}): {e}")
+                #         if verbose:
+                #             print(f"  Full element keys: {list(conv_elem.keys())}")
+                #     continue
             
             # Replace the original conversation list with the filtered valid one
             conversations_by_type[conv_type] = valid_conv_list
