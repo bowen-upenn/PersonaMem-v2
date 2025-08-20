@@ -28,7 +28,7 @@ from verl.workers.reward_manager import register
 class CustomNaiveRewardManager:
     """The reward manager."""
 
-    def __init__(self, tokenizer, num_examine, compute_score=None, reward_fn_key="data_source") -> None:
+    def __init__(self, tokenizer, num_examine, compute_score=None, reward_fn_key="data_source", eval_method='judge') -> None:
         """
         Initialize the CustomNaiveRewardManager instance.
 
@@ -43,6 +43,7 @@ class CustomNaiveRewardManager:
         self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
         self.compute_score = compute_score or default_compute_score
         self.reward_fn_key = reward_fn_key  # Store the key for accessing the data source
+        self.eval_method = eval_method  # Default evaluation method
 
 
     # In naive_reward_manager.py, modify the __call__ method
@@ -118,6 +119,7 @@ class CustomNaiveRewardManager:
                 solution_str=response_str,
                 ground_truth=groundtruth,
                 extra_info=extra_info,
+                eval_method=self.eval_method,
             )
 
             if isinstance(score, dict):

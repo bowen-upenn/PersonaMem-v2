@@ -112,6 +112,7 @@ def load_reward_manager(config, tokenizer, num_examine, **reward_kwargs):
         num_examine=num_examine,
         compute_score=final_compute_score,
         reward_fn_key=config.data.reward_fn_key,
+        eval_method=config.reward_model.get("eval_method", "judge"),
         **reward_kwargs,
     )
 

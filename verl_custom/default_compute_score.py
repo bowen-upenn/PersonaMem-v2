@@ -25,6 +25,7 @@ def default_compute_score(
     sandbox_fusion_url=None,
     concurrent_semaphore=None,
     memory_limit_mb=None,
+    eval_method='judge'
 ):
     """Compute the score for a given solution based on the data source.
 
@@ -46,9 +47,9 @@ def default_compute_score(
 
         # Use the enhanced compute_score function with extra_info
         if extra_info:
-            res = reward_score.compute_score_with_extra_info(solution_str, ground_truth, extra_info)
+            res = reward_score.compute_score_with_extra_info(solution_str, ground_truth, extra_info, method=eval_method)
         else:
-            res = reward_score.compute_score(solution_str, ground_truth)
+            res = reward_score.compute_score(solution_str, ground_truth, method=eval_method)
     elif data_source == "openai/gsm8k":
         from . import gsm8k
 

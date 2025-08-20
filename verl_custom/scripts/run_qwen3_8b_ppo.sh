@@ -13,6 +13,7 @@ python3 -m verl_custom.main_ppo \
     data.truncation='error' \
     data.enable_thinking=False \
     reward_model.reward_manager=custom_naive \
+    reward_model.eval_method=judge \
     actor_rollout_ref.model.path=verl_custom/hub/models--Qwen--Qwen3-8B/snapshots/9c925d64d72725edaf899c6cb9c377fd0709d9c5 \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \

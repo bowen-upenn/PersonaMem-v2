@@ -135,46 +135,6 @@ def safe_eval_list(value: str) -> List[str]:
         return [str(value)]
 
 
-def format_conversation_as_prompt(conversations: List[Dict[str, Any]]) -> str:
-    """
-    Format conversation list as a multi-turn prompt string.
-    
-    Args:
-        conversations (List[Dict[str, Any]]): List of conversation messages
-        
-    Returns:
-        str: Formatted conversation string
-    """
-    if not conversations:
-        return ""
-    
-    formatted_messages = []
-    for i, msg in enumerate(conversations):
-        # Handle new format (just content strings) and old format (role/content dicts)
-        if isinstance(msg, dict):
-            if 'content' in msg:
-                # Old format with role and content
-                role = msg.get('role', 'user')
-                content = msg.get('content', '')
-                formatted_messages.append(f"{role.capitalize()}: {content}")
-            else:
-                # New format - assume it's just content, alternating user/assistant
-                content = str(msg)
-                role = 'user' if i % 2 == 0 else 'assistant'
-                formatted_messages.append(f"{role.capitalize()}: {content}")
-        elif isinstance(msg, str):
-            # Direct string content - assume alternating user/assistant
-            role = 'user' if i % 2 == 0 else 'assistant'
-            formatted_messages.append(f"{role.capitalize()}: {msg}")
-        else:
-            # Fallback for any other format
-            content = str(msg)
-            role = 'user' if i % 2 == 0 else 'assistant'
-            formatted_messages.append(f"{role.capitalize()}: {content}")
-    
-    return "\n".join(formatted_messages)
-
-
 def create_train_test_split(data: List[Dict[str, Any]], test_ratio: float = 0.2) -> tuple:
     """
     Randomly split data into train and test sets.
@@ -259,17 +219,27 @@ def convert_to_verl_format(row: pd.Series, idx: int) -> Dict[str, Any]:
             print(f"Warning: Context file not found for row {idx}: {context_file_path}")
             conversations = []
         
-        # Format conversations as prompt
-        conversation_prompt = format_conversation_as_prompt(conversations)
-        
         # Get question and add it to the prompt
         question = row.get('question', '')
         
-        # Combine conversation context and question
-        if conversation_prompt:
-            full_prompt = f"{conversation_prompt}\n\nUser: {question}"
-        else:
-            full_prompt = f"User: {question}"
+        # Create OpenAI format messages with system prompt and conversation context
+        messages = []
+        
+        # Add system prompt for personalization
+        messages.append({
+            "role": "system",
+            "content": "You are a helpful assistant that provides personalized responses based on the user's preferences in conversation history."
+        })
+        
+        # Add conversation history if available
+        if conversations:
+            messages.extend(conversations)
+        
+        # Add the current question as user message
+        messages.append({
+            "role": "user",
+            "content": question
+        })
         
         # Get ground truth data
         correct_answer = row.get('correct_answer', '')
@@ -289,12 +259,7 @@ def convert_to_verl_format(row: pd.Series, idx: int) -> Dict[str, Any]:
         # Create VERL-formatted data
         verl_data = {
             "data_source": "implicit_persona",
-            "prompt": [
-                {
-                    "role": "user", 
-                    "content": full_prompt,
-                }
-            ],
+            "prompt": messages,
             "ability": "personalization",
             "reward_model": {
                 "style": "rule", 

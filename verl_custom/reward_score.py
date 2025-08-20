@@ -128,15 +128,14 @@ Provide your reasoning, then give your final score from 0.0 to 1.0 in this forma
         return 0.0
 
 
-def compute_score(solution_str, ground_truth, method="judge", use_judge=True, score=0.0):
+def compute_score(solution_str, ground_truth, method="judge", score=0.0, extra_info=None):
     """
     Compute the reward score for an ImplicitPersona solution.
     
     Args:
         solution_str (str): The generated solution/response from the model
         ground_truth (Dict[str, Any]): Dictionary containing 'groundtruth_preference' and 'correct_answer'
-        method (str): Scoring method - "similarity", "judge", or "hybrid" (default)
-        use_judge (bool): Whether to use LLM judge (default: True)
+        method (str): Scoring method - "similarity", "judge", or "hybrid"
         score (float): Legacy parameter, not used in new implementation
         
     Returns:
@@ -186,8 +185,8 @@ def compute_score(solution_str, ground_truth, method="judge", use_judge=True, sc
             total_score += similarity_weight * similarity_score
             weight_count += similarity_weight
         
-        # Judge component (weight: 0.5)
-        if groundtruth_preference and use_judge:
+        # Judge component
+        if groundtruth_preference:
             persona_info = {"preference": groundtruth_preference}
             judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
             total_score += (1-similarity_weight) * judge_score
