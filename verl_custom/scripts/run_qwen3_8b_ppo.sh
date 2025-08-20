@@ -4,8 +4,8 @@ set -x  # Enable debug mode
 
 python3 -m verl_custom.main_ppo \
     algorithm.adv_estimator=gae \
-    data.train_files=verl_custom/data/werewolf_game/train.parquet \
-    data.val_files=verl_custom/data/werewolf_game/test.parquet \
+    data.train_files=verl_custom/data/implicit_persona/train.parquet \
+    data.val_files=verl_custom/data/implicit_persona/test.parquet \
     data.train_batch_size=32 \
     data.max_prompt_length=32000 \
     data.max_response_length=4096 \
