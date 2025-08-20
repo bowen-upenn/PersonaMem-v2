@@ -89,7 +89,18 @@ def load_conversation_context(context_file_path: str) -> List[Dict[str, Any]]:
     """
     try:
         with open(context_file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+            
+        # Handle new JSON structure with metadata and messages
+        if isinstance(data, dict) and 'messages' in data:
+            return data['messages']
+        # Handle old format (direct array of messages)
+        elif isinstance(data, list):
+            return data
+        else:
+            print(f"Warning: Unexpected JSON structure in {context_file_path}")
+            return []
+            
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Warning: Could not load context file {context_file_path}: {e}")
         return []
@@ -138,10 +149,28 @@ def format_conversation_as_prompt(conversations: List[Dict[str, Any]]) -> str:
         return ""
     
     formatted_messages = []
-    for msg in conversations:
-        role = msg.get('role', 'user')
-        content = msg.get('content', '')
-        formatted_messages.append(f"{role.capitalize()}: {content}")
+    for i, msg in enumerate(conversations):
+        # Handle new format (just content strings) and old format (role/content dicts)
+        if isinstance(msg, dict):
+            if 'content' in msg:
+                # Old format with role and content
+                role = msg.get('role', 'user')
+                content = msg.get('content', '')
+                formatted_messages.append(f"{role.capitalize()}: {content}")
+            else:
+                # New format - assume it's just content, alternating user/assistant
+                content = str(msg)
+                role = 'user' if i % 2 == 0 else 'assistant'
+                formatted_messages.append(f"{role.capitalize()}: {content}")
+        elif isinstance(msg, str):
+            # Direct string content - assume alternating user/assistant
+            role = 'user' if i % 2 == 0 else 'assistant'
+            formatted_messages.append(f"{role.capitalize()}: {msg}")
+        else:
+            # Fallback for any other format
+            content = str(msg)
+            role = 'user' if i % 2 == 0 else 'assistant'
+            formatted_messages.append(f"{role.capitalize()}: {content}")
     
     return "\n".join(formatted_messages)
 
@@ -304,7 +333,7 @@ def main():
     parser = argparse.ArgumentParser(description="Preprocess ImplicitPersona dataset to VERL format")
     parser.add_argument(
         "--csv_path", 
-        default=None,
+        default="data/example_debug.csv",
         help="Path to the CSV file containing persona data. If not specified, will automatically find the latest file in data/ folder"
     )
     parser.add_argument(
@@ -392,6 +421,8 @@ def main():
             extra_info = sample_row['extra_info']
             print(f"Sample persona_id: {extra_info.get('persona_id', 'N/A')}")
             print(f"Sample preference_type: {extra_info.get('preference_type', 'N/A')}")
+            print(f"Sample question: {extra_info.get('question', 'N/A')}")
+            print(f"Sample correct_answer: {extra_info.get('correct_answer', 'N/A')}")
 
 
 if __name__ == "__main__":

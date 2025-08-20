@@ -142,12 +142,11 @@ class CustomNaiveRewardManager:
             data_source_current_index[data_source] += 1
 
             if should_print:
-                print("[prompt]", prompt_str)
                 print("[response]", response_str)
+                print("[persona]", persona)
                 print("[persona_id]", persona_id)
                 print("[question]", question)
                 print("[correct_answer]", correct_answer)
-                print("[persona]", persona)
                 print("[groundtruth_preference]", groundtruth_preference)
                 if isinstance(score, dict):
                     for key, value in score.items():

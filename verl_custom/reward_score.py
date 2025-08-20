@@ -92,53 +92,43 @@ def judge_preference_alignment(model_response: str, groundtruth_preference: str,
     judge_model = get_judge_model()
     
     # Create a judging prompt
-    judge_prompt = f"""You are an expert evaluator assessing whether a model's response correctly reflects a user's personal preference.
+    judge_prompt = f"""Evaluate if this model response is personalized to the user's preference.
 
-User Persona Information:
-{persona}
+User's Ground Truth Preference: {groundtruth_preference}
+Model's Response: {model_response}
 
-User's Ground Truth Preference:
-{groundtruth_preference}
+Does the model's response acknowledge and align with the user's stated preference? 
 
-Model's Response:
-{model_response}
-
-Task: Evaluate whether the model's response correctly incorporates and reflects the user's ground truth preference. The response should demonstrate understanding of the user's preference and align with it appropriately.
-
-Consider:
-1. Does the response acknowledge the user's preference?
-2. Does the response align with the preference in its recommendations/suggestions?
-3. Is the response consistent with what someone with this preference would expect?
-
-Provide your evaluation as a score from 0.0 to 1.0, where:
-- 0.0: The response completely ignores or contradicts the user's preference
-- 0.5: The response partially acknowledges the preference but has significant gaps
-- 1.0: The response perfectly incorporates and aligns with the user's preference
-
-Return only the numerical score (e.g., 0.8), no other text."""
+Provide your reasoning, then give your final score from 0.0 to 1.0 in this format: \\boxed{{score}}"""
 
     try:
         judge_response = judge_model.query_llm(
             action="preference_judgment",
             prompt=judge_prompt,
-            max_tokens=10,
-            temperature=0.0
         )
         
         # Extract numerical score from response
-        score_match = re.search(r'(\d+\.?\d*)', judge_response.strip())
-        if score_match:
-            score = float(score_match.group(1))
+        # First try to find score in \boxed{} format
+        boxed_match = re.search(r'\\boxed\{(\d+\.?\d*)\}', judge_response.strip())
+        if boxed_match:
+            score = float(boxed_match.group(1))
             return max(0.0, min(1.0, score))
-        else:
-            return 0.0
+        
+        # Fallback to finding score in [score] format
+        bracket_match = re.search(r'\[(\d+\.?\d*)\]', judge_response.strip())
+        if bracket_match:
+            score = float(bracket_match.group(1))
+            return max(0.0, min(1.0, score))
+        
+        # Enforce format rewards
+        return 0.0
             
     except Exception as e:
         print(f"Error in LLM judge evaluation: {e}")
         return 0.0
 
 
-def compute_score(solution_str, ground_truth, method="hybrid", use_judge=True, score=0.0):
+def compute_score(solution_str, ground_truth, method="judge", use_judge=True, score=0.0):
     """
     Compute the reward score for an ImplicitPersona solution.
     
@@ -156,13 +146,8 @@ def compute_score(solution_str, ground_truth, method="hybrid", use_judge=True, s
         return 0.0
 
     # Extract ground truth information
-    if isinstance(ground_truth, dict):
-        groundtruth_preference = ground_truth.get('groundtruth_preference', '')
-        correct_answer = ground_truth.get('correct_answer', '')
-    else:
-        # Backward compatibility
-        groundtruth_preference = str(ground_truth)
-        correct_answer = str(ground_truth)
+    groundtruth_preference = ground_truth.get('groundtruth_preference', '')
+    correct_answer = ground_truth.get('correct_answer', '')
 
     if not groundtruth_preference and not correct_answer:
         return 0.0
@@ -193,19 +178,20 @@ def compute_score(solution_str, ground_truth, method="hybrid", use_judge=True, s
         # Hybrid approach: combine both methods
         total_score = 0.0
         weight_count = 0
+        similarity_weight = 0.5
         
-        # Similarity component (weight: 0.4)
+        # Similarity component
         if correct_answer:
             similarity_score = compute_answer_similarity(solution_clean, correct_answer)
-            total_score += 0.4 * similarity_score
-            weight_count += 0.4
+            total_score += similarity_weight * similarity_score
+            weight_count += similarity_weight
         
-        # Judge component (weight: 0.6)
+        # Judge component (weight: 0.5)
         if groundtruth_preference and use_judge:
             persona_info = {"preference": groundtruth_preference}
             judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
-            total_score += 0.6 * judge_score
-            weight_count += 0.6
+            total_score += (1-similarity_weight) * judge_score
+            weight_count += (1-similarity_weight)
         
         # Normalize by actual weights used
         if weight_count > 0:
@@ -216,87 +202,3 @@ def compute_score(solution_str, ground_truth, method="hybrid", use_judge=True, s
     else:
         raise ValueError(f"Unknown scoring method: {method}")
 
-
-def compute_score_with_extra_info(solution_str, ground_truth, extra_info=None, method="hybrid", use_judge=True):
-    """
-    Enhanced compute_score function that uses extra_info for better persona context.
-    
-    Args:
-        solution_str (str): The generated solution/response from the model
-        ground_truth (Dict[str, Any]): Dictionary containing 'groundtruth_preference' and 'correct_answer'
-        extra_info (Dict[str, Any]): Additional information including persona data
-        method (str): Scoring method - "similarity", "judge", or "hybrid" (default)
-        use_judge (bool): Whether to use LLM judge (default: True)
-        
-    Returns:
-        float: Reward score between 0.0 and 1.0
-    """
-    if not solution_str:
-        return 0.0
-
-    # Extract ground truth information
-    if isinstance(ground_truth, dict):
-        groundtruth_preference = ground_truth.get('groundtruth_preference', '')
-        correct_answer = ground_truth.get('correct_answer', '')
-    else:
-        # Backward compatibility
-        groundtruth_preference = str(ground_truth)
-        correct_answer = str(ground_truth)
-
-    # Get persona information from extra_info if available
-    persona_info = {}
-    if extra_info:
-        persona_info = extra_info.get('persona', {})
-        # Also include other relevant info
-        if 'persona_id' in extra_info:
-            persona_info['persona_id'] = extra_info['persona_id']
-        if 'preference_type' in extra_info:
-            persona_info['preference_type'] = extra_info['preference_type']
-
-    if not groundtruth_preference and not correct_answer:
-        return 0.0
-
-    # Clean up the solution string
-    solution_clean = solution_str.strip()
-    
-    if method == "similarity":
-        # Option 1: Sentence similarity with correct answer
-        if correct_answer:
-            similarity_score = compute_answer_similarity(solution_clean, correct_answer)
-            return similarity_score
-        else:
-            return 0.0
-            
-    elif method == "judge":
-        # Option 2: LLM judge for preference alignment
-        if groundtruth_preference:
-            judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
-            return judge_score
-        else:
-            return 0.0
-            
-    elif method == "hybrid":
-        # Hybrid approach: combine both methods
-        total_score = 0.0
-        weight_count = 0
-        
-        # Similarity component (weight: 0.4)
-        if correct_answer:
-            similarity_score = compute_answer_similarity(solution_clean, correct_answer)
-            total_score += 0.4 * similarity_score
-            weight_count += 0.4
-        
-        # Judge component (weight: 0.6)
-        if groundtruth_preference and use_judge:
-            judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
-            total_score += 0.6 * judge_score
-            weight_count += 0.6
-        
-        # Normalize by actual weights used
-        if weight_count > 0:
-            return total_score / weight_count
-        else:
-            return 0.0
-    
-    else:
-        raise ValueError(f"Unknown scoring method: {method}")
