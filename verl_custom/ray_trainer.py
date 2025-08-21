@@ -29,7 +29,8 @@ from pprint import pprint
 from typing import Optional, Type
 
 import numpy as np
-from verl_custom.reward_score import extract_solution
+from verl_custom.reward_score import extract_solution, compute_answer_similarity
+from verl_custom.query_llm import LLMQueryEngine
 import ray
 import torch
 from omegaconf import OmegaConf, open_dict
@@ -696,6 +697,140 @@ class RayPPOTrainer:
         # Log to each configured logger
         self.validation_generations_logger.log(self.config.trainer.logger, samples, self.global_steps)
 
+    def _evaluate_mcq_performance(self, test_batch_data):
+        """
+        Evaluate multiple choice question performance using LLM query.
+        
+        Args:
+            test_batch_data: List of test data batches containing extra_info with all_answers
+            
+        Returns:
+            tuple: (mcq_accuracies, embedding_similarities)
+        """
+        mcq_accuracies = []
+        embedding_similarities = []
+        
+        # Initialize LLM query engine for MCQ evaluation
+        llm_engine = LLMQueryEngine(use_embeddings=False)
+        
+        for batch in test_batch_data:
+            extra_infos = batch.get('extra_info', [])
+            
+            for extra_info in extra_infos:
+                if not isinstance(extra_info, dict):
+                    continue
+                    
+                # Extract data needed for MCQ evaluation
+                question = extra_info.get('question', '')
+                all_answers = extra_info.get('all_answers', [])
+                correct_answer = extra_info.get('correct_answer', '')
+                context_file_path = extra_info.get('context_file_path', '')
+                
+                # Skip if we don't have enough data
+                if not question or not all_answers or not correct_answer:
+                    mcq_accuracies.append(0.0)
+                    embedding_similarities.append(0.0)
+                    continue
+                
+                # Load conversation context if available
+                conversations = []
+                if context_file_path and os.path.exists(context_file_path):
+                    try:
+                        with open(context_file_path, 'r', encoding='utf-8') as f:
+                            context_data = json.load(f)
+                        if isinstance(context_data, dict) and 'messages' in context_data:
+                            conversations = context_data['messages']
+                        elif isinstance(context_data, list):
+                            conversations = context_data
+                    except (FileNotFoundError, json.JSONDecodeError):
+                        pass
+                
+                # Prepare MCQ prompt
+                mcq_question = question.replace(" Think step by step and give your final response after <FINAL_ANSWER>.", "")
+                mcq_prompt = f"{mcq_question}\n\nOptions:\n"
+                
+                # Format all answers as multiple choice options
+                for i, answer in enumerate(all_answers):
+                    mcq_prompt += f"{chr(65 + i)}. {answer}\n"
+                
+                mcq_prompt += "\nPlease select the best answer and provide your response after <FINAL_ANSWER>."
+                
+                # Create full message context for MCQ
+                messages = []
+                
+                # Add system prompt
+                messages.append({
+                    "role": "system", 
+                    "content": "You are a helpful assistant that provides personalized responses based on the user's preferences in conversation history."
+                })
+                
+                # Add conversation history
+                if conversations:
+                    messages.extend(conversations)
+                
+                # Add MCQ question
+                messages.append({
+                    "role": "user",
+                    "content": mcq_prompt
+                })
+                
+                try:
+                    # Convert messages to a single prompt string for the LLM
+                    full_prompt = ""
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            full_prompt += f"System: {msg['content']}\n\n"
+                        elif msg["role"] == "user":
+                            full_prompt += f"User: {msg['content']}\n\n"
+                        elif msg["role"] == "assistant":
+                            full_prompt += f"Assistant: {msg['content']}\n\n"
+                    
+                    full_prompt += "Assistant:"
+                    
+                    # Query LLM for MCQ response
+                    response = llm_engine.query_llm(
+                        action="mcq_evaluation",
+                        prompt=full_prompt
+                    )
+                    
+                    # Extract final answer from response
+                    extracted_answer = extract_solution(response)
+                    
+                    # Check if MCQ answer is correct
+                    mcq_correct = 0.0
+                    if extracted_answer:
+                        # Normalize extracted answer for comparison
+                        extracted_normalized = extracted_answer.strip().lower()
+                        correct_normalized = correct_answer.strip().lower()
+                        
+                        # Check if the extracted answer matches the correct answer
+                        if correct_normalized in extracted_normalized or extracted_normalized in correct_normalized:
+                            mcq_correct = 1.0
+                        else:
+                            # Also check if the extracted answer refers to the correct option letter
+                            for i, answer in enumerate(all_answers):
+                                if answer.strip().lower() == correct_normalized:
+                                    option_letter = chr(65 + i).lower()
+                                    if option_letter in extracted_normalized:
+                                        mcq_correct = 1.0
+                                        break
+                    
+                    mcq_accuracies.append(mcq_correct)
+                    
+                    # Calculate embedding similarity between extracted answer and correct answer
+                    if extracted_answer and correct_answer:
+                        similarity = compute_answer_similarity(extracted_answer, correct_answer)
+                        embedding_similarities.append(similarity)
+                    else:
+                        embedding_similarities.append(0.0)
+                        
+                except Exception as e:
+                    print(f"Error in MCQ evaluation: {e}")
+                    mcq_accuracies.append(0.0)
+                    embedding_similarities.append(0.0)
+        
+        return mcq_accuracies, embedding_similarities
+
     def _validate(self):
         data_source_lst = []
         reward_extra_infos_dict: dict[str, list] = defaultdict(list)
@@ -705,6 +840,9 @@ class RayPPOTrainer:
         sample_outputs = []
         sample_scores = []
         sample_turns = []
+        
+        # Collect test batch data for MCQ evaluation
+        test_batch_data = []
 
         for test_data in self.val_dataloader:
             test_batch = DataProto.from_single_dict(test_data)
@@ -792,8 +930,16 @@ class RayPPOTrainer:
                 sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
 
             data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
+            
+            # Collect test data for MCQ evaluation
+            test_batch_data.append(test_data)
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
+
+        # Evaluate MCQ performance using LLM query
+        print("Starting MCQ evaluation...")
+        mcq_accuracies, mcq_embedding_similarities = self._evaluate_mcq_performance(test_batch_data)
+        print(f"MCQ evaluation completed. Processed {len(mcq_accuracies)} samples.")
 
         # Calculate goal accuracy between predicted and groundtruth goals
         goal_accuracy = 0.0
@@ -855,6 +1001,33 @@ class RayPPOTrainer:
         # Add both overall and individual goal accuracy to reward_extra_infos_dict for metric processing
         reward_extra_infos_dict["goal_accuracy"] = individual_goal_accuracies
         reward_extra_infos_dict["sentence_similarity"] = sentence_similarity
+        
+        # Add MCQ metrics - pad or truncate to match sample size if necessary
+        if mcq_accuracies:
+            # Ensure MCQ metrics have same length as other metrics
+            target_length = len(sample_scores)
+            if len(mcq_accuracies) != target_length:
+                print(f"Warning: MCQ metrics length ({len(mcq_accuracies)}) doesn't match sample size ({target_length})")
+                # Pad with zeros or truncate as needed
+                if len(mcq_accuracies) < target_length:
+                    mcq_accuracies.extend([0.0] * (target_length - len(mcq_accuracies)))
+                    mcq_embedding_similarities.extend([0.0] * (target_length - len(mcq_embedding_similarities)))
+                else:
+                    mcq_accuracies = mcq_accuracies[:target_length]
+                    mcq_embedding_similarities = mcq_embedding_similarities[:target_length]
+            
+            reward_extra_infos_dict["mcq_accuracy"] = mcq_accuracies
+            reward_extra_infos_dict["mcq_embedding_similarity"] = mcq_embedding_similarities
+            
+            # Print MCQ statistics
+            mcq_mean = np.mean(mcq_accuracies) if mcq_accuracies else 0.0
+            embedding_mean = np.mean(mcq_embedding_similarities) if mcq_embedding_similarities else 0.0
+            print(f"MCQ Accuracy: {mcq_mean:.4f} ({sum(mcq_accuracies)}/{len(mcq_accuracies)})")
+            print(f"MCQ Embedding Similarity: {embedding_mean:.4f}")
+        else:
+            print("Warning: No MCQ metrics generated")
+            reward_extra_infos_dict["mcq_accuracy"] = [0.0] * len(sample_scores)
+            reward_extra_infos_dict["mcq_embedding_similarity"] = [0.0] * len(sample_scores)
 
         # dump generations
         val_data_dir = self.config.trainer.get("validation_data_dir", None)
@@ -888,8 +1061,10 @@ class RayPPOTrainer:
         
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
-            # Determine core variable - prioritize goal_accuracy, sentence_similarity, then acc, then reward
-            core_var = ["goal_accuracy", "sentence_similarity", "acc", "reward"]
+            # Focus on two core metrics as requested:
+            # 1. mcq_embedding_similarity: embedding similarity between model response and correct answer
+            # 2. mcq_accuracy: multiple choice accuracy - whether model picks correct option from all choices
+            core_var = ["mcq_embedding_similarity", "mcq_accuracy"]
             for var_name, metric2val in var2metric2val.items():
                 n_max = max([int(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():

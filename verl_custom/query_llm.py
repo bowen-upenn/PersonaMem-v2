@@ -50,7 +50,7 @@ class LLMQueryEngine:
             azure_deployment = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_NAME")
             azure_api_version = os.getenv("AZURE_OPENAI_EMBEDDINGS_API_VERSION")
         else:
-            azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+            azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_RL")
             azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
         
         print(f"Debug - Environment variables:")

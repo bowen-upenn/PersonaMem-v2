@@ -12,7 +12,7 @@ import os
 import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-from query_llm import LLMQueryEngine
+from .query_llm import LLMQueryEngine
 
 # Global variables to store the models (initialized only once)
 _embedding_model = None
@@ -45,6 +45,29 @@ def get_judge_model():
         # Initialize the LLM judge model
         _judge_model = LLMQueryEngine(use_embeddings=False)
     return _judge_model
+
+
+def extract_solution(solution_str: str) -> str:
+    """
+    Extract the final answer from a solution string that contains <FINAL_ANSWER> token.
+    
+    Args:
+        solution_str (str): The full solution string from the model
+        
+    Returns:
+        str: The extracted final answer, or the original string if no token found
+    """
+    if not solution_str:
+        return ""
+    
+    # Look for <FINAL_ANSWER> token and extract everything after it
+    final_answer_match = re.search(r'<FINAL_ANSWER>\s*(.*)', solution_str, re.DOTALL | re.IGNORECASE)
+    if final_answer_match:
+        extracted = final_answer_match.group(1).strip()
+        return extracted
+    
+    # If no special token found, return the original solution
+    return solution_str.strip()
 
 
 def compute_answer_similarity(model_response: str, correct_answer: str) -> float:
@@ -94,10 +117,10 @@ def judge_preference_alignment(model_response: str, groundtruth_preference: str,
     # Create a judging prompt
     judge_prompt = f"""Evaluate if this model response is personalized to the user's preference.
 
-User's Ground Truth Preference: {groundtruth_preference}
+User's Ground-truth Preference: {groundtruth_preference}
 Model's Response: {model_response}
 
-Does the model's response acknowledge and align with the user's stated preference? 
+Does the model's response acknowledge and align with the user's ground-truth preference above? 
 
 Provide your reasoning, then give your final score from 0.0 to 1.0 in this format: \\boxed{{score}}"""
 
@@ -128,20 +151,24 @@ Provide your reasoning, then give your final score from 0.0 to 1.0 in this forma
         return 0.0
 
 
-def compute_score(solution_str, ground_truth, method="judge", score=0.0, extra_info=None):
+def compute_score(solution_str, ground_truth, method="embed", score=0.0, extra_info=None):
     """
     Compute the reward score for an ImplicitPersona solution.
     
     Args:
         solution_str (str): The generated solution/response from the model
         ground_truth (Dict[str, Any]): Dictionary containing 'groundtruth_preference' and 'correct_answer'
-        method (str): Scoring method - "similarity", "judge", or "hybrid"
+        method (str): Scoring method - "embed", "judge", or "hybrid"
         score (float): Legacy parameter, not used in new implementation
         
     Returns:
         float: Reward score between 0.0 and 1.0
     """
     if not solution_str:
+        return 0.0
+
+    # Enforce format reward: check if <FINAL_ANSWER> token exists
+    if '<FINAL_ANSWER>' not in solution_str:
         return 0.0
 
     # Extract ground truth information
@@ -151,13 +178,18 @@ def compute_score(solution_str, ground_truth, method="judge", score=0.0, extra_i
     if not groundtruth_preference and not correct_answer:
         return 0.0
 
-    # Clean up the solution string
-    solution_clean = solution_str.strip()
+    # Extract the final answer from the solution string
+    solution_clean = extract_solution(solution_str)
     
-    if method == "similarity":
+    if method == "embed":
         # Option 1: Sentence similarity with correct answer
         if correct_answer:
             similarity_score = compute_answer_similarity(solution_clean, correct_answer)
+            # Only print from GPU 0 to avoid cluttered output
+            if torch.cuda.current_device() == 0:
+                print(f'\033[92mcorrect_answer:\033[0m {correct_answer}')
+                print(f"\033[92mmodel_final_response:\033[0m {solution_clean}")
+                print(f'\033[92membedding score:\033[0m {similarity_score}')
             return similarity_score
         else:
             return 0.0
@@ -169,6 +201,12 @@ def compute_score(solution_str, ground_truth, method="judge", score=0.0, extra_i
             # For now, use a simplified version
             persona_info = {"preference": groundtruth_preference}
             judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
+
+            # Only print from GPU 0 to avoid cluttered output
+            if torch.cuda.current_device() == 0:
+                print(f'\033[92mgroundtruth_preference:\033[0m {groundtruth_preference}')
+                print(f"\033[92mmodel_final_response:\033[0m {solution_clean}")
+                print(f"\033[92mjudge score:\033[0m {judge_score}")
             return judge_score
         else:
             return 0.0

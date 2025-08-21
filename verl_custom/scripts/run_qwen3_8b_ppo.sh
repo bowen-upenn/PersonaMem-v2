@@ -11,9 +11,9 @@ python3 -m verl_custom.main_ppo \
     data.max_response_length=4096 \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
-    data.enable_thinking=False \
+    data.enable_thinking=True \
     reward_model.reward_manager=custom_naive \
-    reward_model.eval_method=judge \
+    reward_model.eval_method=embed \
     actor_rollout_ref.model.path=verl_custom/hub/models--Qwen--Qwen3-8B/snapshots/9c925d64d72725edaf899c6cb9c377fd0709d9c5 \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \
@@ -29,12 +29,13 @@ python3 -m verl_custom.main_ppo \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.n=4 \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.5 \
+    actor_rollout_ref.rollout.max_num_batched_tokens=72192 \
     actor_rollout_ref.ref.entropy_from_logits_with_chunking=True \
     critic.optim.lr=1e-5 \
     critic.model.use_remove_padding=True \
     critic.model.path=verl_custom/hub/models--Qwen--Qwen3-8B/snapshots/9c925d64d72725edaf899c6cb9c377fd0709d9c5 \
     critic.model.enable_gradient_checkpointing=True \
-    critic.model.ppo_max_token_len_per_gpu=36096 \
+    critic.ppo_max_token_len_per_gpu=36096 \
     critic.ppo_micro_batch_size_per_gpu=2 \
     critic.model.fsdp_config.param_offload=False \
     critic.model.fsdp_config.optimizer_offload=False \
