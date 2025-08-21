@@ -1,53 +1,6 @@
 ## 🌟 ImplicitPersona: Continuous Learning of Implicit User Personas via Reinforcement Finetuning for LLM Personalization 🌟
 
- [![Slides](https://img.shields.io/badge/Google_Slides-Link-yellow)](https://docs.google.com/presentation/d/1ZKQ0SLK2CLvrioqLTs5mRsEm00NHCL32HwBeb_bJmRM/edit?usp=sharing) 
-
-### TODOs
-##### TODO 1
-Edit the code in [contexts_builder.py](contexts_builder.py)
-
-Given each JSON file, i.e., one persona and its conversations, concatenate all its conversations included in content as a single list of dictionaries.
-
-Rules:
-- Randomly shuffle conversation blocks with one exception.
-- If a conversation block has the key "prev_pref", it must appear after its prev_pref block (you can use "prev_pref" to locate the position of the previous block).
-
-Count the final number of tokens in the concatenated list, using only the content of each message.
-
-Save the final list of dictionaries to a JSON file named "context_{timestamp}_{persona_id}.json" in the "data/contexts" directory.
-Follow the same timestamp and persona_id in the filename of the input JSON file.
-
-##### TODO 2
-Add a new code file named [prepare_benchmark.py](prepare_benchmark.py)
-
-Reformat data into a CSV table.
-Each row of the table is one QA pair, mixed from all personas we have.
-We can prepare different versions of the table, such as 32k and 128k ones.
-
-We will have the following columns (we already have all the meta-data in our JSON files)
-- persona_id
-- question
-- correct_answer
-- all_answers (a list of all possible answers, including the correct one)
-- groundtruth_preference
-- preference_type (e.g., "stereotypical_pref", "anti_stereotypical_pref", "ask_to_forget", "sensitive_info", etc.)
-- conversation_scenario (e.g., "personal_email", "multimodal", etc.)
-- preference_topic
-- query_topic
-- who
-- updated
-- previous_preference (if any)
-- persona (everything in the JSON file before the conversations)
-- context_file_path
-- num_tokens
-- distance_from_query_to_target_conversation
-
-##### TODO 3
-Add a new code file named [inference.py](inference.py)
-Inference script that runs Azure OpenAI models on this CSV table. 
-For each model, the script should iterate over all questions, in parallel processing on batches, and save output responses and options to a JSON file.
-
-##### TODO 4 Human Eval
+##### TODO Human Eval
 - Does the conversation sound natural and realistic?
 - Can the ground truth user preference be inferred from the conversation?
 - Are the user query, correct answer, and incorrect answers well formatted?
@@ -56,7 +9,7 @@ For each model, the script should iterate over all questions, in parallel proces
 
 ### 📦 Installation
 
-Install the required dependencies:
+We use Python 3.10.16 with CUDA version 12.6. To install the required dependencies, run
 
 ```bash
 python -m venv myenv

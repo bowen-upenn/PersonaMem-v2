@@ -746,14 +746,14 @@ class RayPPOTrainer:
                         pass
                 
                 # Prepare MCQ prompt
-                mcq_question = question.replace(" Think step by step and give your final response after <FINAL_ANSWER>.", "")
+                mcq_question = question.replace(" Think step by step using <think> and </think> tokens, then provide your final answer.", "")
                 mcq_prompt = f"{mcq_question}\n\nOptions:\n"
                 
                 # Format all answers as multiple choice options
                 for i, answer in enumerate(all_answers):
                     mcq_prompt += f"{chr(65 + i)}. {answer}\n"
                 
-                mcq_prompt += "\nPlease select the best answer and provide your response after <FINAL_ANSWER>."
+                mcq_prompt += "\nPlease think step by step using <think> and </think> tokens, then provide your final answer."
                 
                 # Create full message context for MCQ
                 messages = []
@@ -1379,6 +1379,7 @@ class RayPPOTrainer:
             batch_count = 0
             
             for batch_dict in self.train_dataloader:
+
                 batch_count += 1
                 batch_start_time = time.time()
                 print(f"[FIT] Processing batch {batch_count}/{len(self.train_dataloader)} of epoch {epoch+1}, global step {self.global_steps}")
@@ -1644,88 +1645,6 @@ class RayPPOTrainer:
                         metrics.update(actor_output_metrics)
                     else:
                         print(f"[FIT] Skipping actor update - critic warmup phase ({self.global_steps} <= {self.config.trainer.critic_warmup})")
-
-                    # Log rollout generations if enabled
-                    rollout_data_dir = self.config.trainer.get("rollout_data_dir", None)
-                    if rollout_data_dir:
-                        print(f"[FIT] Starting rollout generation dump...")
-                        dump_start_time = time.time()
-                        with marked_timer("dump_rollout_generations", timing_raw, color="green"):
-                            print(batch.batch.keys())
-                            inputs = self.tokenizer.batch_decode(batch.batch["prompts"], skip_special_tokens=True)
-                            outputs = self.tokenizer.batch_decode(batch.batch["responses"], skip_special_tokens=True)
-                            scores = batch.batch["token_level_scores"].sum(-1).cpu().tolist()
-
-                            # Calculate goal accuracy between predicted and groundtruth goals
-                            goal_accuracy = 0.0
-                            
-                            # Extract predicted goals from outputs using extract_solution function
-                            predicted_goals = []
-                            for output in outputs:
-                                predicted_goal = extract_solution(output)
-                                predicted_goals.append(predicted_goal)
-
-                            # Extract groundtruth goals from reward_extra_infos_dict
-                            groundtruth_goals = reward_extra_infos_dict.get('groundtruth_goals', [])
-
-                            correct_predictions = 0
-                            individual_goal_accuracies = []
-                            if len(predicted_goals) == len(groundtruth_goals):
-                                for pred, gt in zip(predicted_goals, groundtruth_goals):
-                                    # Normalize strings for comparison (strip whitespace, lowercase)
-                                    pred_normalized = str(pred).strip().lower()
-                                    gt_normalized = str(gt).strip().lower()
-                                    if pred_normalized == gt_normalized:
-                                        correct_predictions += 1
-                                        individual_goal_accuracies.append(1.0)
-                                    else:
-                                        individual_goal_accuracies.append(0.0)
-
-                            goal_accuracy = correct_predictions / len(predicted_goals) if predicted_goals else 0.0
-                            print(f"Goal Accuracy: {goal_accuracy:.4f} ({correct_predictions}/{len(predicted_goals)})")
-
-                            # Calculate sentence similarity for each sample
-                            # sentence_similarity = 2 * (sample_score - 0.5)
-                            # Only calculate for samples with score > 0
-                            sentence_similarity = []
-                            valid_similarities = []  # For calculating average of non-zero scores
-                            
-                            for i in range(len(scores)):
-                                if scores[i] > 0:
-                                    similarity = 2 * (scores[i] - 0.5)
-                                    sentence_similarity.append(similarity)
-                                    valid_similarities.append(similarity)
-                                else:
-                                    sentence_similarity.append(0.0)  # Placeholder for scores = 0
-                            
-                            # Trick: fill zero placeholders with average of valid similarities to maintain length while not affecting statistical calculations
-                            if valid_similarities:
-                                avg_similarity = np.mean(valid_similarities)
-                                for i in range(len(sentence_similarity)):
-                                    if sentence_similarity[i] == 0.0 and scores[i] == 0:
-                                        sentence_similarity[i] = avg_similarity
-                            
-                            # Print statistics for valid similarities only
-                            if valid_similarities:
-                                print(f"Sentence Similarity (valid scores > 0): mean={np.mean(valid_similarities):.4f}, "
-                                    f"min={np.min(valid_similarities):.4f}, max={np.max(valid_similarities):.4f}, "
-                                    f"count={len(valid_similarities)}/{len(scores)}")
-                            else:
-                                print("Sentence Similarity: No valid scores > 0 found")
-
-                            # Add both overall and individual goal accuracy to reward_extra_infos_dict for metric processing
-                            reward_extra_infos_dict["goal_accuracy"] = individual_goal_accuracies
-                            reward_extra_infos_dict["sentence_similarity"] = sentence_similarity
-
-                            self._dump_generations(
-                                inputs=inputs,
-                                outputs=outputs,
-                                scores=scores,
-                                reward_extra_infos_dict=reward_extra_infos_dict,
-                                dump_path=rollout_data_dir,
-                            )
-                        dump_time = time.time() - dump_start_time
-                        print(f"[FIT] Rollout generation dump completed in {dump_time:.2f}s")
 
                     # validate
                     if (

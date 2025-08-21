@@ -16,12 +16,13 @@ if parent_dir not in sys.path:
 
 from collections import defaultdict
 import random
-
+import re
 import torch
 
 from verl import DataProto
 from verl_custom import default_compute_score
 from verl.workers.reward_manager import register
+from verl_custom.reward_score import extract_solution
 
 
 @register("custom_naive")
@@ -144,18 +145,21 @@ class CustomNaiveRewardManager:
             data_source_current_index[data_source] += 1
 
             if should_print:
-                print("[response]", response_str)
-                print("[persona]", persona)
-                print("[persona_id]", persona_id)
-                print("[question]", question)
-                print("[correct_answer]", correct_answer)
-                print("[groundtruth_preference]", groundtruth_preference)
-                if isinstance(score, dict):
-                    for key, value in score.items():
-                        print(f"[{key}]", value)
+                # Extract the clean solution for display
+                solution_clean = extract_solution(response_str)
+                
+                print(f'\033[92m[persona]:\033[0m {persona}')
+                print(f'\033[92m[question]:\033[0m {question}')
+                print(f'\033[92m[correct_answer]:\033[0m {correct_answer}')
+                print(f'\033[92m[groundtruth_preference]:\033[0m {groundtruth_preference}')
+                print(f'\033[92m[model_final_response]:\033[0m {solution_clean}')
+                print(f'\033[92m[eval_method]:\033[0m {self.eval_method}')
+                if isinstance(reward, dict):
+                    for key, value in reward.items():
+                        print(f'\033[92m[{key}]:\033[0m {value}')
                 else:
-                    print("[score]", score)
-                print('\n' + '-' * 50 + '\n')
+                    print(f'\033[92m[reward_score]:\033[0m {reward}')
+                print('\n' + '-' * 80 + '\n')
 
         if return_dict:
             return {

@@ -45,8 +45,8 @@ python3 -m verl_custom.main_ppo \
     trainer.project_name='implicit_persona_verl' \
     trainer.experiment_name='verl_qwen3_8b_ppo' \
     trainer.n_gpus_per_node=8 \
+    trainer.val_before_train=False \
     trainer.nnodes=1 \
     trainer.save_freq=5 \
     trainer.test_freq=1 \
-    trainer.rollout_data_dir=rollout \
     trainer.total_epochs=5 $@

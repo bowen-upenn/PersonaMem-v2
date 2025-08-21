@@ -49,24 +49,29 @@ def get_judge_model():
 
 def extract_solution(solution_str: str) -> str:
     """
-    Extract the final answer from a solution string that contains <FINAL_ANSWER> token.
+    Extract the final answer from a solution string that contains <think></think> tokens.
     
     Args:
         solution_str (str): The full solution string from the model
         
     Returns:
-        str: The extracted final answer, or the original string if no token found
+        str: The extracted final answer after the last </think>, or the original string if no tokens found
     """
     if not solution_str:
         return ""
     
-    # Look for <FINAL_ANSWER> token and extract everything after it
-    final_answer_match = re.search(r'<FINAL_ANSWER>\s*(.*)', solution_str, re.DOTALL | re.IGNORECASE)
-    if final_answer_match:
-        extracted = final_answer_match.group(1).strip()
+    # Find the last occurrence of </think> token and extract everything after it
+    last_think_end = solution_str.rfind('</think>')
+    if last_think_end != -1:
+        # Extract everything after the last </think> token
+        extracted = solution_str[last_think_end + len('</think>'):].strip()
+        
+        # Remove any remaining </think> tokens from the extracted content
+        extracted = extracted.replace('</think>', '').strip()
+        
         return extracted
     
-    # If no special token found, return the original solution
+    # If no special tokens found, return the original solution
     return solution_str.strip()
 
 
@@ -167,8 +172,18 @@ def compute_score(solution_str, ground_truth, method="embed", score=0.0, extra_i
     if not solution_str:
         return 0.0
 
-    # Enforce format reward: check if <FINAL_ANSWER> token exists
-    if '<FINAL_ANSWER>' not in solution_str:
+    # Enforce format reward: check if both <think> and </think> tokens exist
+    if '<think>' not in solution_str or '</think>' not in solution_str:
+        return 0.0
+
+    # Additional check: ensure there's content after the last </think>
+    last_think_end = solution_str.rfind('</think>')
+    if last_think_end == -1:
+        return 0.0
+    
+    # Extract content after the last </think> and check if it's not empty
+    content_after_think = solution_str[last_think_end + len('</think>'):].strip()
+    if not content_after_think:
         return 0.0
 
     # Extract ground truth information
@@ -185,11 +200,6 @@ def compute_score(solution_str, ground_truth, method="embed", score=0.0, extra_i
         # Option 1: Sentence similarity with correct answer
         if correct_answer:
             similarity_score = compute_answer_similarity(solution_clean, correct_answer)
-            # Only print from GPU 0 to avoid cluttered output
-            if torch.cuda.current_device() == 0:
-                print(f'\033[92mcorrect_answer:\033[0m {correct_answer}')
-                print(f"\033[92mmodel_final_response:\033[0m {solution_clean}")
-                print(f'\033[92membedding score:\033[0m {similarity_score}')
             return similarity_score
         else:
             return 0.0
@@ -201,12 +211,6 @@ def compute_score(solution_str, ground_truth, method="embed", score=0.0, extra_i
             # For now, use a simplified version
             persona_info = {"preference": groundtruth_preference}
             judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
-
-            # Only print from GPU 0 to avoid cluttered output
-            if torch.cuda.current_device() == 0:
-                print(f'\033[92mgroundtruth_preference:\033[0m {groundtruth_preference}')
-                print(f"\033[92mmodel_final_response:\033[0m {solution_clean}")
-                print(f"\033[92mjudge score:\033[0m {judge_score}")
             return judge_score
         else:
             return 0.0

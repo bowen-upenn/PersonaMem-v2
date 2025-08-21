@@ -221,7 +221,7 @@ def convert_to_verl_format(row: pd.Series, idx: int) -> Dict[str, Any]:
         
         # Get question and add it to the prompt
         question = row.get('question', '')
-        question += " Think step by step and give your final response after <FINAL_ANSWER>."
+        question += " Think step by step using <think> and </think> tokens, then provide your response to the user after </think>."
         
         # Create OpenAI format messages with system prompt and conversation context
         messages = []
