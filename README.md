@@ -17,6 +17,17 @@ source myenv/bin/activate
 pip install -r requirements.txt
 ```
 
+If you would like to run reinforcement fine-tuning via veRL, we have prepared the [Dockerfile](Dockerfile). You can run
+
+```bash
+# Build the image (run in same directory as Dockerfile)
+docker build -t implicit_persona .
+
+# Run the container
+docker run -it implicit_persona /bin/bash
+```
+
+
 ### ⚙️ API Keys Setup
 
 Configure your API credentials in the [.env](.env) file, following examples in [.env.example](.env.example). We use OpenAI's [GPT-5](https://platform.openai.com/docs/models/gpt-5-chat-latest) to generate all data samples in our benchmark. Preparing multimodal samples for the very first time also requires [text-embedding-3-large](https://platform.openai.com/docs/models/text-embedding-3-large). Choose only one of the following two options:
