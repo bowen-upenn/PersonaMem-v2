@@ -19,8 +19,9 @@ MAX_NEW_TOKEN=4096
 TOTAL_MAX=36096
 
 
-python3 -m verl_custom.main_ppo \
+python3 -m memagent.verl_custom.main_ppo \
     recurrent.enable=memory \
+    recurrent.memory.config.chunk_size=5000 \
     algorithm.adv_estimator=grpo \
     algorithm.grpo_use_adv=True \
     trainer.save_freq=1 \

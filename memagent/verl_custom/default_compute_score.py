@@ -14,8 +14,6 @@ parent_dir = os.path.join(current_dir, "..")
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from verl.utils.import_utils import deprecated
-
 
 def default_compute_score(
     data_source,
@@ -118,7 +116,6 @@ def default_compute_score(
         return float(res[0])
 
 
-@deprecated("verl.utils.reward_score.default_compute_score")
 def _default_compute_score(
     data_source,
     solution_str,
