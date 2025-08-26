@@ -55,6 +55,3 @@ RUN pip install pytz
 # RUN pip install json_repair
 # RUN pip install timeout_decorator
 # RUN pip install pytz
-
-# # After you have entered the container, run
-# # pip install -r requirements.txt
