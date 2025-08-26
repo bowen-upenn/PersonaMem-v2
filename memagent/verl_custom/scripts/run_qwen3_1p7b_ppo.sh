@@ -3,13 +3,14 @@ set -x
 
 # at least 1 nodes, 4nodes=3~4days to converge
 NNODES=1
-NGPUS_PER_NODE=8
+NGPUS_PER_NODE=4
 PROJ_ROOT=
-DATASET_ROOT=../../verl_custom/data/implicit_persona/
-MODEL_PATH=../../verl_custom/hub/models--Qwen--Qwen3-8B/snapshots/9c925d64d72725edaf899c6cb9c377fd0709d9c5
+DATASET_ROOT=/workspace/verl_custom/data/implicit_persona
+# Use absolute path to avoid HF tokenizer validation issues
+MODEL_PATH=/workspace/verl_custom/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
 VAL_PATH="${DATASET_ROOT}/test.parquet"
 TRAIN_PATH="${DATASET_ROOT}/train.parquet"
-EXP=verl_memagent_implicit_persona_qwen3_8b_ppo
+EXP=verl_memagent_implicit_persona_qwen1p7_8b_ppo
 PROJ_DIR=${PROJ_ROOT}/${EXP}
 
 # Please note that recurrent framewrok will use max_length defined in task config.
@@ -18,8 +19,7 @@ MAXLEN=32000
 MAX_NEW_TOKEN=4096
 TOTAL_MAX=36096
 
-
-python3 -m memagent.verl_custom.main_ppo \
+python3 -m verl_custom.main_ppo \
     recurrent.enable=memory \
     recurrent.memory.config.chunk_size=5000 \
     algorithm.adv_estimator=grpo \

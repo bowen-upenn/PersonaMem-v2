@@ -19,13 +19,10 @@ docker build -t implicit_persona .
 # Option 1: Use all available GPUs
 docker run -it --gpus all -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
 
-# Option 2: Use specific GPU(s) by device ID
-docker run -it --gpus device=0,1,2,3 -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
-
-# Option 3: Use specific number of GPUs
+# Option 2: Use specific number of GPUs
 docker run -it --gpus 4 -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
 
-# Option 4: Use CPU only (if you are going to run data generation and inference through API only, without running verl or memagent)
+# Option 3: Use CPU only (if you are going to run data generation and inference through API only, without running verl or memagent)
 docker run -it -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
 ```
 
