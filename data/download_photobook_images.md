@@ -1,1 +1,14 @@
-Please download image data from Google Drive at https://drive.google.com/drive/folders/14_pENtMYdvySewG2pEhnRuUEL1KG4ose?usp=sharing and put them under the path data/photobook_images.
+Please download image data from Google Drive at https://drive.google.com/file/d/1TnKOvKDgxf7yxR7MlNCw6IzZjObnSHTG/view?usp=sharing and put them under the path data/photobook_images.
+
+<!-- 
+Script to download the entire Google Drive folder:
+
+```bash
+# Install gdown if not already installed
+pip install gdown
+
+# Download the entire folder
+gdown --folder https://drive.google.com/file/d/1TnKOvKDgxf7yxR7MlNCw6IzZjObnSHTG/view?usp=sharing -O data
+
+# Unzip the folder
+unzip data/photobook_images.zip -d data/photobook_images/
