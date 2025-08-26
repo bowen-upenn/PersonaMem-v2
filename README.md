@@ -43,7 +43,7 @@ AZURE_OPENAI_API_VERSION_EMBED=your_azure_openai_api_version_of_text-embedding-3
 
 ### 📁 Data Setup
 
-1. **Download image data**: All [PhotoBook]((https://dmg-photobook.github.io/datasets.html)) image files are already available under [data/photobook_images/](data/photobook_images/).
+1. **Download image data**: The [PhotoBook](https://dmg-photobook.github.io/datasets.html) image dataset is already available under [data/photobook_images/](data/photobook_images/).
 
 2. **Persona Hub**: The [PersonaHub](https://github.com/tencent-ailab/persona-hub) dataset is already available in [data/Persona_Hub_200000.jsonl](data/Persona_Hub_200000.jsonl).
 
