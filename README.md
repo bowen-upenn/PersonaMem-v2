@@ -10,13 +10,23 @@
 ### 📦 Installation
 
 We use Python 3.10.16 with CUDA version 12.6. We have prepared the [Dockerfile](Dockerfile). You can run
-ss
-```bashss
+
+```bash
 # Build the image (run in same directory as Dockerfile)
 docker build -t implicit_persona .
 
-# Run the container
-docker run -it implicit_persona /bin/bash
+# Run the container with volume mount for file synchronization
+# Option 1: Use all available GPUs
+docker run -it --gpus all -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
+
+# Option 2: Use specific GPU(s) by device ID
+docker run -it --gpus device=0,1,2,3 -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
+
+# Option 3: Use specific number of GPUs
+docker run -it --gpus 4 -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
+
+# Option 4: Use CPU only (if you are going to run data generation and inference only, without running verl or memagent)
+docker run -it -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
 ```
 
 
@@ -47,7 +57,7 @@ AZURE_OPENAI_API_VERSION_EMBED=your_azure_openai_api_version_of_text-embedding-3
 
 2. **Persona Hub**: The [PersonaHub](https://github.com/tencent-ailab/persona-hub) dataset is already available in [data/Persona_Hub_200000.jsonl](data/Persona_Hub_200000.jsonl).
 
-3. **Output directory**: Generated persona files will be saved to `data/raw_data/`.
+3. **Output directory**: Generated persona files will be saved to [data/raw_data/](data/raw_data/).
 
 ### 🚀 Usage
 

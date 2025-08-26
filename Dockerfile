@@ -8,12 +8,15 @@ RUN apt-get update && apt-get install -y git && apt-get install -y tmux && rm -r
 
 RUN git clone https://github.com/volcengine/verl.git
 
-# Copy local workspace into the container
-COPY . /workspace/
+# Create workspace directory for volume mount
+RUN mkdir -p /workspace
 WORKDIR /workspace
 
+# Copy requirements file first for dependency installation
+COPY requirements.txt /tmp/requirements.txt
+
 # Install project requirements
-RUN pip install -r requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 RUN cd /app/verl && pip install -e .
 RUN pip3 install azureml-mlflow
