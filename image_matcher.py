@@ -37,6 +37,10 @@ class ImageMatcher:
         azure_key = os.getenv("AZURE_OPENAI_KEY")
         azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_EMBED")
         azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION_EMBED")
+        print(f"Debug - Environment variables:")
+        print(f"  AZURE_OPENAI_ENDPOINT: {azure_endpoint}")
+        print(f"  AZURE_OPENAI_DEPLOYMENT_NAME_EMBED: {azure_deployment}")
+        print(f"  AZURE_OPENAI_API_VERSION: {azure_api_version}")
 
         if azure_endpoint and azure_key and azure_deployment and azure_api_version:
             print("Using Azure OpenAI configuration")

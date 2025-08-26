@@ -3,8 +3,19 @@ FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
+# Install git first
+RUN apt-get update && apt-get install -y git && apt-get install -y tmux && rm -rf /var/lib/apt/lists/*
+
 RUN git clone https://github.com/volcengine/verl.git
-RUN cd verl && pip install -e .
+
+# Copy local workspace into the container
+COPY . /workspace/
+WORKDIR /workspace
+
+# Install project requirements
+RUN pip install -r requirements.txt
+
+RUN cd /app/verl && pip install -e .
 RUN pip3 install azureml-mlflow
 RUN pip install vllm==0.8.3
 RUN pip install "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
