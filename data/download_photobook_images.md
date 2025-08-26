@@ -1,5 +1,7 @@
 Please download image data from Google Drive at https://drive.google.com/file/d/1TnKOvKDgxf7yxR7MlNCw6IzZjObnSHTG/view?usp=sharing and put them under the path data/photobook_images.
 
+Reference: https://dmg-photobook.github.io/datasets.html.
+
 <!-- 
 Script to download the entire Google Drive folder:
 

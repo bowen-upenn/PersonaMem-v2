@@ -9,17 +9,9 @@
 
 ### 📦 Installation
 
-We use Python 3.10.16 with CUDA version 12.6. To install the required dependencies, run
-
-```bash
-python -m venv myenv
-source myenv/bin/activate
-pip install -r requirements.txt
-```
-
-If you would like to run reinforcement fine-tuning via veRL, we have prepared the [Dockerfile](Dockerfile). You can run
-
-```bash
+We use Python 3.10.16 with CUDA version 12.6. We have prepared the [Dockerfile](Dockerfile). You can run
+ss
+```bashss
 # Build the image (run in same directory as Dockerfile)
 docker build -t implicit_persona .
 
@@ -51,9 +43,9 @@ AZURE_OPENAI_API_VERSION_EMBED=your_azure_openai_api_version_of_text-embedding-3
 
 ### 📁 Data Setup
 
-1. **Download image data**: Follow the instructions in `data/download_phptobook_imges.md` to download the required image dataset.
+1. **Download image data**: All [PhotoBook]((https://dmg-photobook.github.io/datasets.html)) image files are already available under [data/photobook_images/](data/photobook_images/).
 
-2. **Persona Hub**: The PersonaHub dataset is already available in `data/Persona_Hub_200000.jsonl`.
+2. **Persona Hub**: The [PersonaHub](https://github.com/tencent-ailab/persona-hub) dataset is already available in [data/Persona_Hub_200000.jsonl](data/Persona_Hub_200000.jsonl).
 
 3. **Output directory**: Generated persona files will be saved to `data/raw_data/`.
 
