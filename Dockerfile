@@ -42,8 +42,6 @@ RUN pip install pytz
 # RUN git clone https://github.com/volcengine/verl.git
 # RUN cd verl && pip install -e .
 
-# RUN pip install -r requirements.txt
-
 # RUN pip3 install azureml-mlflow
 # RUN pip install vllm==0.8.3
 # RUN pip install "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
