@@ -1,4 +1,4 @@
-# If you are not using AzureML, you can use this Dockerfile to build the container.
+# Option 1: If you are not using AzureML, you can use this Dockerfile to build the container.
 FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
@@ -34,7 +34,7 @@ RUN pip install timeout_decorator
 RUN pip install pytz
 
 
-# If you are using AzureML jobs, you can uncomment the following part of this Dockerfile as your environment's context.
+# Option 2: If you are using AzureML jobs, you can uncomment the following part of this Dockerfile as your environment's context.
 # FROM mcr.microsoft.com/azureml/curated/acpt-pytorch-2.2-cuda12.1:33
 
 # WORKDIR /app
@@ -55,3 +55,6 @@ RUN pip install pytz
 # RUN pip install json_repair
 # RUN pip install timeout_decorator
 # RUN pip install pytz
+
+# # After you have entered the container, run
+# # pip install -r requirements.txt
