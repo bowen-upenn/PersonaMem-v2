@@ -206,135 +206,6 @@
       "Requires prescription glasses for mild myopia": "Does not require prescription glasses for mild myopia"
     },
     "conversations": {
-      "multimodal": [
-        {
-          "preference": "The user prefers using both an iPhone and a Windows laptop for their devices.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I took of my desk, why is it sometimes tricky to move text or files directly between my phone and laptop without using email or cloud storage?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "What you’re running into has to do with the way different operating systems are designed and how they handle interoperability. Your phone in the photo is running Apple's iOS, while your laptop runs Microsoft Windows. Both operate within their own distinct ecosystems, with different file management structures, communication protocols, and preferred transfer methods.\n\nWhen you try to move files directly — for example via a USB cable — iOS devices don’t behave like generic storage drives (unlike many Android devices). Instead, iOS uses a controlled access model where data is sandboxed within apps, and external connections generally require Apple's specific communication protocols, like the Apple File Conduit (AFC) or the newer Finder/iTunes sync model. For Windows, native integration with iOS is limited compared to macOS, which has built-in functions like AirDrop for seamless transfer.\n\nThis means that, without a direct bridge service, Windows will often rely on either:\n- **iTunes/Finder equivalents for Windows** to sync specific media or documents.\n- **3rd-party software** (such as iMazing, AnyTrans) that can communicate over the correct iOS protocols.\n- **Cloud-based solutions** (iCloud Drive, Google Drive, Dropbox) or email for universal transfers.\n- **Network-based services** (shared Wi-Fi apps like Send Anywhere or Snapdrop) that bypass ecosystem restrictions.\n\nThe trickiness you’re experiencing is essentially due to the lack of a native, cross-platform peer-to-peer transfer protocol optimized for iOS and Windows. Apple optimized iOS to pair most seamlessly with macOS, while Microsoft has optimized for Windows-to-Windows or Windows-to-Android workflows. For your setup, the smoothest direct transfers usually occur when using apps that exist on both iOS and Windows specifically crafted for file sync, or by pairing a Wi-Fi based local transfer app.\n\nIf you want something lightweight for quick text or clipboard sharing without cloud dependency, you can also look into tools like Pasteasy or Pushbullet, which create a bridge between your devices over the same network — giving you something close to AirDrop-like convenience between iOS and Windows."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Could you explain a bit more about why AirDrop works so easily between iOS and macOS, but there's nothing similar for Windows by default?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "AirDrop feels effortless between iOS and macOS because it was designed by Apple as a proprietary, tightly integrated protocol for their own ecosystem. It combines **Bluetooth Low Energy (BLE)** for device discovery and **Wi‑Fi Direct** for fast data transfer, with Apple's own encryption and authentication layers to maintain privacy and security. Since both iOS and macOS support these protocols exactly as Apple implements them, devices can instantly recognize each other and negotiate transfers without extra configuration.\n\nFor Windows, there's no AirDrop support because:\n- Apple has not released the AirDrop protocol or made it open for third-party OS developers to integrate.\n- The way AirDrop ties into native system frameworks (Contacts, Finder, Photos, Share Sheets) is deeply embedded in Apple's proprietary APIs.\n- Microsoft uses its own peer-to-peer sharing feature, **Nearby Sharing**, which is optimized for Windows PCs and some Android devices — but it doesn't natively interface with iOS.\n\nIn other words, AirDrop is not just a file transfer tool; it's an Apple-only feature that relies on infrastructure and agreements inside their walled garden. That’s why with Windows, you need third-party or cross-platform apps to mimic these capabilities, often using similar underlying tech (Bluetooth + Wi‑Fi Direct), but with their own discovery and transfer logic."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg",
-          "user_query": "What’s the best way to keep all my files, photos, and notes seamlessly synced across my phone and laptop, without having to constantly transfer things manually?",
-          "topic_query": "Technology",
-          "correct_answer": "Since you’re using both an iPhone and a Windows laptop, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, these services let you organize files into folders for your recycling program plans and other activism work.",
-          "incorrect_answers": [
-            "Since you’re using an Android phone and a Chromebook, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, these services let you organize files into folders for your recycling program plans and other activism work.",
-            "Since you’re using an iPhone and a MacBook, the smoothest setup would be to use iCloud along with the native Notes and Photos apps. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, iCloud automatically organizes everything so your recycling program resources stay neat and accessible.",
-            "To keep everything in sync between your phone and laptop, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can store your photos, files, and notes and have them automatically updated across devices without worrying about manual transfers. Plus, you can organize everything into folders to keep your projects or personal work tidy."
-          ]
-        },
-        {
-          "preference": "The user enjoys relaxing with and caring for small dogs.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this picture I snapped of my dog napping belly-up in my arms, why does she seem so comfortable in that stretched-out position, and is there something about it that tells me she feels especially safe with me?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "What you’re seeing in your photo is a combination of canine body language and deep trust. When a dog sleeps belly-up, it’s exposing one of the most vulnerable parts of its body—the stomach, chest, and vital organs. In the wild or in situations where a dog feels uncertain, this is a position they would avoid, since it limits their ability to protect themselves quickly.\n\nFor your dog to choose this position while napping in your arms, a few things are happening:\n\n1. **A Strong Bond of Trust** – Dogs only expose their belly when they are completely relaxed and confident that the person or environment poses no threat. This isn’t just tolerance—it’s active comfort. It signals your pup feels emotionally secure with you.\n\n2. **Physical Comfort & Warmth** – Being cradled in your arms means your body heat and heartbeat are acting like a soothing, rhythmic comfort source, which mimics what they felt as newborn pups alongside their mother or littermates.\n\n3. **Temperature Regulation** – The belly has less fur than other body parts, allowing heat to escape when they’re warm. A stretched-out, belly-up position can help dissipate extra body heat while still enjoying your close contact.\n\n4. **Muscle Relaxation** – When dogs sleep deeply, their muscles loosen. The extended limbs you captured in the photo suggest she’s in what’s called REM sleep for dogs, where they feel secure enough to let gravity take over without tension.\n\n5. **Social Bond Reinforcement** – This act reinforces your relationship too. By holding your dog in this safe, relaxed state, you’re deepening your connection because she learns repeatedly that your touch and presence equal security and comfort.\n\nIn short, your dog’s body language in that photo is a high compliment—she trusts you completely, feels serene in her environment, and is physically comfortable. For small breeds, this kind of full-body sprawl in a human’s arms is a classic sign of a strong emotional attachment and an unspoken signal of affection."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
-          "user_query": "What are some peaceful hobbies I could try at home that might help me unwind after a long day?",
-          "topic_query": "Hobbies",
-          "correct_answer": "You could try spending some quiet time grooming or playing with your small dog, maybe even teaching them a few gentle tricks while listening to calming music. It’s a soothing way to destress and bond after a busy day. You might also enjoy reading in a cozy spot while your dog curls up beside you.",
-          "incorrect_answers": [
-            "You could try spending some quiet time sketching or painting, maybe even experimenting with watercolors while listening to calming music. It’s a soothing way to express creativity and relax after a busy day. You might also enjoy reading in a cozy spot after your art session.",
-            "You could try spending some quiet time brewing a cup of chai and reading about India’s environmental movements, maybe even jotting down ideas for future projects while listening to calming music. It’s a soothing way to wind down and feel inspired after a busy day. You might also enjoy sitting on the balcony surrounded by some potted plants.",
-            "You could try spending some quiet time reading a good book, maybe even pairing it with a warm drink while listening to calming music. It’s a soothing way to unwind and recharge after a busy day. You might also enjoy sitting in a cozy spot with a soft blanket."
-          ]
-        },
-        {
-          "preference": "The user enjoys relaxing on a couch while using a laptop.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this picture I snapped while lounging with my laptop on the couch, why does my posture like this sometimes make my shoulders ache after a while, and what can I do to stay comfortable without giving up this position entirely?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_couch/COCO_train2014_000000494341.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "The ache you’re feeling in your shoulders while using your laptop in that position is likely due to a mix of sustained muscle tension, joint compression, and awkward spinal alignment. When you recline sideways or slouch into the couch while working on a laptop perched on your lap, your arms and shoulders often extend forward or upward at less-than-ideal angles—this forces the upper trapezius, neck extensors, and rotator cuff muscles to maintain subtle but constant engagement. Over time (even within 20–30 minutes), this low-level tension fatigues the muscles, creating stiffness and soreness.\n\nAdditionally, a reclined position can cause your head to tilt forward or to the side, placing strain on your cervical spine and increasing pressure on the upper back and shoulder girdle. Your elbows may also lack stable support, making your shoulder joints work harder to position your hands on the keyboard.\n\nYou don’t necessarily have to give up the comfort of working from that position—you can tweak it so it’s friendlier to your body:\n\n1. **Add Arm Support** – Place a firm pillow or folded blanket under your elbows so your arms rest naturally without pulling your shoulders upward.\n2. **Adjust Laptop Height** – Use a laptop tray or wedge-shaped cushion to tilt the screen toward your eye line and reduce the need to hunch forward.\n3. **Change Leg and Hip Position Every 20 Minutes** – Shifting slightly can improve circulation and vary which muscles are active.\n4. **Neck and Shoulder Breaks** – Every 25–30 minutes, roll your shoulders, stretch your neck, and gently retract the shoulder blades to counteract the forward hunch.\n5. **Alternate Positions** – Even if you love this setup, rotating between it and a more upright seated posture will reduce repetitive strain.\n\nBy adding these small adjustments, you can keep the cozy couch-laptop vibe without letting tension build up in your shoulders—especially important if you spend extended time there."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_couch/COCO_train2014_000000494341.jpg",
-          "user_query": "What are some cozy setups or accessories you’d recommend for working comfortably at home for long periods?",
-          "topic_query": "Workspaces",
-          "correct_answer": "Since you like relaxing on the couch with your laptop, you might enjoy a cushioned lap desk with built-in ventilation to keep things cool during long study or activism planning sessions. Add a soft throw blanket and a couple of supportive pillows so you can shift positions comfortably. A small side table for tea or notes could make it even cozier and keep your workflow smooth.",
-          "incorrect_answers": [
-            "Since you like working at a high kitchen counter, you might enjoy a comfy bar stool with a supportive backrest and adjustable height. Add a footrest and some under-counter lighting to make your space both inviting and practical. Keeping a plant nearby could also energize the space and make brainstorming sessions more enjoyable.",
-            "Since you probably spend a lot of time studying at a desk with environmental science books, you might enjoy an ergonomic chair with lumbar support and a desk lamp made from sustainable materials. Add a corkboard for project ideas and a few potted plants to keep the atmosphere fresh. A reusable water bottle within reach will help you stay hydrated while working on your initiatives.",
-            "If you’ll be working from home for long hours, consider a comfortable chair with proper back support and good lighting to reduce strain. Keep essentials like water, snacks, and notepads within easy reach to minimize distractions. A few personal touches, like plants or photos, can help keep your space pleasant and motivating."
-          ]
-        }
-      ],
       "personal_email": [
         {
           "preference": "Has more interest in global issues than local political debates",
@@ -2148,6 +2019,135 @@
           ],
           "updated": true,
           "prev_pref": "Requires prescription glasses for mild myopia"
+        }
+      ],
+      "multimodal": [
+        {
+          "preference": "The user prefers using both an iPhone and a Windows laptop for their devices.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took of my desk, why is it sometimes tricky to move text or files directly between my phone and laptop without using email or cloud storage?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "What you’re running into has to do with the way different operating systems are designed and how they handle interoperability. Your phone in the photo is running Apple's iOS, while your laptop runs Microsoft Windows. Both operate within their own distinct ecosystems, with different file management structures, communication protocols, and preferred transfer methods.\n\nWhen you try to move files directly — for example via a USB cable — iOS devices don’t behave like generic storage drives (unlike many Android devices). Instead, iOS uses a controlled access model where data is sandboxed within apps, and external connections generally require Apple's specific communication protocols, like the Apple File Conduit (AFC) or the newer Finder/iTunes sync model. For Windows, native integration with iOS is limited compared to macOS, which has built-in functions like AirDrop for seamless transfer.\n\nThis means that, without a direct bridge service, Windows will often rely on either:\n- **iTunes/Finder equivalents for Windows** to sync specific media or documents.\n- **3rd-party software** (such as iMazing, AnyTrans) that can communicate over the correct iOS protocols.\n- **Cloud-based solutions** (iCloud Drive, Google Drive, Dropbox) or email for universal transfers.\n- **Network-based services** (shared Wi-Fi apps like Send Anywhere or Snapdrop) that bypass ecosystem restrictions.\n\nThe trickiness you’re experiencing is essentially due to the lack of a native, cross-platform peer-to-peer transfer protocol optimized for iOS and Windows. Apple optimized iOS to pair most seamlessly with macOS, while Microsoft has optimized for Windows-to-Windows or Windows-to-Android workflows. For your setup, the smoothest direct transfers usually occur when using apps that exist on both iOS and Windows specifically crafted for file sync, or by pairing a Wi-Fi based local transfer app.\n\nIf you want something lightweight for quick text or clipboard sharing without cloud dependency, you can also look into tools like Pasteasy or Pushbullet, which create a bridge between your devices over the same network — giving you something close to AirDrop-like convenience between iOS and Windows."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Could you explain a bit more about why AirDrop works so easily between iOS and macOS, but there's nothing similar for Windows by default?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "AirDrop feels effortless between iOS and macOS because it was designed by Apple as a proprietary, tightly integrated protocol for their own ecosystem. It combines **Bluetooth Low Energy (BLE)** for device discovery and **Wi‑Fi Direct** for fast data transfer, with Apple's own encryption and authentication layers to maintain privacy and security. Since both iOS and macOS support these protocols exactly as Apple implements them, devices can instantly recognize each other and negotiate transfers without extra configuration.\n\nFor Windows, there's no AirDrop support because:\n- Apple has not released the AirDrop protocol or made it open for third-party OS developers to integrate.\n- The way AirDrop ties into native system frameworks (Contacts, Finder, Photos, Share Sheets) is deeply embedded in Apple's proprietary APIs.\n- Microsoft uses its own peer-to-peer sharing feature, **Nearby Sharing**, which is optimized for Windows PCs and some Android devices — but it doesn't natively interface with iOS.\n\nIn other words, AirDrop is not just a file transfer tool; it's an Apple-only feature that relies on infrastructure and agreements inside their walled garden. That’s why with Windows, you need third-party or cross-platform apps to mimic these capabilities, often using similar underlying tech (Bluetooth + Wi‑Fi Direct), but with their own discovery and transfer logic."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg",
+          "user_query": "What’s the best way to keep all my files, photos, and notes seamlessly synced across my phone and laptop, without having to constantly transfer things manually?",
+          "topic_query": "Technology",
+          "correct_answer": "Since you’re using both an iPhone and a Windows laptop, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, these services let you organize files into folders for your recycling program plans and other activism work.",
+          "incorrect_answers": [
+            "Since you’re using an Android phone and a Chromebook, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, these services let you organize files into folders for your recycling program plans and other activism work.",
+            "Since you’re using an iPhone and a MacBook, the smoothest setup would be to use iCloud along with the native Notes and Photos apps. That way, you can snap photos on your phone, save notes from environmental project ideas, and instantly have them updated on your laptop without thinking about cables or manual transfers. Plus, iCloud automatically organizes everything so your recycling program resources stay neat and accessible.",
+            "To keep everything in sync between your phone and laptop, the smoothest setup would be to use a cross-platform cloud service like OneDrive, Google Drive, or Dropbox. That way, you can store your photos, files, and notes and have them automatically updated across devices without worrying about manual transfers. Plus, you can organize everything into folders to keep your projects or personal work tidy."
+          ]
+        },
+        {
+          "preference": "The user enjoys relaxing with and caring for small dogs.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this picture I snapped of my dog napping belly-up in my arms, why does she seem so comfortable in that stretched-out position, and is there something about it that tells me she feels especially safe with me?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_dog/COCO_train2014_000000194698.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "What you’re seeing in your photo is a combination of canine body language and deep trust. When a dog sleeps belly-up, it’s exposing one of the most vulnerable parts of its body—the stomach, chest, and vital organs. In the wild or in situations where a dog feels uncertain, this is a position they would avoid, since it limits their ability to protect themselves quickly.\n\nFor your dog to choose this position while napping in your arms, a few things are happening:\n\n1. **A Strong Bond of Trust** – Dogs only expose their belly when they are completely relaxed and confident that the person or environment poses no threat. This isn’t just tolerance—it’s active comfort. It signals your pup feels emotionally secure with you.\n\n2. **Physical Comfort & Warmth** – Being cradled in your arms means your body heat and heartbeat are acting like a soothing, rhythmic comfort source, which mimics what they felt as newborn pups alongside their mother or littermates.\n\n3. **Temperature Regulation** – The belly has less fur than other body parts, allowing heat to escape when they’re warm. A stretched-out, belly-up position can help dissipate extra body heat while still enjoying your close contact.\n\n4. **Muscle Relaxation** – When dogs sleep deeply, their muscles loosen. The extended limbs you captured in the photo suggest she’s in what’s called REM sleep for dogs, where they feel secure enough to let gravity take over without tension.\n\n5. **Social Bond Reinforcement** – This act reinforces your relationship too. By holding your dog in this safe, relaxed state, you’re deepening your connection because she learns repeatedly that your touch and presence equal security and comfort.\n\nIn short, your dog’s body language in that photo is a high compliment—she trusts you completely, feels serene in her environment, and is physically comfortable. For small breeds, this kind of full-body sprawl in a human’s arms is a classic sign of a strong emotional attachment and an unspoken signal of affection."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_dog/COCO_train2014_000000194698.jpg",
+          "user_query": "What are some peaceful hobbies I could try at home that might help me unwind after a long day?",
+          "topic_query": "Hobbies",
+          "correct_answer": "You could try spending some quiet time grooming or playing with your small dog, maybe even teaching them a few gentle tricks while listening to calming music. It’s a soothing way to destress and bond after a busy day. You might also enjoy reading in a cozy spot while your dog curls up beside you.",
+          "incorrect_answers": [
+            "You could try spending some quiet time sketching or painting, maybe even experimenting with watercolors while listening to calming music. It’s a soothing way to express creativity and relax after a busy day. You might also enjoy reading in a cozy spot after your art session.",
+            "You could try spending some quiet time brewing a cup of chai and reading about India’s environmental movements, maybe even jotting down ideas for future projects while listening to calming music. It’s a soothing way to wind down and feel inspired after a busy day. You might also enjoy sitting on the balcony surrounded by some potted plants.",
+            "You could try spending some quiet time reading a good book, maybe even pairing it with a warm drink while listening to calming music. It’s a soothing way to unwind and recharge after a busy day. You might also enjoy sitting in a cozy spot with a soft blanket."
+          ]
+        },
+        {
+          "preference": "The user enjoys relaxing on a couch while using a laptop.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this picture I snapped while lounging with my laptop on the couch, why does my posture like this sometimes make my shoulders ache after a while, and what can I do to stay comfortable without giving up this position entirely?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_couch/COCO_train2014_000000494341.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "The ache you’re feeling in your shoulders while using your laptop in that position is likely due to a mix of sustained muscle tension, joint compression, and awkward spinal alignment. When you recline sideways or slouch into the couch while working on a laptop perched on your lap, your arms and shoulders often extend forward or upward at less-than-ideal angles—this forces the upper trapezius, neck extensors, and rotator cuff muscles to maintain subtle but constant engagement. Over time (even within 20–30 minutes), this low-level tension fatigues the muscles, creating stiffness and soreness.\n\nAdditionally, a reclined position can cause your head to tilt forward or to the side, placing strain on your cervical spine and increasing pressure on the upper back and shoulder girdle. Your elbows may also lack stable support, making your shoulder joints work harder to position your hands on the keyboard.\n\nYou don’t necessarily have to give up the comfort of working from that position—you can tweak it so it’s friendlier to your body:\n\n1. **Add Arm Support** – Place a firm pillow or folded blanket under your elbows so your arms rest naturally without pulling your shoulders upward.\n2. **Adjust Laptop Height** – Use a laptop tray or wedge-shaped cushion to tilt the screen toward your eye line and reduce the need to hunch forward.\n3. **Change Leg and Hip Position Every 20 Minutes** – Shifting slightly can improve circulation and vary which muscles are active.\n4. **Neck and Shoulder Breaks** – Every 25–30 minutes, roll your shoulders, stretch your neck, and gently retract the shoulder blades to counteract the forward hunch.\n5. **Alternate Positions** – Even if you love this setup, rotating between it and a more upright seated posture will reduce repetitive strain.\n\nBy adding these small adjustments, you can keep the cozy couch-laptop vibe without letting tension build up in your shoulders—especially important if you spend extended time there."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_couch/COCO_train2014_000000494341.jpg",
+          "user_query": "What are some cozy setups or accessories you’d recommend for working comfortably at home for long periods?",
+          "topic_query": "Workspaces",
+          "correct_answer": "Since you like relaxing on the couch with your laptop, you might enjoy a cushioned lap desk with built-in ventilation to keep things cool during long study or activism planning sessions. Add a soft throw blanket and a couple of supportive pillows so you can shift positions comfortably. A small side table for tea or notes could make it even cozier and keep your workflow smooth.",
+          "incorrect_answers": [
+            "Since you like working at a high kitchen counter, you might enjoy a comfy bar stool with a supportive backrest and adjustable height. Add a footrest and some under-counter lighting to make your space both inviting and practical. Keeping a plant nearby could also energize the space and make brainstorming sessions more enjoyable.",
+            "Since you probably spend a lot of time studying at a desk with environmental science books, you might enjoy an ergonomic chair with lumbar support and a desk lamp made from sustainable materials. Add a corkboard for project ideas and a few potted plants to keep the atmosphere fresh. A reusable water bottle within reach will help you stay hydrated while working on your initiatives.",
+            "If you’ll be working from home for long hours, consider a comfortable chair with proper back support and good lighting to reduce strain. Keep essentials like water, snacks, and notepads within easy reach to minimize distractions. A few personal touches, like plants or photos, can help keep your space pleasant and motivating."
+          ]
         }
       ]
     }

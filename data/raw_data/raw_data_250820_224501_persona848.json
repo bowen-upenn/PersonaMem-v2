@@ -220,63 +220,6 @@
       "Currently takes low-dose antihistamines during allergy season": "Currently does not take antihistamines during allergy season"
     },
     "conversations": {
-      "multimodal": [
-        {
-          "preference": "The user prefers using both Apple and Windows devices for their technology needs.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I took of my phone next to my Windows laptop, how do professionals usually keep workflows smooth when juggling app development or testing across both platforms?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "When working across both Apple and Windows environments, especially in app development or testing scenarios, professionals often aim to minimize friction between the platforms by establishing a few key practices:\n\n1. **Using Cross-Platform Tools Where Possible**: For source control, GitHub or GitLab are platform-agnostic. Cloud-based IDEs like GitHub Codespaces or JetBrains Fleet help keep development environments consistent regardless of the OS.\n\n2. **File and Asset Synchronization**: Services like Dropbox, Google Drive, or iCloud for Windows allow you to keep assets (mockups, code snippets, notes) updated across devices. This reduces the hassle of manual transfers.\n\n3. **Remote Access & Virtualization**: If you're primarily on a Mac for development but need Windows (or vice versa), remote desktop setups like Microsoft Remote Desktop or Parallels Desktop (on Mac) help you work on either system without physically switching.\n\n4. **Task Segmentation**: Many developers assign different roles to each device—e.g., using macOS for compiling and running iOS builds in Xcode, while using Windows for tasks like documentation, testing app APIs in Postman, or managing databases.\n\n5. **Shared Development Repositories**: Hosting all codebases on Git ensures you can pull, push, and merge updates from either machine without losing sync. Combined with Continuous Integration (CI) pipelines, this can automatically run tests on different OS targets.\n\n6. **Cross-Platform Frameworks**: While you may still do most native iOS work on macOS, frameworks like Flutter, React Native, and Xamarin allow some development and emulation capabilities directly on Windows, with final builds handled on a Mac.\n\n7. **Keyboard Shortcut Mapping and Peripheral Consistency**: Using similar keyboards/mice between devices or remapping frequent shortcuts reduces the cognitive load when switching OS environments.\n\nIn your image, the iPhone and Windows laptop side-by-side highlight a situation many developers find themselves in—leveraging the strengths of both systems without letting OS boundaries slow them down. The key is creating a deliberate workflow where each platform complements the other rather than duplicates tasks."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "That makes sense. Could you elaborate a bit more on how CI pipelines help streamline testing across macOS and Windows in such a workflow?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Certainly. **Continuous Integration (CI) pipelines** are particularly valuable when dealing with both macOS and Windows workflows, as they automate much of the manual work involved in building and testing on multiple platforms.\n\nHere’s how they help:\n\n1. **Automated Cross-Platform Builds**: With services like GitHub Actions, Bitrise, CircleCI, or Azure DevOps, you can configure separate job runners for macOS and Windows. This way, every change you commit is built and tested in both environments without you having to manually switch machines.\n\n2. **Platform-Specific Tests**: You can run platform-tailored test suites—macOS builds might include Xcode unit/UI tests for iOS, while Windows builds could run .NET or cross-platform framework tests. This ensures that platform-specific bugs are caught early.\n\n3. **Artifact Management**: CI servers can compile binaries for both OSes and store them as downloadable artifacts, meaning testers or clients can get the latest builds instantly without you manually compiling on each machine.\n\n4. **Consistent Environments**: Pipelines use predefined environments or containers, which guarantee that your code is tested under consistent conditions each time, reducing the “works on my machine” problem.\n\n5. **Parallel Execution**: By running macOS and Windows jobs in parallel, you save time compared to sequential builds.\n\n6. **Integration with Issue Tracking**: CI can automatically report build or test failures to your task management tools (like Jira or Trello), closing the feedback loop faster.\n\nIn essence, CI pipelines act like a bridge between your Windows and macOS setups, ensuring that code changes are validated on both without the context switching and manual effort that can slow development cycles."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg",
-          "user_query": "What are some good ways to keep my files and apps in sync across different devices so I can work seamlessly no matter which one I’m using?",
-          "topic_query": "Technology",
-          "correct_answer": "Since you’re switching between your MacBook, iPhone, and a Windows machine, you could set up iCloud Drive for your Apple devices while also using a cross-platform service like OneDrive or Dropbox to bridge the gap with Windows. Tools like VS Code Remote or Git repositories can keep your codebases synced, and for apps, focus on cloud-friendly ones that offer seamless sign-in across platforms.",
-          "incorrect_answers": [
-            "Since you’re balancing a desktop PC and a Chromebook, you could set up Google Drive for your ChromeOS environment while also using a cross-platform service like Dropbox to store project files. Tools like VS Code Online or GitHub can keep your codebases in sync, and for apps, pick web-based ones that work smoothly in the browser.",
-            "Since you’re often on your MacBook Pro and an Android phone, you could set up Google Drive or Dropbox for cross-platform storage, with GitHub or GitLab to keep your code projects synced. For apps, stick with services that have robust Android and macOS clients so you can move seamlessly between mobile work and your dev setup.",
-            "If you work across multiple devices, set up a cloud storage service like Dropbox, OneDrive, or Google Drive so your files stay in sync everywhere. Version control with Git can keep your code changes consistent, and using apps with strong cross-platform support makes switching devices painless."
-          ]
-        }
-      ],
       "personal_email": [
         {
           "preference": "Likes cooler climates when traveling abroad",
@@ -2133,6 +2076,63 @@
           ],
           "updated": true,
           "prev_pref": "Currently takes low-dose antihistamines during allergy season"
+        }
+      ],
+      "multimodal": [
+        {
+          "preference": "The user prefers using both Apple and Windows devices for their technology needs.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took of my phone next to my Windows laptop, how do professionals usually keep workflows smooth when juggling app development or testing across both platforms?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "When working across both Apple and Windows environments, especially in app development or testing scenarios, professionals often aim to minimize friction between the platforms by establishing a few key practices:\n\n1. **Using Cross-Platform Tools Where Possible**: For source control, GitHub or GitLab are platform-agnostic. Cloud-based IDEs like GitHub Codespaces or JetBrains Fleet help keep development environments consistent regardless of the OS.\n\n2. **File and Asset Synchronization**: Services like Dropbox, Google Drive, or iCloud for Windows allow you to keep assets (mockups, code snippets, notes) updated across devices. This reduces the hassle of manual transfers.\n\n3. **Remote Access & Virtualization**: If you're primarily on a Mac for development but need Windows (or vice versa), remote desktop setups like Microsoft Remote Desktop or Parallels Desktop (on Mac) help you work on either system without physically switching.\n\n4. **Task Segmentation**: Many developers assign different roles to each device—e.g., using macOS for compiling and running iOS builds in Xcode, while using Windows for tasks like documentation, testing app APIs in Postman, or managing databases.\n\n5. **Shared Development Repositories**: Hosting all codebases on Git ensures you can pull, push, and merge updates from either machine without losing sync. Combined with Continuous Integration (CI) pipelines, this can automatically run tests on different OS targets.\n\n6. **Cross-Platform Frameworks**: While you may still do most native iOS work on macOS, frameworks like Flutter, React Native, and Xamarin allow some development and emulation capabilities directly on Windows, with final builds handled on a Mac.\n\n7. **Keyboard Shortcut Mapping and Peripheral Consistency**: Using similar keyboards/mice between devices or remapping frequent shortcuts reduces the cognitive load when switching OS environments.\n\nIn your image, the iPhone and Windows laptop side-by-side highlight a situation many developers find themselves in—leveraging the strengths of both systems without letting OS boundaries slow them down. The key is creating a deliberate workflow where each platform complements the other rather than duplicates tasks."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "That makes sense. Could you elaborate a bit more on how CI pipelines help streamline testing across macOS and Windows in such a workflow?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Certainly. **Continuous Integration (CI) pipelines** are particularly valuable when dealing with both macOS and Windows workflows, as they automate much of the manual work involved in building and testing on multiple platforms.\n\nHere’s how they help:\n\n1. **Automated Cross-Platform Builds**: With services like GitHub Actions, Bitrise, CircleCI, or Azure DevOps, you can configure separate job runners for macOS and Windows. This way, every change you commit is built and tested in both environments without you having to manually switch machines.\n\n2. **Platform-Specific Tests**: You can run platform-tailored test suites—macOS builds might include Xcode unit/UI tests for iOS, while Windows builds could run .NET or cross-platform framework tests. This ensures that platform-specific bugs are caught early.\n\n3. **Artifact Management**: CI servers can compile binaries for both OSes and store them as downloadable artifacts, meaning testers or clients can get the latest builds instantly without you manually compiling on each machine.\n\n4. **Consistent Environments**: Pipelines use predefined environments or containers, which guarantee that your code is tested under consistent conditions each time, reducing the “works on my machine” problem.\n\n5. **Parallel Execution**: By running macOS and Windows jobs in parallel, you save time compared to sequential builds.\n\n6. **Integration with Issue Tracking**: CI can automatically report build or test failures to your task management tools (like Jira or Trello), closing the feedback loop faster.\n\nIn essence, CI pipelines act like a bridge between your Windows and macOS setups, ensuring that code changes are validated on both without the context switching and manual effort that can slow development cycles."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/dining_table_laptop/COCO_train2014_000000524866.jpg",
+          "user_query": "What are some good ways to keep my files and apps in sync across different devices so I can work seamlessly no matter which one I’m using?",
+          "topic_query": "Technology",
+          "correct_answer": "Since you’re switching between your MacBook, iPhone, and a Windows machine, you could set up iCloud Drive for your Apple devices while also using a cross-platform service like OneDrive or Dropbox to bridge the gap with Windows. Tools like VS Code Remote or Git repositories can keep your codebases synced, and for apps, focus on cloud-friendly ones that offer seamless sign-in across platforms.",
+          "incorrect_answers": [
+            "Since you’re balancing a desktop PC and a Chromebook, you could set up Google Drive for your ChromeOS environment while also using a cross-platform service like Dropbox to store project files. Tools like VS Code Online or GitHub can keep your codebases in sync, and for apps, pick web-based ones that work smoothly in the browser.",
+            "Since you’re often on your MacBook Pro and an Android phone, you could set up Google Drive or Dropbox for cross-platform storage, with GitHub or GitLab to keep your code projects synced. For apps, stick with services that have robust Android and macOS clients so you can move seamlessly between mobile work and your dev setup.",
+            "If you work across multiple devices, set up a cloud storage service like Dropbox, OneDrive, or Google Drive so your files stay in sync everywhere. Version control with Git can keep your code changes consistent, and using apps with strong cross-platform support makes switching devices painless."
+          ]
         }
       ]
     }

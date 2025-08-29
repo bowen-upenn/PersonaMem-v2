@@ -1,24 +1,5 @@
 {
   "579": {
-    "psychological_profile": {
-      "cognitive_style": "Highly analytical and systems-oriented; tends to break problems into components and consider multiple scenarios using both qualitative and quantitative reasoning.",
-      "openness_to_new_ideas": "Very open to innovation and interdisciplinary approaches, especially if backed by credible data or persuasive case studies.",
-      "emotional_triggers": {
-        "positive": [
-          "Well-reasoned policy proposals",
-          "Creative data visualization",
-          "Community-driven initiatives with visible impact"
-        ],
-        "negative": [
-          "Misinformation presented as fact",
-          "Overly bureaucratic roadblocks",
-          "Disregard for historical preservation"
-        ]
-      },
-      "problem_solving_method": "Uses data-driven modeling alongside stakeholder engagement to find mutually beneficial solutions; emphasizes sustainable, long-term outcomes.",
-      "interpersonal_approach": "Collaborative and empathetic, attentive to diverse perspectives but aims to guide discussions toward pragmatic consensus.",
-      "adaptability": "Comfortable adjusting to changing socioeconomic trends and policy environments; sees change as an opportunity for improvement."
-    },
     "short_persona": "A city planner seeking visual representations of urban growth patterns",
     "name": "Jonathan 'Jon' Marks",
     "age": 42,
@@ -134,6 +115,25 @@
       "vocabulary": "Rich and precise with frequent use of technical terms related to urban planning, geography, and sustainability, balanced with layman-friendly explanations when necessary",
       "sentence_structure": "Prefers well-structured, complete sentences with logical flow; uses qualifiers and clarifications when discussing data or complex topics",
       "engagement_style": "Asks targeted, context-driven questions; responds thoughtfully with references to examples, case studies, or comparable real-world situations"
+    },
+    "psychological_profile": {
+      "cognitive_style": "Highly analytical and systems-oriented; tends to break problems into components and consider multiple scenarios using both qualitative and quantitative reasoning.",
+      "openness_to_new_ideas": "Very open to innovation and interdisciplinary approaches, especially if backed by credible data or persuasive case studies.",
+      "emotional_triggers": {
+        "positive": [
+          "Well-reasoned policy proposals",
+          "Creative data visualization",
+          "Community-driven initiatives with visible impact"
+        ],
+        "negative": [
+          "Misinformation presented as fact",
+          "Overly bureaucratic roadblocks",
+          "Disregard for historical preservation"
+        ]
+      },
+      "problem_solving_method": "Uses data-driven modeling alongside stakeholder engagement to find mutually beneficial solutions; emphasizes sustainable, long-term outcomes.",
+      "interpersonal_approach": "Collaborative and empathetic, attentive to diverse perspectives but aims to guide discussions toward pragmatic consensus.",
+      "adaptability": "Comfortable adjusting to changing socioeconomic trends and policy environments; sees change as an opportunity for improvement."
     },
     "stereotypical_preferences": [
       "Enjoys craft beer from local microbreweries",
@@ -307,118 +307,6 @@
       "LASIK eye surgery in early 30s": "LASIK eye surgery after early 30s"
     },
     "conversations": {
-      "multimodal": [
-        {
-          "preference": "The user is interested in skateboarding technology or electric skateboards.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I took, you can see the skateboard mounted onto some kind of wired base—can you explain exactly what the components underneath might be doing, and how they would translate my weight shifts into movement?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "What you’ve photographed appears to be a prototype or demonstration rig for an electric or sensor-driven skateboard, possibly used for testing control systems before the design is applied to a mobile deck. The frame and exposed wiring are likely intentional, to allow engineers to monitor and swap out parts during development.\n\nThe base seems to be a sturdy aluminum extrusion frame housing multiple subsystems:\n\n1. **Drive Motors or Actuators:** You may see round, metallic housings or belts within the structure. These could be hub motors or belt-driven motors that provide propulsion on a mobile skateboard. In a test rig, they could also simulate variable resistance or deliver movement on a lab surface.\n\n2. **Sensor Array:** If this is designed to interpret your foot placement and shifts in weight, it might employ load cells or pressure sensors under the trucks, possibly paired with an inertial measurement unit (IMU) consisting of accelerometers and gyroscopes. This combination would read your balance changes in real time.\n\n3. **Control Electronics:** The central wiring cluster most likely links to a microcontroller or a more advanced processor (like an Arduino, STM32 board, or custom PCB) that processes sensor feedback and sends precise commands to the motors.\n\n4. **Power System:** The lower area may house a battery pack or could be wired to an external power supply during testing. For safety and testing consistency, prototypes are often run from a tethered supply.\n\n5. **Kill Switch / Manual Override:** The red switch in the center is probably an emergency stop—common in prototype machinery—allowing immediate power cutoff if the system behaves unexpectedly.\n\nThe way it would work in a functional electric skateboard is that as you lean forward, the sensors detect a shift in your center of gravity and send that data to the control board, which then adjusts motor torque accordingly. Leaning back reverses or brakes, and subtle lateral shifts could help control steering in a more advanced system.\n\nGiven the exposed configuration in your image, this was likely staged for diagnostic purposes at an expo, workshop, or lab environment—enabling the team to tweak firmware, measure performance, and validate the responsiveness of the ride control system before enclosing it in a travel-ready, weather-protected deck."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "That makes sense—could you explain a bit more about how the load cells and IMU work together to get a precise read of my balance?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Sure. **Load cells** are sensors that measure force or weight. Placing them under each truck means they can detect how much pressure each foot is applying to different points. When you lean forward, the load distribution shifts toward the front cells; leaning back does the opposite.\n\nAn **IMU** (Inertial Measurement Unit) uses accelerometers to detect linear motion, gyroscopes to detect rotation, and sometimes magnetometers for orientation relative to Earth's magnetic field. On a skateboard, it senses how the board itself is tilting, rotating, or accelerating.\n\nBy combining both inputs, the control system can distinguish between different types of movement: for example, whether a forward load change is due to you leaning or simply the board going uphill. This \"sensor fusion\" allows for more accurate and responsive control, reducing false triggers and helping the motors respond smoothly to your intent."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg",
-          "user_query": "I’m looking for some innovative personal transportation gadgets to make my daily commute more fun and efficient—what would you recommend?",
-          "topic_query": "Transportation",
-          "correct_answer": "Given your interest in skateboarding tech, you might enjoy a high-quality electric skateboard with regenerative braking and swappable battery packs—perfect for making your urban commute both efficient and more dynamic. Pair it with a compact helmet and GPS-enabled riding app to track routes and optimize travel times. The portability means it integrates well with Seattle’s transit network.",
-          "incorrect_answers": [
-            "Given your interest in aerial photography, you might enjoy a foldable drone with automated flight paths and obstacle avoidance—ideal for capturing unique perspectives during your urban explorations. Pair it with a photography backpack and editing app to streamline your workflow. Its portability means it won’t interfere with your daily transit routine.",
-            "Given that you’re an urban planner in Seattle, you might enjoy a high-end folding bicycle with integrated lights and an internal gear hub—perfect for navigating the city’s bike lanes and hilly terrain. Pair it with a weatherproof pannier and route-mapping app to make your commute smooth and data-informed. Its compact design fits neatly into office spaces.",
-            "If you’re looking to make your commute more fun and efficient, you might enjoy a compact electric scooter with good range and quick charging—ideal for weaving through city streets. Pair it with a sturdy helmet and a navigation app to plan faster routes. The lightweight frame makes it easy to carry onto public transit."
-          ]
-        },
-        {
-          "preference": "The user has an interest in police motorcycles or law enforcement vehicles.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I took downtown, the police officer is on what looks like a specially equipped motorcycle—can you explain what modifications these bikes usually have compared to standard civilian models and why they’re chosen?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Certainly! Police motorcycles like the one you captured in your photo are typically purpose-built or heavily modified from a civilian base model to meet the demands of law enforcement work. The bike in your image appears to be a Harley-Davidson Electra Glide or a similar touring model, which is a popular choice for police departments due to its balance of maneuverability, comfort, and carrying capacity.\n\nHere are some of the primary modifications and the reasoning behind them:\n\n**1. Emergency lighting and sirens:**\nPolice motorcycles are equipped with high-intensity LED lights (often in red, blue, and white combinations, depending on jurisdiction) mounted on the front forks, fairing, and rear of the bike. They also have integrated siren systems. These are essential for signaling other drivers during emergency responses and in traffic control situations.\n\n**2. Communication equipment:**\nYou'll often find a dedicated police radio system that allows the officer to communicate directly with dispatch and other officers, sometimes with a handlebar-mounted push-to-talk button so they don't have to take their hands off the controls.\n\n**3. Storage compartments:**\nThe large saddlebags or panniers — like the ones visible here — are used to carry enforcement gear such as radar or lidar speed detection units, first-aid kits, traffic cones, report forms, and sometimes less-lethal weapons or protective gear.\n\n**4. Performance tuning:**\nPolice versions of these motorcycles may have upgraded suspension to handle heavy loads from gear, reinforced frames for durability, and sometimes re-geared transmissions for smoother acceleration rather than sheer top speed. These adjustments make the bike more capable of sustained, low-speed control during escorts or urban patrolling.\n\n**5. Comfort and ergonomics:**\nBecause officers can spend many hours in the saddle, police bikes often have specialized seats, higher handlebars for a more upright riding posture, and windshields to reduce fatigue during long shifts.\n\n**6. Markings and visibility:**\nDistinctive POLICE decals, as in your photo, are part of their visual deterrence role. High-contrast paint or reflective striping ensures the bike is visible in both day and night conditions.\n\n**7. Additional instrumentation:**\nSome have handlebar or dash-mounted computers for quick license-plate checks, GPS navigation, and even ticket printing, making the motorcycle a mobile enforcement platform.\n\nOverall, these modifications turn what may start as a luxury touring motorcycle into a highly specialized enforcement tool. Departments choose motorcycles like this because they can navigate congested traffic more easily than patrol cars, are less expensive to operate, and have a strong public outreach image, especially in community policing roles."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "You mentioned upgraded suspension as one of the modifications—can you go into more detail about what kind of suspension changes are made and how they help officers during different types of operations?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Absolutely. On police motorcycles, the suspension is often reinforced and tuned to handle the increased weight from onboard equipment and to improve ride stability under varying conditions. Here’s what this typically involves:\n\n**1. Heavy-duty springs and shocks:** The stock springs may be replaced with higher-rate versions to better manage added weight without excessive sag. Heavy-duty shock absorbers can provide more controlled rebound and compression, giving the officer better control during sudden maneuvers.\n\n**2. Adjustable preload and damping:** Many police bikes are equipped with adjustable preload settings, allowing suspension stiffness to be altered depending on load—useful when carrying extra gear or a passenger (like in escort duties). Adjustable damping lets the bike be fine-tuned for smoother city ride comfort or firmer, more responsive handling at speed.\n\n**3. Improved stability under braking:** With upgraded forks or cartridge systems in the front suspension, the bike can remain more stable during hard braking—important for emergency stops or when weaving through traffic.\n\n**4. Increased durability:** Suspension components in police models are built to withstand more abuse, whether from constant stop-and-go traffic riding, mounting curbs, or operating in poor road conditions.\n\nIn practice, these improvements mean the motorcycle maintains good handling characteristics and officer comfort even under heavy load, and can safely execute rapid direction changes during pursuits or crowd-control operations."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg",
-          "user_query": "What are some unique types of vehicles I could photograph at public parades or community events that would really stand out in a photo collection?",
-          "topic_query": "Transportation",
-          "correct_answer": "You might look for specialized law enforcement vehicles like vintage police motorcycles, community-policing electric bikes, or mounted-unit transport vans. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
-          "incorrect_answers": [
-            "You might look for eye-catching hot air balloons, art cars covered in mosaic tiles, or mobile science exhibits. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
-            "You might look for historic streetcars, restored mid-century buses, or innovative electric trams. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
-            "You might look for brightly decorated parade floats, antique cars, or oversized novelty vehicles. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity."
-          ]
-        }
-      ],
       "personal_email": [
         {
           "preference": "Keeps a reusable water bottle and tote bags",
@@ -2493,6 +2381,118 @@
           ],
           "updated": true,
           "prev_pref": "LASIK eye surgery in early 30s"
+        }
+      ],
+      "multimodal": [
+        {
+          "preference": "The user is interested in skateboarding technology or electric skateboards.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took, you can see the skateboard mounted onto some kind of wired base—can you explain exactly what the components underneath might be doing, and how they would translate my weight shifts into movement?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "What you’ve photographed appears to be a prototype or demonstration rig for an electric or sensor-driven skateboard, possibly used for testing control systems before the design is applied to a mobile deck. The frame and exposed wiring are likely intentional, to allow engineers to monitor and swap out parts during development.\n\nThe base seems to be a sturdy aluminum extrusion frame housing multiple subsystems:\n\n1. **Drive Motors or Actuators:** You may see round, metallic housings or belts within the structure. These could be hub motors or belt-driven motors that provide propulsion on a mobile skateboard. In a test rig, they could also simulate variable resistance or deliver movement on a lab surface.\n\n2. **Sensor Array:** If this is designed to interpret your foot placement and shifts in weight, it might employ load cells or pressure sensors under the trucks, possibly paired with an inertial measurement unit (IMU) consisting of accelerometers and gyroscopes. This combination would read your balance changes in real time.\n\n3. **Control Electronics:** The central wiring cluster most likely links to a microcontroller or a more advanced processor (like an Arduino, STM32 board, or custom PCB) that processes sensor feedback and sends precise commands to the motors.\n\n4. **Power System:** The lower area may house a battery pack or could be wired to an external power supply during testing. For safety and testing consistency, prototypes are often run from a tethered supply.\n\n5. **Kill Switch / Manual Override:** The red switch in the center is probably an emergency stop—common in prototype machinery—allowing immediate power cutoff if the system behaves unexpectedly.\n\nThe way it would work in a functional electric skateboard is that as you lean forward, the sensors detect a shift in your center of gravity and send that data to the control board, which then adjusts motor torque accordingly. Leaning back reverses or brakes, and subtle lateral shifts could help control steering in a more advanced system.\n\nGiven the exposed configuration in your image, this was likely staged for diagnostic purposes at an expo, workshop, or lab environment—enabling the team to tweak firmware, measure performance, and validate the responsiveness of the ride control system before enclosing it in a travel-ready, weather-protected deck."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "That makes sense—could you explain a bit more about how the load cells and IMU work together to get a precise read of my balance?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Sure. **Load cells** are sensors that measure force or weight. Placing them under each truck means they can detect how much pressure each foot is applying to different points. When you lean forward, the load distribution shifts toward the front cells; leaning back does the opposite.\n\nAn **IMU** (Inertial Measurement Unit) uses accelerometers to detect linear motion, gyroscopes to detect rotation, and sometimes magnetometers for orientation relative to Earth's magnetic field. On a skateboard, it senses how the board itself is tilting, rotating, or accelerating.\n\nBy combining both inputs, the control system can distinguish between different types of movement: for example, whether a forward load change is due to you leaning or simply the board going uphill. This \"sensor fusion\" allows for more accurate and responsive control, reducing false triggers and helping the motors respond smoothly to your intent."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_suitcase/COCO_train2014_000000538682.jpg",
+          "user_query": "I’m looking for some innovative personal transportation gadgets to make my daily commute more fun and efficient—what would you recommend?",
+          "topic_query": "Transportation",
+          "correct_answer": "Given your interest in skateboarding tech, you might enjoy a high-quality electric skateboard with regenerative braking and swappable battery packs—perfect for making your urban commute both efficient and more dynamic. Pair it with a compact helmet and GPS-enabled riding app to track routes and optimize travel times. The portability means it integrates well with Seattle’s transit network.",
+          "incorrect_answers": [
+            "Given your interest in aerial photography, you might enjoy a foldable drone with automated flight paths and obstacle avoidance—ideal for capturing unique perspectives during your urban explorations. Pair it with a photography backpack and editing app to streamline your workflow. Its portability means it won’t interfere with your daily transit routine.",
+            "Given that you’re an urban planner in Seattle, you might enjoy a high-end folding bicycle with integrated lights and an internal gear hub—perfect for navigating the city’s bike lanes and hilly terrain. Pair it with a weatherproof pannier and route-mapping app to make your commute smooth and data-informed. Its compact design fits neatly into office spaces.",
+            "If you’re looking to make your commute more fun and efficient, you might enjoy a compact electric scooter with good range and quick charging—ideal for weaving through city streets. Pair it with a sturdy helmet and a navigation app to plan faster routes. The lightweight frame makes it easy to carry onto public transit."
+          ]
+        },
+        {
+          "preference": "The user has an interest in police motorcycles or law enforcement vehicles.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this shot I took downtown, the police officer is on what looks like a specially equipped motorcycle—can you explain what modifications these bikes usually have compared to standard civilian models and why they’re chosen?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Certainly! Police motorcycles like the one you captured in your photo are typically purpose-built or heavily modified from a civilian base model to meet the demands of law enforcement work. The bike in your image appears to be a Harley-Davidson Electra Glide or a similar touring model, which is a popular choice for police departments due to its balance of maneuverability, comfort, and carrying capacity.\n\nHere are some of the primary modifications and the reasoning behind them:\n\n**1. Emergency lighting and sirens:**\nPolice motorcycles are equipped with high-intensity LED lights (often in red, blue, and white combinations, depending on jurisdiction) mounted on the front forks, fairing, and rear of the bike. They also have integrated siren systems. These are essential for signaling other drivers during emergency responses and in traffic control situations.\n\n**2. Communication equipment:**\nYou'll often find a dedicated police radio system that allows the officer to communicate directly with dispatch and other officers, sometimes with a handlebar-mounted push-to-talk button so they don't have to take their hands off the controls.\n\n**3. Storage compartments:**\nThe large saddlebags or panniers — like the ones visible here — are used to carry enforcement gear such as radar or lidar speed detection units, first-aid kits, traffic cones, report forms, and sometimes less-lethal weapons or protective gear.\n\n**4. Performance tuning:**\nPolice versions of these motorcycles may have upgraded suspension to handle heavy loads from gear, reinforced frames for durability, and sometimes re-geared transmissions for smoother acceleration rather than sheer top speed. These adjustments make the bike more capable of sustained, low-speed control during escorts or urban patrolling.\n\n**5. Comfort and ergonomics:**\nBecause officers can spend many hours in the saddle, police bikes often have specialized seats, higher handlebars for a more upright riding posture, and windshields to reduce fatigue during long shifts.\n\n**6. Markings and visibility:**\nDistinctive POLICE decals, as in your photo, are part of their visual deterrence role. High-contrast paint or reflective striping ensures the bike is visible in both day and night conditions.\n\n**7. Additional instrumentation:**\nSome have handlebar or dash-mounted computers for quick license-plate checks, GPS navigation, and even ticket printing, making the motorcycle a mobile enforcement platform.\n\nOverall, these modifications turn what may start as a luxury touring motorcycle into a highly specialized enforcement tool. Departments choose motorcycles like this because they can navigate congested traffic more easily than patrol cars, are less expensive to operate, and have a strong public outreach image, especially in community policing roles."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "You mentioned upgraded suspension as one of the modifications—can you go into more detail about what kind of suspension changes are made and how they help officers during different types of operations?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Absolutely. On police motorcycles, the suspension is often reinforced and tuned to handle the increased weight from onboard equipment and to improve ride stability under varying conditions. Here’s what this typically involves:\n\n**1. Heavy-duty springs and shocks:** The stock springs may be replaced with higher-rate versions to better manage added weight without excessive sag. Heavy-duty shock absorbers can provide more controlled rebound and compression, giving the officer better control during sudden maneuvers.\n\n**2. Adjustable preload and damping:** Many police bikes are equipped with adjustable preload settings, allowing suspension stiffness to be altered depending on load—useful when carrying extra gear or a passenger (like in escort duties). Adjustable damping lets the bike be fine-tuned for smoother city ride comfort or firmer, more responsive handling at speed.\n\n**3. Improved stability under braking:** With upgraded forks or cartridge systems in the front suspension, the bike can remain more stable during hard braking—important for emergency stops or when weaving through traffic.\n\n**4. Increased durability:** Suspension components in police models are built to withstand more abuse, whether from constant stop-and-go traffic riding, mounting curbs, or operating in poor road conditions.\n\nIn practice, these improvements mean the motorcycle maintains good handling characteristics and officer comfort even under heavy load, and can safely execute rapid direction changes during pursuits or crowd-control operations."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg",
+          "user_query": "What are some unique types of vehicles I could photograph at public parades or community events that would really stand out in a photo collection?",
+          "topic_query": "Transportation",
+          "correct_answer": "You might look for specialized law enforcement vehicles like vintage police motorcycles, community-policing electric bikes, or mounted-unit transport vans. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
+          "incorrect_answers": [
+            "You might look for eye-catching hot air balloons, art cars covered in mosaic tiles, or mobile science exhibits. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
+            "You might look for historic streetcars, restored mid-century buses, or innovative electric trams. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
+            "You might look for brightly decorated parade floats, antique cars, or oversized novelty vehicles. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity."
+          ]
         }
       ]
     }

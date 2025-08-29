@@ -11,11 +11,39 @@ from pathlib import Path
 from collections import OrderedDict
 
 
+def move_multimodal_to_bottom(conversations_dict):
+    """
+    Move the "multimodal" key and its values to the bottom of the conversations dictionary.
+    
+    Args:
+        conversations_dict (dict): The conversations dictionary
+        
+    Returns:
+        dict: The reorganized conversations dictionary with multimodal at the bottom
+    """
+    if not isinstance(conversations_dict, dict) or "multimodal" not in conversations_dict:
+        return conversations_dict
+    
+    # Create a new ordered dictionary
+    reorganized_conversations = OrderedDict()
+    
+    # Add all keys except "multimodal" first
+    for key, value in conversations_dict.items():
+        if key != "multimodal":
+            reorganized_conversations[key] = value
+    
+    # Add "multimodal" at the end
+    reorganized_conversations["multimodal"] = conversations_dict["multimodal"]
+    
+    return reorganized_conversations
+
+
 def reorganize_persona_keys(data):
     """
     Reorganize the keys in a persona dictionary by moving keys that appear 
     before "short_persona" to positions right before "stereotypical_preferences".
     Also removes any "alternate_personas" or "alternate_persona" keys.
+    Additionally, moves the "multimodal" key to the bottom of the "conversations" dictionary.
     
     Args:
         data (dict): The persona data dictionary
@@ -53,14 +81,18 @@ def reorganize_persona_keys(data):
         try:
             short_persona_idx = keys_list.index("short_persona")
         except ValueError:
-            # If "short_persona" doesn't exist, keep the original order
+            # If "short_persona" doesn't exist, keep the original order but still reorganize conversations
+            if "conversations" in persona_info_copy:
+                persona_info_copy["conversations"] = move_multimodal_to_bottom(persona_info_copy["conversations"])
             reorganized_data[persona_id] = persona_info_copy
             continue
             
         try:
             stereotypical_prefs_idx = keys_list.index("stereotypical_preferences")
         except ValueError:
-            # If "stereotypical_preferences" doesn't exist, keep the original order
+            # If "stereotypical_preferences" doesn't exist, keep the original order but still reorganize conversations
+            if "conversations" in persona_info_copy:
+                persona_info_copy["conversations"] = move_multimodal_to_bottom(persona_info_copy["conversations"])
             reorganized_data[persona_id] = persona_info_copy
             continue
         
@@ -83,6 +115,10 @@ def reorganize_persona_keys(data):
         for i in range(stereotypical_prefs_idx, len(keys_list)):
             key = keys_list[i]
             new_ordered_dict[key] = persona_info_copy[key]
+        
+        # After reorganizing the main keys, check if there's a "conversations" key and reorganize it
+        if "conversations" in new_ordered_dict:
+            new_ordered_dict["conversations"] = move_multimodal_to_bottom(new_ordered_dict["conversations"])
             
         reorganized_data[persona_id] = new_ordered_dict
     
@@ -92,6 +128,7 @@ def reorganize_persona_keys(data):
 def process_json_files(raw_data_dir):
     """
     Process all JSON files in the raw_data directory and reorganize their keys.
+    Also moves the "multimodal" key to the bottom of the "conversations" dictionary.
     
     Args:
         raw_data_dir (str): Path to the directory containing JSON files
@@ -139,6 +176,9 @@ def main():
     raw_data_dir = script_dir / "data" / "raw_data"
     
     print("Starting JSON key reorganization process...")
+    print("- Moving keys before 'short_persona' to before 'stereotypical_preferences'")
+    print("- Removing alternate persona keys")
+    print("- Moving 'multimodal' key to bottom of 'conversations' dictionary")
     print(f"Processing files in: {raw_data_dir}")
     
     process_json_files(raw_data_dir)

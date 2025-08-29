@@ -259,63 +259,6 @@
       "Allergic sensitivity to certain chemical cleaning agents": "No allergic sensitivity to common chemical cleaning agents"
     },
     "conversations": {
-      "multimodal": [
-        {
-          "preference": "The user prefers communicating via a mobile phone while outdoors.",
-          "pref_type": "multimodal",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this snapshot I took, the person is on a call outside — can you explain why background activity and street conditions might subtly influence the clarity and quality of a phone conversation like this?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_car/COCO_train2014_000000425647.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Certainly. In outdoor phone calls, several environmental and contextual elements in the background can influence conversation clarity and call quality, both for the speaker and the listener on the other end.\n\n**1. Ambient Noise Levels:**\nStreet activity — such as passing cars, honking, engines idling, conversations from pedestrians, or the hum of nearby shops — produces a broad range of background noise frequencies. Mobile devices often use noise-cancellation algorithms and directional microphones, but constant or sudden loud noises can still disrupt the signal clarity, especially on standard voice calls. This is because the algorithms work best with consistent noise patterns, not unpredictable bursts.\n\n**2. Signal Interference Sources:**\nUrban and semi-urban streets may have signal interference from nearby buildings' reflective surfaces, dense infrastructure, and overlapping cell tower signals. Metallic car bodies, glass building facades, and certain urban layouts can cause multipath propagation (signal bouncing), potentially affecting call stability.\n\n**3. Weather and Air Movement:**\nIf it’s breezy, wind noise may be picked up by the phone microphone even with windshields or cover designs — especially if the microphone port is exposed. Small bursts of air pressure can overpower human speech frequencies.\n\n**4. Proximity to Roads and Traffic Density:**\nCalls made close to the curb or moving vehicles can be more affected by fluctuating decibel levels. For example, a truck passing at 50 mph several feet away can temporarily mask conversation frequencies, requiring the caller to repeat themselves.\n\n**5. Psychological Factors and Distraction:**\nIn public spaces with lots of movement, the caller may unconsciously alter vocal pacing or volume to be heard over the noise, which can lead to either muffling (if speaking softly) or distortion (if over-amplifying the voice).\n\n**6. Device and Network Optimization:**\nModern smartphones often switch codecs (compression methods for voice) depending on the network load and signal strength. Outdoor environments with fluctuating reception can cause the call codec to step down, leading to reduced clarity.\n\n**Practical Tips:**\n- Stand with your back to a solid structure to block some noise and wind.\n- Keep a slight angle from ongoing traffic rather than facing it directly.\n- Use a headset or earphones with a built-in noise-cancelling microphone.\n- If signal drops are common, move toward open spaces with line-of-sight to cellular antennas.\n\nAll in all, the interplay of background conditions, sound interference, and network behavior makes outdoor calls inherently more variable, but being mindful of the environment can markedly improve the experience."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "You mentioned noise-cancellation algorithms — could you elaborate on how they distinguish between background noise and the speaker's voice, and why sudden noises are harder to filter out?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/person_car/COCO_train2014_000000425647.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Sure. Noise-cancellation algorithms in smartphones generally work by identifying consistent, predictable sound patterns and filtering them out, while preserving the more dynamic characteristics of human speech.\n\n**How They Distinguish Sounds:**\n- **Frequency Analysis:** Human speech typically falls within the range of about 85 to 255 Hz for the fundamental tone, and up to several kHz for overtones. Algorithms analyze audio inputs and try to retain sounds that match the speech frequency profile, while attenuating those that are outside or have different patterns.\n- **Directional Input:** Many devices use multiple microphones — one near the mouth and one or more placed away from it. By comparing the audio from these different positions, the device can determine which sounds are coming from the user (closer mic) and which are ambient (farther mic), then suppress the latter.\n- **Pattern Recognition:** Background noises such as engine hum, fan noise, or traffic rumble tend to produce constant or repeating waveforms. Speech is more complex, with varied pitch, volume, and cadence, which the algorithm tries to protect.\n\n**Why Sudden Noises Are Harder to Filter:**\n- **Unpredictability:** Noise suppression works best when it has a few moments to \"learn\" or model the background sound. A loud, sudden honk or shout presents no prior pattern for the system to recognize, so the algorithm can't attenuate it before it reaches the listener.\n- **Overlap with Speech Frequencies:** If the sudden sound shares frequency ranges with speech (which many do), the suppression may also accidentally diminish parts of the spoken voice, making it sound clipped.\n- **Processing Delay:** Even advanced algorithms require a short processing window. Abrupt noises often occur and fade within that time, bypassing effective filtering.\n\nIn short, noise-cancellation is great for continuous, predictable sounds but less effective against sharp, transient noises — that’s why sudden street sounds can still break through on a call."
-            }
-          ],
-          "updated": false,
-          "image_path": "data/photobook_images/person_car/COCO_train2014_000000425647.jpg",
-          "user_query": "What are some good messaging apps that work really well when I’m on the go and might not always have the best internet connection?",
-          "topic_query": "Technology",
-          "correct_answer": "Since you’re often outdoors and may not always have a strong connection, you might find Signal, Telegram, or WhatsApp particularly reliable — they handle spotty service fairly well and allow for offline message queuing. Signal, especially, is great for privacy, and Telegram’s lightweight design helps even on weaker networks. These options will keep you connected with patients, colleagues, and family without worrying about constant high-speed coverage.",
-          "incorrect_answers": [
-            "Since you prefer communicating on a large desktop screen with multiple windows open, apps like Slack, Microsoft Teams, or Discord can work well — they integrate neatly with other tools and handle constant connectivity. Slack is great for organized group discussions, while Teams makes exchanging files with colleagues simple. These will help you keep communication flowing during intensive online work sessions.",
-            "Since you sometimes make long train commutes between conferences or hospitals, you might find WhatsApp, Signal, or Telegram useful — they all handle patchy service well and store messages for when you reconnect. WhatsApp’s video calling is solid even on trains, and Signal is excellent for privacy on public Wi-Fi. These will keep you in touch with peers, patients, and your family while you’re traveling for work.",
-            "If you’re looking for messaging apps that work well with inconsistent connections, Signal, Telegram, and WhatsApp are all good choices — they can send messages once you’re back online and stay responsive over weaker networks. Signal prioritizes privacy, and Telegram runs smoothly even with limited bandwidth. These apps will help you stay connected no matter where you are."
-          ]
-        }
-      ],
       "personal_email": [
         {
           "preference": "Likes exploring new walking trails",
@@ -2501,6 +2444,63 @@
           ],
           "updated": true,
           "prev_pref": "Allergic sensitivity to certain chemical cleaning agents"
+        }
+      ],
+      "multimodal": [
+        {
+          "preference": "The user prefers communicating via a mobile phone while outdoors.",
+          "pref_type": "multimodal",
+          "who": "self",
+          "conversations": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "In this snapshot I took, the person is on a call outside — can you explain why background activity and street conditions might subtly influence the clarity and quality of a phone conversation like this?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_car/COCO_train2014_000000425647.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Certainly. In outdoor phone calls, several environmental and contextual elements in the background can influence conversation clarity and call quality, both for the speaker and the listener on the other end.\n\n**1. Ambient Noise Levels:**\nStreet activity — such as passing cars, honking, engines idling, conversations from pedestrians, or the hum of nearby shops — produces a broad range of background noise frequencies. Mobile devices often use noise-cancellation algorithms and directional microphones, but constant or sudden loud noises can still disrupt the signal clarity, especially on standard voice calls. This is because the algorithms work best with consistent noise patterns, not unpredictable bursts.\n\n**2. Signal Interference Sources:**\nUrban and semi-urban streets may have signal interference from nearby buildings' reflective surfaces, dense infrastructure, and overlapping cell tower signals. Metallic car bodies, glass building facades, and certain urban layouts can cause multipath propagation (signal bouncing), potentially affecting call stability.\n\n**3. Weather and Air Movement:**\nIf it’s breezy, wind noise may be picked up by the phone microphone even with windshields or cover designs — especially if the microphone port is exposed. Small bursts of air pressure can overpower human speech frequencies.\n\n**4. Proximity to Roads and Traffic Density:**\nCalls made close to the curb or moving vehicles can be more affected by fluctuating decibel levels. For example, a truck passing at 50 mph several feet away can temporarily mask conversation frequencies, requiring the caller to repeat themselves.\n\n**5. Psychological Factors and Distraction:**\nIn public spaces with lots of movement, the caller may unconsciously alter vocal pacing or volume to be heard over the noise, which can lead to either muffling (if speaking softly) or distortion (if over-amplifying the voice).\n\n**6. Device and Network Optimization:**\nModern smartphones often switch codecs (compression methods for voice) depending on the network load and signal strength. Outdoor environments with fluctuating reception can cause the call codec to step down, leading to reduced clarity.\n\n**Practical Tips:**\n- Stand with your back to a solid structure to block some noise and wind.\n- Keep a slight angle from ongoing traffic rather than facing it directly.\n- Use a headset or earphones with a built-in noise-cancelling microphone.\n- If signal drops are common, move toward open spaces with line-of-sight to cellular antennas.\n\nAll in all, the interplay of background conditions, sound interference, and network behavior makes outdoor calls inherently more variable, but being mindful of the environment can markedly improve the experience."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "You mentioned noise-cancellation algorithms — could you elaborate on how they distinguish between background noise and the speaker's voice, and why sudden noises are harder to filter out?"
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": "data:image/jpeg;base64,data/photobook_images/person_car/COCO_train2014_000000425647.jpg"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "assistant",
+              "content": "Sure. Noise-cancellation algorithms in smartphones generally work by identifying consistent, predictable sound patterns and filtering them out, while preserving the more dynamic characteristics of human speech.\n\n**How They Distinguish Sounds:**\n- **Frequency Analysis:** Human speech typically falls within the range of about 85 to 255 Hz for the fundamental tone, and up to several kHz for overtones. Algorithms analyze audio inputs and try to retain sounds that match the speech frequency profile, while attenuating those that are outside or have different patterns.\n- **Directional Input:** Many devices use multiple microphones — one near the mouth and one or more placed away from it. By comparing the audio from these different positions, the device can determine which sounds are coming from the user (closer mic) and which are ambient (farther mic), then suppress the latter.\n- **Pattern Recognition:** Background noises such as engine hum, fan noise, or traffic rumble tend to produce constant or repeating waveforms. Speech is more complex, with varied pitch, volume, and cadence, which the algorithm tries to protect.\n\n**Why Sudden Noises Are Harder to Filter:**\n- **Unpredictability:** Noise suppression works best when it has a few moments to \"learn\" or model the background sound. A loud, sudden honk or shout presents no prior pattern for the system to recognize, so the algorithm can't attenuate it before it reaches the listener.\n- **Overlap with Speech Frequencies:** If the sudden sound shares frequency ranges with speech (which many do), the suppression may also accidentally diminish parts of the spoken voice, making it sound clipped.\n- **Processing Delay:** Even advanced algorithms require a short processing window. Abrupt noises often occur and fade within that time, bypassing effective filtering.\n\nIn short, noise-cancellation is great for continuous, predictable sounds but less effective against sharp, transient noises — that’s why sudden street sounds can still break through on a call."
+            }
+          ],
+          "updated": false,
+          "image_path": "data/photobook_images/person_car/COCO_train2014_000000425647.jpg",
+          "user_query": "What are some good messaging apps that work really well when I’m on the go and might not always have the best internet connection?",
+          "topic_query": "Technology",
+          "correct_answer": "Since you’re often outdoors and may not always have a strong connection, you might find Signal, Telegram, or WhatsApp particularly reliable — they handle spotty service fairly well and allow for offline message queuing. Signal, especially, is great for privacy, and Telegram’s lightweight design helps even on weaker networks. These options will keep you connected with patients, colleagues, and family without worrying about constant high-speed coverage.",
+          "incorrect_answers": [
+            "Since you prefer communicating on a large desktop screen with multiple windows open, apps like Slack, Microsoft Teams, or Discord can work well — they integrate neatly with other tools and handle constant connectivity. Slack is great for organized group discussions, while Teams makes exchanging files with colleagues simple. These will help you keep communication flowing during intensive online work sessions.",
+            "Since you sometimes make long train commutes between conferences or hospitals, you might find WhatsApp, Signal, or Telegram useful — they all handle patchy service well and store messages for when you reconnect. WhatsApp’s video calling is solid even on trains, and Signal is excellent for privacy on public Wi-Fi. These will keep you in touch with peers, patients, and your family while you’re traveling for work.",
+            "If you’re looking for messaging apps that work well with inconsistent connections, Signal, Telegram, and WhatsApp are all good choices — they can send messages once you’re back online and stay responsive over weaker networks. Signal prioritizes privacy, and Telegram runs smoothly even with limited bandwidth. These apps will help you stay connected no matter where you are."
+          ]
         }
       ]
     }
