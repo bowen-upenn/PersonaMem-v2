@@ -33,7 +33,7 @@ def process_conversation_section(section_name: str, section_data: List[Dict],
         pref_type = item.get("pref_type", "")
         who = item.get("who", "")
         updated = item.get("updated", "")
-        prev_pref = item.get("prev_pref", "") if not updated else ""
+        prev_pref = item.get("prev_pref", "") if updated else ""
         topic_preference = item.get("topic_preference", "")
         topic_query = item.get("topic_query", "")
         user_query = item.get("user_query", "")
@@ -47,14 +47,14 @@ def process_conversation_section(section_name: str, section_data: List[Dict],
         row = {
             "short_persona": short_persona,
             "preference": preference,
-            "conversations": conversations_json,
-            "user_query": user_query,
-            "correct_answer": correct_answer,
-            "incorrect_answers": incorrect_answers,
             "conversation_scenario": section_name,
             "pref_type": pref_type,
             "topic_preference": topic_preference,
+            "conversations": conversations_json,
             "topic_query": topic_query,
+            "user_query": user_query,
+            "correct_answer": correct_answer,
+            "incorrect_answers": incorrect_answers,
             "who": who,
             "updated": str(updated),
             "prev_pref": prev_pref,
@@ -93,9 +93,9 @@ def json_to_csv(json_file_path: str, output_csv_path: str) -> None:
     # Write to CSV
     if csv_rows:
         fieldnames = [
-            "short_persona", "preference", "conversations", "user_query", "correct_answer", 
-            "incorrect_answers", "conversation_scenario", "pref_type", "topic_preference", 
-            "topic_query", "who", "updated", "prev_pref", "expanded_persona"
+            "short_persona", "preference", "conversation_scenario", "pref_type", 
+            "topic_preference", "conversations", "topic_query", "user_query", "correct_answer", 
+            "incorrect_answers", "who", "updated", "prev_pref", "expanded_persona"
         ]
         
         with open(output_csv_path, 'w', newline='', encoding='utf-8') as csvfile:
