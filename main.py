@@ -144,41 +144,14 @@ def main():
                    verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
 
     # Build long context
-    elif args['inference']['step'] == 'build_context':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'raw_data',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
+    elif args['inference']['step'] == 'build_chat_history':
+        build_context(
+            conv_output_dir=args['data']['conv_output_dir'],
+            context_len=args['data']['context_length'],
+            persona_start_idx=args['data']['persona_start_idx'], 
+            persona_end_idx=args['data']['persona_end_idx'],
+            verbose=args['inference']['verbose']
         )
-        
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
-        
-        print(f"Found {len(persona_files)} persona files to build context from")
-        
-        # Process each persona file individually to preserve filename information
-        for file_path in persona_files:
-            print(f"\nProcessing {file_path}")
-            try:
-                with open(file_path, 'r') as file:
-                    file_data = json.load(file)
-                
-                # Build context for this individual persona file
-                build_context(file_data, args['data']['context_length'], input_filename=file_path)
-                
-            except json.JSONDecodeError as e:
-                print(f"ERROR: Failed to parse JSON in {file_path}")
-                print(f"JSON Error: {e}")
-                print(f"Skipping this file and continuing with next...")
-                continue
-            except Exception as e:
-                print(f"ERROR: Failed to process {file_path}")
-                print(f"Error: {e}")
-                print(f"Skipping this file and continuing with next...")
-                continue
 
     elif args['inference']['step'] == 'run_eval':
         pass

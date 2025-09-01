@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Script to reorganize JSON persona files by moving all keys that appear before 
-"short_persona" to positions right before "stereotypical_preferences".
+Script to reorganize JSON persona files with proper key ordering:
+1. "short_persona" comes first
+2. All other unfixed persona attributes come next  
+3. Fixed final keys in specific order: stereotypical_preferences, anti_stereotypical_preferences,
+   neutral_preferences, therapy_background, health_and_medical_conditions, sensitive_information,
+   matched_images, preference_updates, conversations
 Also removes any "alternate_personas" or "alternate_persona" keys from the files.
 """
 
@@ -40,8 +44,13 @@ def move_multimodal_to_bottom(conversations_dict):
 
 def reorganize_persona_keys(data):
     """
-    Reorganize the keys in a persona dictionary by moving keys that appear 
-    before "short_persona" to positions right before "stereotypical_preferences".
+    Reorganize the keys in a persona dictionary to ensure proper ordering:
+    1. "short_persona" comes first
+    2. All other unfixed persona attributes come next
+    3. Fixed final keys come in this order: stereotypical_preferences, 
+       anti_stereotypical_preferences, neutral_preferences, therapy_background, 
+       health_and_medical_conditions, sensitive_information, matched_images, 
+       preference_updates, conversations
     Also removes any "alternate_personas" or "alternate_persona" keys.
     Additionally, moves the "multimodal" key to the bottom of the "conversations" dictionary.
     
@@ -53,6 +62,19 @@ def reorganize_persona_keys(data):
     """
     if not isinstance(data, dict):
         return data
+    
+    # Define the fixed order of final keys
+    final_keys_order = [
+        "stereotypical_preferences",
+        "anti_stereotypical_preferences", 
+        "neutral_preferences",
+        "therapy_background",
+        "health_and_medical_conditions",
+        "sensitive_information",
+        "matched_images",
+        "preference_updates",
+        "conversations"
+    ]
     
     # Process each persona in the data
     reorganized_data = {}
@@ -75,50 +97,35 @@ def reorganize_persona_keys(data):
         if removed_keys:
             print(f"  Removed keys {removed_keys} from persona {persona_id}")
             
-        # Find the position of "short_persona" and "stereotypical_preferences"
         keys_list = list(persona_info_copy.keys())
         
-        try:
-            short_persona_idx = keys_list.index("short_persona")
-        except ValueError:
+        # Check if "short_persona" exists
+        if "short_persona" not in keys_list:
             # If "short_persona" doesn't exist, keep the original order but still reorganize conversations
             if "conversations" in persona_info_copy:
                 persona_info_copy["conversations"] = move_multimodal_to_bottom(persona_info_copy["conversations"])
             reorganized_data[persona_id] = persona_info_copy
             continue
-            
-        try:
-            stereotypical_prefs_idx = keys_list.index("stereotypical_preferences")
-        except ValueError:
-            # If "stereotypical_preferences" doesn't exist, keep the original order but still reorganize conversations
-            if "conversations" in persona_info_copy:
-                persona_info_copy["conversations"] = move_multimodal_to_bottom(persona_info_copy["conversations"])
-            reorganized_data[persona_id] = persona_info_copy
-            continue
-        
-        # Identify keys that come before "short_persona"
-        keys_before_short_persona = keys_list[:short_persona_idx]
         
         # Build the new order
         new_ordered_dict = OrderedDict()
         
-        # First, add "short_persona" and all keys after it until "stereotypical_preferences"
-        for i in range(short_persona_idx, stereotypical_prefs_idx):
-            key = keys_list[i]
-            new_ordered_dict[key] = persona_info_copy[key]
-            
-        # Then, add the keys that were originally before "short_persona"
-        for key in keys_before_short_persona:
-            new_ordered_dict[key] = persona_info_copy[key]
-            
-        # Finally, add "stereotypical_preferences" and all remaining keys
-        for i in range(stereotypical_prefs_idx, len(keys_list)):
-            key = keys_list[i]
-            new_ordered_dict[key] = persona_info_copy[key]
+        # 1. First, add "short_persona"
+        new_ordered_dict["short_persona"] = persona_info_copy["short_persona"]
         
-        # After reorganizing the main keys, check if there's a "conversations" key and reorganize it
-        if "conversations" in new_ordered_dict:
-            new_ordered_dict["conversations"] = move_multimodal_to_bottom(new_ordered_dict["conversations"])
+        # 2. Then, add all other keys that are NOT in the final_keys_order and NOT "short_persona"
+        for key in keys_list:
+            if key != "short_persona" and key not in final_keys_order:
+                new_ordered_dict[key] = persona_info_copy[key]
+        
+        # 3. Finally, add the final keys in their specified order (only if they exist)
+        for final_key in final_keys_order:
+            if final_key in persona_info_copy:
+                if final_key == "conversations":
+                    # Reorganize conversations to move multimodal to bottom
+                    new_ordered_dict[final_key] = move_multimodal_to_bottom(persona_info_copy[final_key])
+                else:
+                    new_ordered_dict[final_key] = persona_info_copy[final_key]
             
         reorganized_data[persona_id] = new_ordered_dict
     
@@ -176,7 +183,9 @@ def main():
     raw_data_dir = script_dir / "data" / "raw_data"
     
     print("Starting JSON key reorganization process...")
-    print("- Moving keys before 'short_persona' to before 'stereotypical_preferences'")
+    print("- Ensuring 'short_persona' is the first key")
+    print("- Moving unfixed persona attributes after 'short_persona'")
+    print("- Organizing final keys in fixed order: stereotypical_preferences, anti_stereotypical_preferences, neutral_preferences, therapy_background, health_and_medical_conditions, sensitive_information, matched_images, preference_updates, conversations")
     print("- Removing alternate persona keys")
     print("- Moving 'multimodal' key to bottom of 'conversations' dictionary")
     print(f"Processing files in: {raw_data_dir}")

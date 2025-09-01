@@ -18,6 +18,7 @@ docker build -t implicit_persona .
 # Run the container with volume mount for file synchronization
 # Option 1: Use all available GPUs
 docker run -it --gpus all -v /path/to/your/local/project:/workspace implicit_persona /bin/bash
+# docker run -it --gpus all -v /pool/bwjiang/ImplicitPersona:/workspace implicit_persona /bin/bash
 
 # Option 2: Use specific number of GPUs
 docker run -it --gpus 4 -v /path/to/your/local/project:/workspace implicit_persona /bin/bash

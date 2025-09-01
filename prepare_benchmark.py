@@ -151,40 +151,6 @@ def find_conversation_turns_and_tokens_to_end(target_conversation: List[Dict], a
     
     return turns_to_end, tokens_to_end
 
-def categorize_topic(preference: str, conversation_scenario: str) -> str:
-    """Categorize the topic based on preference content and scenario."""
-    preference_lower = preference.lower()
-    
-    # Define topic keywords
-    topic_keywords = {
-        'finance': ['financial', 'money', 'investment', 'stock', 'market', 'savings', 'retirement', 'pension'],
-        'food': ['food', 'meal', 'cooking', 'restaurant', 'dining', 'cuisine', 'recipe'],
-        'travel': ['travel', 'vacation', 'trip', 'destination', 'flight', 'hotel'],
-        'entertainment': ['movie', 'music', 'book', 'game', 'show', 'entertainment'],
-        'technology': ['tech', 'digital', 'computer', 'software', 'app', 'internet'],
-        'health': ['health', 'medical', 'fitness', 'exercise', 'wellness', 'therapy'],
-        'fashion': ['fashion', 'clothing', 'style', 'dress', 'outfit'],
-        'sports': ['sport', 'football', 'baseball', 'golf', 'game', 'team'],
-        'work': ['work', 'job', 'career', 'professional', 'business', 'office'],
-        'social': ['social', 'friend', 'family', 'relationship', 'gathering'],
-        'pets': ['pet', 'dog', 'cat', 'animal', 'puppy'],
-        'home': ['home', 'house', 'garden', 'diy', 'improvement']
-    }
-    
-    # Check for topic keywords in preference
-    for topic, keywords in topic_keywords.items():
-        if any(keyword in preference_lower for keyword in keywords):
-            return topic
-    
-    # Fallback based on conversation scenario
-    scenario_topics = {
-        'multimodal': 'visual',
-        'personal_email': 'communication',
-        'professional_email': 'work',
-        'social_media_post': 'social'
-    }
-    
-    return scenario_topics.get(conversation_scenario, 'general')
 
 def extract_qa_pairs(persona_data: Dict[str, Any], context_data: Dict[str, Any], token_limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Extract QA pairs from persona and context data."""
@@ -233,6 +199,8 @@ def extract_qa_pairs(persona_data: Dict[str, Any], context_data: Dict[str, Any],
                 updated = conv_elem.get('updated', False)
                 prev_pref = conv_elem.get('prev_pref', '')
                 sensitive_info = conv_elem.get('sensitive_info', '')
+                preference_topic = conv_elem.get('topic_preference', '')
+                query_topic = conv_elem.get('topic_query', '')
                 
                 # Handle sensitive info case
                 if sensitive_info:
@@ -245,10 +213,6 @@ def extract_qa_pairs(persona_data: Dict[str, Any], context_data: Dict[str, Any],
                 # Calculate distance to target conversation
                 target_conversation = conv_elem.get('conversations', [])
                 turns_to_end, tokens_to_end = find_conversation_turns_and_tokens_to_end(target_conversation, context_messages)
-                
-                # Categorize topics
-                preference_topic = categorize_topic(groundtruth_preference, conv_type)
-                query_topic = categorize_topic(user_query, conv_type)
                 
                 # Count tokens in query
                 query_tokens = count_tokens(user_query)

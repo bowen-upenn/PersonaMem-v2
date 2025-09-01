@@ -184,7 +184,7 @@ def process_all_json_files(input_dir: str, output_dir: str) -> None:
 def main():
     """Main function to process all JSON files."""
     input_directory = "data/raw_data"
-    output_directory = "data/raw_data_csv"
+    output_directory = "data/"
     
     print("Starting JSON to CSV conversion...")
     process_all_json_files(input_directory, output_directory)
