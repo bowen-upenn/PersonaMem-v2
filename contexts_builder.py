@@ -4,6 +4,8 @@ import json
 from uuid import uuid4
 import re
 from tqdm import tqdm
+import base64
+import os
 
 import utils
 
@@ -11,7 +13,129 @@ import utils
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
 
 
-def count_tokens(text) -> int:
+def load_image_as_base64(image_path):
+    """Load an image file and convert it to base64 encoding."""
+    try:
+        with open(image_path, 'rb') as image_file:
+            image_data = image_file.read()
+            base64_encoded = base64.b64encode(image_data).decode('utf-8')
+            return base64_encoded
+    except Exception as e:
+        print(f"Warning: Could not load image {image_path}: {e}")
+        return None
+
+
+def process_multimodal_content(content, base_dir="data"):
+    """Process content that may contain image URLs and replace them with base64 encoded images."""
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        processed_content = []
+        for item in content:
+            if isinstance(item, dict) and item.get('type') == 'image_url':
+                image_url = item.get('image_url', {}).get('url', '')
+                if image_url.startswith('data:image/jpeg;base64,'):
+                    # Extract the path after the base64 prefix
+                    path_part = image_url.replace('data:image/jpeg;base64,', '')
+                    if not path_part.startswith('data:') and not path_part.startswith('/'):
+                        # Load and encode the image
+                        base64_image = load_image_as_base64(path_part)
+                        if base64_image:
+                            # Create new item with actual base64 data
+                            processed_item = item.copy()
+                            processed_item['image_url']['url'] = f'data:image/jpeg;base64,{base64_image}'
+                            processed_content.append(processed_item)
+                        else:
+                            # Keep original if loading fails
+                            processed_content.append(item)
+                    else:
+                        # Already has actual base64 data or absolute path
+                        processed_content.append(item)
+                else:
+                    # Not our expected format
+                    processed_content.append(item)
+            else:
+                processed_content.append(item)
+        return processed_content
+    else:
+        return content
+
+
+def create_text_only_content(content):
+    """Extract only text content from multimodal content."""
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get('type') == 'text':
+                text_parts.append(item.get('text', ''))
+            elif isinstance(item, str):
+                text_parts.append(item)
+        return ' '.join(text_parts) if text_parts else ''
+    else:
+        return str(content)
+
+
+def save_chat_history_versions(output_data, filename, persona_number, shared_timestamp):
+    """Save both text-only and multimodal versions of chat history."""
+    
+    # Create text-only version
+    text_only_data = output_data.copy()
+    text_only_messages = []
+    
+    for message in output_data['chat_history']:
+        text_only_message = message.copy()
+        if 'content' in text_only_message:
+            text_only_message['content'] = create_text_only_content(message['content'])
+        text_only_messages.append(text_only_message)
+    
+    text_only_data['chat_history'] = text_only_messages
+    
+    # Update token count for text-only version
+    text_only_token_count = count_tokens(text_only_messages, include_images=False)
+    text_only_data['metadata']['final_token_count'] = text_only_token_count
+    
+    # Save text-only version (original location)
+    utils.save_json(text_only_data, filename, clean=True)
+    
+    # Create multimodal version with base64 encoded images
+    multimodal_data = output_data.copy()
+    multimodal_messages = []
+    
+    for message in output_data['chat_history']:
+        multimodal_message = message.copy()
+        if 'content' in multimodal_message:
+            multimodal_message['content'] = process_multimodal_content(message['content'])
+        multimodal_messages.append(multimodal_message)
+    
+    multimodal_data['chat_history'] = multimodal_messages
+    
+    # Update token count for multimodal version (including image tokens)
+    multimodal_token_count = count_tokens(multimodal_messages, include_images=True)
+    multimodal_data['metadata']['final_token_count'] = multimodal_token_count
+    
+    # Save multimodal version
+    if persona_number is not None and shared_timestamp:
+        multimodal_filename = f"data/chat_history_multimodal/chat_history_{shared_timestamp}_persona{persona_number}.json"
+    else:
+        # Fallback naming
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        multimodal_filename = f"data/chat_history_multimodal/{base_name}.json"
+    
+    # Ensure the multimodal directory exists
+    os.makedirs("data/chat_history_multimodal", exist_ok=True)
+    
+    utils.save_json(multimodal_data, multimodal_filename, clean=True)
+
+
+def count_tokens(text, include_images=False) -> int:
+    """Count tokens in text, optionally including image tokens.
+    
+    Args:
+        text: The text content to count tokens for
+        include_images: If True, includes estimated tokens for images (85 tokens per image for gpt-4o)
+    """
     if isinstance(text, str):
         return len(ENCODER.encode(text))
     elif isinstance(text, list):
@@ -26,6 +150,9 @@ def count_tokens(text) -> int:
                     for item in content:
                         if isinstance(item, dict) and 'text' in item:
                             total_tokens += len(ENCODER.encode(item['text']))
+                        elif isinstance(item, dict) and 'type' in item and item['type'] == 'image_url' and include_images:
+                            # Add estimated tokens for images (85 tokens for gpt-4o)
+                            total_tokens += 85
                         elif isinstance(item, str):
                             total_tokens += len(ENCODER.encode(item))
                 else:
@@ -46,6 +173,9 @@ def count_tokens(text) -> int:
                 for item in content:
                     if isinstance(item, dict) and 'text' in item:
                         total_tokens += len(ENCODER.encode(item['text']))
+                    elif isinstance(item, dict) and 'type' in item and item['type'] == 'image_url' and include_images:
+                        # Add estimated tokens for images (85 tokens for gpt-4o)
+                        total_tokens += 85
                     elif isinstance(item, str):
                         total_tokens += len(ENCODER.encode(item))
                 return total_tokens
@@ -236,7 +366,7 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
             all_messages.extend(block['messages'])
         
         # Compute total tokens
-        total_tokens = count_tokens(all_messages)
+        total_tokens = count_tokens(all_messages, include_images=False)
         if verbose:
             print(f"Total tokens: {total_tokens}.")
             print("context length: ", context_len)
@@ -286,7 +416,7 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
             # First pass: add all protected messages in order
             for i in range(len(all_messages)):
                 if i in protected_message_indices:
-                    msg_tokens = count_tokens(all_messages[i])
+                    msg_tokens = count_tokens(all_messages[i], include_images=False)
                     final_messages.append(all_messages[i])
                     current_tokens += msg_tokens
             
@@ -300,7 +430,7 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
                 
                 for i in range(len(all_messages)):
                     if i not in protected_message_indices:
-                        msg_tokens = count_tokens(all_messages[i])
+                        msg_tokens = count_tokens(all_messages[i], include_images=False)
                         if msg_tokens <= remaining_budget:
                             additional_messages.append((i, all_messages[i]))
                             remaining_budget -= msg_tokens
@@ -315,7 +445,7 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
                     all_indexed_messages.sort(key=lambda x: x[0])  # Sort by original index
                     
                     final_messages = [msg for _, msg in all_indexed_messages]
-                    current_tokens = sum(count_tokens(msg) for msg in final_messages)
+                    current_tokens = sum(count_tokens(msg, include_images=False) for msg in final_messages)
                 
                 if verbose:
                     print(f"Intelligent trimming: kept {len(final_messages)} messages, {current_tokens} tokens")
@@ -397,9 +527,9 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
         import os
         os.makedirs("data/chat_history", exist_ok=True)
         
-        # Save raw messages with metadata
-        utils.save_json(output_data, filename, clean=True)
-        print(f"Saved chat history to {filename}.")
+        # Save both text-only and multimodal versions
+        save_chat_history_versions(output_data, filename, persona_number, shared_timestamp)
+        print(f"Saved chat history to {filename} and multimodal version.")
 
 
 def build_context(conv_output_dir=None, interactions=None, context_len=None, input_filename=None, persona_start_idx=-1, persona_end_idx=-1, verbose=False):

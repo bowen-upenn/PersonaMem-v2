@@ -6,4 +6,4 @@ python main.py \
   --conv_output_dir data/raw_data/ \
   --persona_start_idx 0 \
   --persona_end_idx -1 \
-  # --verbose
+  --verbose
