@@ -76,6 +76,11 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                     user_query = item.get("user_query", "")
                     if not user_query:
                         continue
+                    # Format in OpenAI dict format
+                    user_query = {
+                        "role": "user",
+                        "content": user_query
+                    }
                     
                     # Extract all required fields
                     preference = item.get("preference", "")
