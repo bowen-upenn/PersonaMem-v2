@@ -1,334 +1,267 @@
 #!/usr/bin/env python3
+"""
+Script to prepare benchmark data from raw persona files.
+Creates a single CSV file with one row per user_query for evaluation.
+Each row contains persona info, chat history links, and QA data.
+"""
 
 import json
 import csv
 import os
 import glob
 import re
-import tiktoken
+from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-import pandas as pd
-from typing import Dict, List, Any, Optional
 
-# Initialize the tokenizer
-ENCODER = tiktoken.encoding_for_model("gpt-4o")
 
-def count_tokens(text: str) -> int:
-    """Count tokens in a text string."""
-    if not text:
-        return 0
-    return len(ENCODER.encode(str(text)))
-
-def extract_persona_number_from_filename(filename: str) -> Optional[int]:
+def extract_persona_number(filename: str) -> Optional[int]:
     """Extract persona number from filename pattern."""
     match = re.search(r'persona(\d+)\.json$', filename)
     return int(match.group(1)) if match else None
 
-def load_persona_data(raw_data_dir: str) -> Dict[str, Any]:
-    """Load all persona data from raw_data directory."""
-    persona_data = {}
-    
-    pattern = os.path.join(raw_data_dir, "interactions_*_persona*.json")
-    files = glob.glob(pattern)
-    
-    print(f"Found {len(files)} persona files")
-    
-    for file_path in files:
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Extract persona number for reference
-            persona_num = extract_persona_number_from_filename(file_path)
-            
-            for uuid, persona_info in data.items():
-                persona_data[uuid] = {
-                    'data': persona_info,
-                    'file_path': file_path,
-                    'persona_number': persona_num
-                }
-                
-        except (json.JSONDecodeError, Exception) as e:
-            print(f"Error loading {file_path}: {e}")
-            continue
-    
-    print(f"Loaded {len(persona_data)} personas")
-    return persona_data
 
-def load_context_data(contexts_dir: str) -> Dict[str, Any]:
-    """Load all context data from contexts directory."""
-    context_data = {}
+def extract_expanded_persona(persona_data: Dict[str, Any]) -> str:
+    """Extract everything before 'stereotypical_preferences' as expanded persona."""
+    expanded_persona = {}
     
-    pattern = os.path.join(contexts_dir, "context_*.json")
-    files = glob.glob(pattern)
+    for key, value in persona_data.items():
+        if key == "stereotypical_preferences":
+            break
+        expanded_persona[key] = value
     
-    print(f"Found {len(files)} context files")
-    
-    for file_path in files:
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Extract persona UUID from metadata if available
-            metadata = data.get('metadata', {})
-            persona_uuid = metadata.get('persona_uuid')
-            
-            if persona_uuid:
-                context_data[persona_uuid] = {
-                    'metadata': metadata,
-                    'messages': data.get('messages', []),
-                    'file_path': file_path
-                }
-                
-        except (json.JSONDecodeError, Exception) as e:
-            print(f"Error loading {file_path}: {e}")
-            continue
-    
-    print(f"Loaded {len(context_data)} context files")
-    return context_data
-
-def find_conversation_turns_and_tokens_to_end(target_conversation: List[Dict], all_messages: List[Dict]) -> tuple[int, int]:
-    """
-    Find the number of turns and tokens from the target conversation to the end of context.
-    
-    Returns:
-        tuple: (number_of_turns_to_end, tokens_to_end)
-    """
-    if not target_conversation or not all_messages:
-        return -1, -1
-    
-    # Look for the first message of the target conversation
-    target_first_msg = target_conversation[0].get('content', '')
-    
-    # Find the starting position of the target conversation
-    target_start_idx = -1
-    
-    for i in range(len(all_messages)):
-        current_msg = all_messages[i]
-        
-        # Check if this message matches the start of our target conversation
-        if current_msg.get('content', '') == target_first_msg:
-            # Verify it's actually our target conversation by checking a few more messages
-            match = True
-            for j, target_msg in enumerate(target_conversation[:3]):  # Check first 3 messages
-                if i + j >= len(all_messages):
-                    match = False
-                    break
-                if all_messages[i + j].get('content', '') != target_msg.get('content', ''):
-                    match = False
-                    break
-            
-            if match:
-                target_start_idx = i
-                break
-    
-    if target_start_idx == -1:
-        return -1, -1
-    
-    # Count turns from target conversation to end
-    turns_to_end = 0
-    tokens_to_end = 0
-    
-    # Start counting from the target conversation to the end
-    for i in range(target_start_idx, len(all_messages)):
-        msg = all_messages[i]
-        
-        # Count turns (each user message starts a new turn)
-        if msg.get('role') == 'user':
-            turns_to_end += 1
-        
-        # Count tokens in this message
-        content = msg.get('content', '')
-        if isinstance(content, str):
-            tokens_to_end += count_tokens(content)
-        elif isinstance(content, list):
-            # Handle multimodal content - only count text parts
-            for item in content:
-                if isinstance(item, dict) and 'text' in item:
-                    tokens_to_end += count_tokens(item['text'])
-                elif isinstance(item, str):
-                    tokens_to_end += count_tokens(item)
-    
-    return turns_to_end, tokens_to_end
+    return json.dumps(expanded_persona, indent=2, ensure_ascii=False)
 
 
-def extract_qa_pairs(persona_data: Dict[str, Any], context_data: Dict[str, Any], token_limit: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Extract QA pairs from persona and context data."""
-    qa_pairs = []
+def get_chat_history_links(persona_number: int) -> Tuple[str, str]:
+    """Generate chat history file links for a persona."""
+    # Look for chat history files with the pattern
+    chat_history_pattern = f"data/chat_history/chat_history_*_persona{persona_number}.json"
+    multimodal_pattern = f"data/chat_history_multimodal/chat_history_*_persona{persona_number}.json"
     
-    for uuid, persona_info in persona_data.items():
-        persona = persona_info['data']
-        context_info = context_data.get(uuid)
+    chat_history_files = glob.glob(chat_history_pattern)
+    multimodal_files = glob.glob(multimodal_pattern)
+    
+    chat_history_link = chat_history_files[0] if chat_history_files else ""
+    multimodal_link = multimodal_files[0] if multimodal_files else ""
+    
+    return chat_history_link, multimodal_link
+
+
+def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, Any]]:
+    """Process a single persona file and extract all user_query rows."""
+    rows = []
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
         
-        if not context_info:
-            print(f"No context found for persona {uuid}")
-            continue
+        # Get chat history links
+        chat_history_link, multimodal_link = get_chat_history_links(persona_number)
         
-        # Check if this context fits within token limit
-        if token_limit and context_info['metadata'].get('final_token_count', 0) > token_limit:
-            continue
-        
-        # Extract persona metadata (everything before stereotypical_preferences)
-        persona_metadata = {}
-        for key, value in persona.items():
-            if key == 'stereotypical_preferences':
-                break
-            persona_metadata[key] = value
-        
-        conversations = persona.get('conversations', {})
-        context_messages = context_info['messages']
-        
-        for conv_type, conv_list in conversations.items():
-            for conv_elem in conv_list:
-                # Skip if no QA data
-                if 'user_query' not in conv_elem or 'correct_answer' not in conv_elem:
+        # Process each persona in the file (usually just one)
+        for persona_id_key, persona_data in data.items():
+            short_persona = persona_data.get("short_persona", "")
+            expanded_persona = extract_expanded_persona(persona_data)
+            expanded_persona_file = file_path
+            
+            # Process conversations if they exist
+            conversations_data = persona_data.get("conversations", {})
+            
+            for scenario_name, scenario_items in conversations_data.items():
+                if not isinstance(scenario_items, list):
                     continue
                 
-                # Extract basic information
-                user_query = conv_elem.get('user_query', '')
-                correct_answer = conv_elem.get('correct_answer', '')
-                incorrect_answers = conv_elem.get('incorrect_answers', [])
-                
-                # Create all_answers list
-                all_answers = [correct_answer] + list(incorrect_answers)
-                
-                # Extract metadata
-                preference = conv_elem.get('preference', '')
-                pref_type = conv_elem.get('pref_type', '')
-                who = conv_elem.get('who', '')
-                updated = conv_elem.get('updated', False)
-                prev_pref = conv_elem.get('prev_pref', '')
-                sensitive_info = conv_elem.get('sensitive_info', '')
-                preference_topic = conv_elem.get('topic_preference', '')
-                query_topic = conv_elem.get('topic_query', '')
-                
-                # Handle sensitive info case
-                if sensitive_info:
-                    groundtruth_preference = sensitive_info
-                    preference_type = 'sensitive_info'
-                else:
-                    groundtruth_preference = preference
-                    preference_type = pref_type
-                
-                # Calculate distance to target conversation
-                target_conversation = conv_elem.get('conversations', [])
-                turns_to_end, tokens_to_end = find_conversation_turns_and_tokens_to_end(target_conversation, context_messages)
-                
-                # Count tokens in query
-                query_tokens = count_tokens(user_query)
-                
-                qa_pair = {
-                    'persona_id': f"persona{persona_info['persona_number']}",
-                    'question': user_query,
-                    'correct_answer': correct_answer,
-                    'all_answers': all_answers,
-                    'groundtruth_preference': groundtruth_preference,
-                    'preference_type': preference_type,
-                    'conversation_scenario': conv_type,
-                    'preference_topic': preference_topic,
-                    'query_topic': query_topic,
-                    'who': who,
-                    'updated': updated,
-                    'previous_preference': prev_pref,
-                    'persona': json.dumps(persona_metadata),
-                    'context_file_path': context_info['file_path'],
-                    'num_tokens': context_info['metadata'].get('final_token_count', 0),
-                    'number_turns_from_query_to_the_target_conversation': turns_to_end,
-                    'tokens_from_query_to_the_target_conversation': tokens_to_end,
-                    'persona_uuid': uuid,
-                    'query_tokens': query_tokens
-                }
-                
-                qa_pairs.append(qa_pair)
+                for item in scenario_items:
+                    # Only include items that have user_query (skip if no user_query)
+                    user_query = item.get("user_query", "")
+                    if not user_query:
+                        continue
+                    
+                    # Extract all required fields
+                    preference = item.get("preference", "")
+                    pref_type = item.get("pref_type", "")
+                    topic_preference = item.get("topic_preference", "")
+                    topic_query = item.get("topic_query", "")
+                    correct_answer = item.get("correct_answer", "")
+                    incorrect_answers = item.get("incorrect_answers", [])
+                    who = item.get("who", "")
+                    updated = item.get("updated", False)
+                    prev_pref = item.get("prev_pref", "")
+                    
+                    # Keep conversations as properly formatted JSON string
+                    conversations = item.get("conversations", [])
+                    conversations_json = json.dumps(conversations, ensure_ascii=False) if conversations else ""
+                    
+                    # Create row for this user_query
+                    row = {
+                        "persona_id": persona_number,
+                        "chat_history_link": chat_history_link,
+                        "chat_history_multimodal_link": multimodal_link,
+                        "raw_persona_file": expanded_persona_file,
+                        "short_persona": short_persona,
+                        "expanded_persona": expanded_persona,
+                        "user_query": user_query,
+                        "correct_answer": correct_answer,
+                        "incorrect_answers": json.dumps(incorrect_answers, ensure_ascii=False) if incorrect_answers else "",
+                        "topic_query": topic_query,
+                        "preference": preference,
+                        "topic_preference": topic_preference,
+                        "conversation_scenario": scenario_name,
+                        "pref_type": pref_type,
+                        "related_conversation_snippet": conversations_json,
+                        "who": who,
+                        "updated": str(updated),
+                        "prev_pref": prev_pref
+                    }
+                    
+                    rows.append(row)
+        
+        print(f"Processed {file_path}: found {len(rows)} user queries")
+        
+    except Exception as e:
+        print(f"Error processing {file_path}: {str(e)}")
     
-    return qa_pairs
+    return rows
 
-def save_benchmark_data(qa_pairs: List[Dict[str, Any]], output_dir: str, token_limit: Optional[int] = None):
-    """Save QA pairs to CSV and JSON formats."""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    if token_limit:
-        suffix = f"_{token_limit//1000}k"
-    else:
-        suffix = "_unlimited"
-    
-    # Save as CSV
-    csv_path = os.path.join(output_dir, f"benchmark{suffix}.csv")
-    
-    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-        if qa_pairs:
-            fieldnames = qa_pairs[0].keys()
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            
-            for qa_pair in qa_pairs:
-                # Convert lists to JSON strings for CSV
-                row = qa_pair.copy()
-                row['all_answers'] = json.dumps(row['all_answers'])
-                writer.writerow(row)
-    
-    # Save as JSON
-    json_path = os.path.join(output_dir, f"benchmark{suffix}.json")
-    with open(json_path, 'w', encoding='utf-8') as jsonfile:
-        json.dump(qa_pairs, jsonfile, indent=2, ensure_ascii=False)
-    
-    print(f"Saved {len(qa_pairs)} QA pairs to {csv_path} and {json_path}")
 
-def generate_summary_stats(qa_pairs: List[Dict[str, Any]], token_limit: Optional[int] = None):
-    """Generate and print summary statistics."""
-    if not qa_pairs:
-        print("No QA pairs to analyze")
+def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
+    """Create comprehensive benchmark CSV from all persona files."""
+    
+    # Find all JSON files in raw_data directory
+    json_pattern = os.path.join(raw_data_dir, "raw_data_*_persona*.json")
+    json_files = glob.glob(json_pattern)
+    
+    if not json_files:
+        print(f"No JSON files found in {raw_data_dir}")
         return
     
-    df = pd.DataFrame(qa_pairs)
+    print(f"Found {len(json_files)} persona files to process")
     
-    print(f"\n=== Benchmark Summary ({'Unlimited' if token_limit is None else f'{token_limit//1000}k'} tokens) ===")
-    print(f"Total QA pairs: {len(qa_pairs)}")
-    print(f"Unique personas: {df['persona_id'].nunique()}")
+    # Extract persona numbers and sort files by persona number (0 to 999)
+    file_persona_pairs = []
+    for json_file in json_files:
+        persona_number = extract_persona_number(os.path.basename(json_file))
+        if persona_number is not None:
+            file_persona_pairs.append((json_file, persona_number))
+        else:
+            print(f"Warning: Could not extract persona number from {json_file}")
     
-    print(f"\nBy preference type:")
-    print(df['preference_type'].value_counts())
+    # Sort by persona number
+    file_persona_pairs.sort(key=lambda x: x[1])
+    
+    if not file_persona_pairs:
+        print("No valid persona files found")
+        return
+    
+    print(f"Processing personas from {file_persona_pairs[0][1]} to {file_persona_pairs[-1][1]}")
+    
+    # Collect all rows from all personas
+    all_rows = []
+    
+    # Process each file in order (persona 0 to 999)
+    for file_path, persona_number in file_persona_pairs:
+        persona_rows = process_persona_file(file_path, persona_number)
+        all_rows.extend(persona_rows)
+    
+    # Write to CSV file
+    if all_rows:
+        # Define column order as specified
+        fieldnames = [
+            "persona_id",
+            "chat_history_link", 
+            "chat_history_multimodal_link",
+            "raw_persona_file",
+            "short_persona",
+            "expanded_persona",
+            "user_query",
+            "correct_answer",
+            "incorrect_answers",
+            "topic_query",
+            "preference",
+            "topic_preference",
+            "conversation_scenario",
+            "pref_type",
+            "related_conversation_snippet",
+            "who",
+            "updated",
+            "prev_pref"
+        ]
+        
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_rows)
+        
+        print(f"\nBenchmark CSV created successfully!")
+        print(f"Output file: {output_file}")
+        print(f"Total rows: {len(all_rows)}")
+        print(f"Total personas processed: {len(file_persona_pairs)}")
+        
+        # Generate summary statistics
+        generate_summary_stats(all_rows)
+        
+    else:
+        print("No user queries found to write to CSV")
+
+
+def generate_summary_stats(rows: List[Dict[str, Any]]) -> None:
+    """Generate and print summary statistics."""
+    if not rows:
+        return
+    
+    print(f"\n=== Summary Statistics ===")
+    print(f"Total user queries: {len(rows)}")
+    
+    # Count unique personas
+    unique_personas = set(row['persona_id'] for row in rows)
+    print(f"Unique personas: {len(unique_personas)}")
+    
+    # Count by conversation scenario
+    scenario_counts = {}
+    for row in rows:
+        scenario = row['conversation_scenario']
+        scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
     
     print(f"\nBy conversation scenario:")
-    print(df['conversation_scenario'].value_counts())
+    for scenario, count in sorted(scenario_counts.items()):
+        print(f"  {scenario}: {count}")
     
-    print(f"\nBy preference topic:")
-    print(df['preference_topic'].value_counts())
+    # Count by preference type
+    pref_type_counts = {}
+    for row in rows:
+        pref_type = row['pref_type']
+        pref_type_counts[pref_type] = pref_type_counts.get(pref_type, 0) + 1
     
-    print(f"\nToken distribution:")
-    print(f"  Mean: {df['num_tokens'].mean():.0f}")
-    print(f"  Median: {df['num_tokens'].median():.0f}")
-    print(f"  Min: {df['num_tokens'].min()}")
-    print(f"  Max: {df['num_tokens'].max()}")
+    print(f"\nBy preference type:")
+    for pref_type, count in sorted(pref_type_counts.items()):
+        print(f"  {pref_type}: {count}")
+    
+    # Count updated vs non-updated
+    updated_counts = {}
+    for row in rows:
+        updated = row['updated']
+        updated_counts[updated] = updated_counts.get(updated, 0) + 1
+    
+    print(f"\nBy updated status:")
+    for updated, count in sorted(updated_counts.items()):
+        print(f"  {updated}: {count}")
+
 
 def main():
-    """Main function to prepare benchmark data."""
-    # Define paths
+    """Main function to create benchmark CSV."""
     raw_data_dir = "data/raw_data"
-    contexts_dir = "data/contexts"
-    output_dir = "data/benchmark"
+    output_file = "data/benchmark.csv"
     
-    print("Loading persona data...")
-    persona_data = load_persona_data(raw_data_dir)
+    print("Creating comprehensive benchmark CSV...")
+    print(f"Input directory: {raw_data_dir}")
+    print(f"Output file: {output_file}")
     
-    print("Loading context data...")
-    context_data = load_context_data(contexts_dir)
-    
-    # Generate different token limit versions
-    token_limits = [32000, 128000, None]  # 32k, 128k, unlimited
-    
-    for token_limit in token_limits:
-        print(f"\nProcessing {'unlimited' if token_limit is None else f'{token_limit//1000}k'} token version...")
-        
-        qa_pairs = extract_qa_pairs(persona_data, context_data, token_limit)
-        
-        if qa_pairs:
-            save_benchmark_data(qa_pairs, output_dir, token_limit)
-            generate_summary_stats(qa_pairs, token_limit)
-        else:
-            print(f"No QA pairs found for {'unlimited' if token_limit is None else f'{token_limit//1000}k'} token limit")
-    
-    print(f"\nBenchmark preparation complete! Files saved to {output_dir}")
+    create_benchmark_csv(raw_data_dir, output_file)
+    print("\nBenchmark preparation complete!")
+
 
 if __name__ == "__main__":
     main() 
