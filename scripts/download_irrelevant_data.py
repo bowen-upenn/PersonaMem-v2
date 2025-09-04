@@ -7,12 +7,27 @@ Downloads HotpotQA, MMLU, GSM8K, and BigCodeBench datasets.
 import os
 import json
 import random
+import sys
 from datasets import load_dataset
 from tqdm import tqdm
 import tiktoken
+import yaml
+import argparse
+import concurrent.futures
+import threading
+import math
+import time
+
+
+# Add parent directory to path to import project modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from query_llm import QueryLLM
 
 # Initialize tokenizer
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
+
+# Thread-safe lock for collecting results
+RESULTS_LOCK = threading.Lock()
 
 def count_tokens(text):
     """Count tokens in text."""
@@ -203,6 +218,181 @@ def download_bigcodebench(output_dir):
     except Exception as e:
         print(f"Error downloading BigCodeBench: {e}")
 
+def process_single_query_thread(args):
+    """
+    Thread-safe function to process a single user query.
+    
+    Args:
+        args: Tuple containing (llm, user_query, user_message, filename, verbose)
+    
+    Returns:
+        chat_entry dict or None if processing failed
+    """
+    llm, user_query, user_message, filename, verbose = args
+    
+    # Set a unique random seed for this thread
+    random.seed(int(time.time() * 1000000) + threading.get_ident())
+    
+    try:
+        if verbose:
+            print(f"Processing query: {user_query[:100]}...")
+        
+        # Query the LLM with just the user query (no conversation history for irrelevant data)
+        llm.reset_history()
+        model_response = llm.query_llm(user_query, use_history=False, verbose=verbose)
+        
+        if model_response:
+            # Create assistant message
+            assistant_message = {"role": "assistant", "content": model_response}
+            
+            # Create chat entry with query and response
+            chat_entry = {
+                "messages": [user_message, assistant_message],
+                "tokens": count_tokens(user_query) + count_tokens(model_response),
+                "source": f"llm_response_{filename.replace('_train.json', '')}",
+                "original_dataset": filename
+            }
+            
+            if verbose:
+                query_tokens = count_tokens(user_query)
+                response_tokens = count_tokens(model_response)
+                print(f"Added query-response pair ({query_tokens + response_tokens} tokens)")
+            
+            return chat_entry
+        else:
+            if verbose:
+                print("Warning: No response received from LLM")
+            return None
+    
+    except Exception as e:
+        if verbose:
+            print(f"Error querying LLM for user query: {e}")
+        return None
+
+
+def process_user_queries_and_responses(llm, output_dir, parallel=False, verbose=False):
+    """
+    Process user queries from downloaded datasets, generate LLM responses, and save as irrelevant data.
+    
+    Args:
+        llm: QueryLLM instance for generating responses
+        output_dir: Directory containing downloaded datasets and to save the processed query-response pairs
+        parallel: Whether to process queries in parallel batches
+        verbose: Whether to print detailed information
+    """
+    output_file = os.path.join(output_dir, "user_query_responses.json")
+    
+    # Check if already processed
+    if os.path.exists(output_file):
+        print(f"User query responses already exist at {output_file}, skipping processing")
+        return
+    
+    print("Processing user queries from downloaded datasets and generating LLM responses...")
+    
+    # Dataset files to process for user queries
+    dataset_files = [
+        "hotpotqa_train.json",
+        "mmlu_train.json", 
+        "gsm8k_train.json",
+        "bigcodebench_train.json"
+    ]
+    
+    # Collect all queries to process
+    all_query_args = []
+    
+    for filename in tqdm(dataset_files, desc="Loading datasets"):
+        filepath = os.path.join(output_dir, filename)
+        if not os.path.exists(filepath):
+            if verbose:
+                print(f"Dataset file {filename} not found, skipping...")
+            continue
+        
+        if verbose:
+            print(f"Loading queries from {filename}")
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                dataset = json.load(f)
+            
+            # Collect all queries from this dataset
+            for item in dataset:
+                # Extract the user query from the first message
+                messages = item.get('messages', [])
+                if not messages or len(messages) < 1:
+                    continue
+                
+                user_message = messages[0]
+                if user_message.get('role') != 'user':
+                    continue
+                
+                user_query = user_message.get('content', '') + " Let us think step by step."
+                if not user_query:
+                    continue
+                
+                # Add to processing queue
+                all_query_args.append((llm, user_query, user_message, filename, verbose))
+        
+        except Exception as e:
+            print(f"Error loading dataset file {filepath}: {e}")
+            continue
+    
+    if not all_query_args:
+        print("No queries found to process")
+        return
+    
+    print(f"Found {len(all_query_args)} queries to process")
+    query_response_data = []
+    
+    if parallel:
+        # Parallel processing in batches
+        max_workers = min(llm.rate_limit_per_min, len(all_query_args))
+        batch_size = max_workers
+        num_batches = math.ceil(len(all_query_args) / batch_size)
+        
+        print(f"Processing in {num_batches} batches with up to {batch_size} parallel workers each")
+        
+        for batch_idx in tqdm(range(num_batches)):
+            batch_start_idx = batch_idx * batch_size
+            batch_end_idx = min((batch_idx + 1) * batch_size, len(all_query_args))
+            batch_args = all_query_args[batch_start_idx:batch_end_idx]
+            
+            # print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_args)} queries)")
+            
+            # Process batch in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(batch_args)) as executor:
+                # Submit all tasks for this batch
+                future_to_args = {executor.submit(process_single_query_thread, args): args for args in batch_args}
+                
+                # Collect results with progress bar
+                for future in concurrent.futures.as_completed(future_to_args):
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            with RESULTS_LOCK:
+                                query_response_data.append(result)
+                    except Exception as e:
+                        args = future_to_args[future]
+                        user_query = args[1][:50] + "..." if len(args[1]) > 50 else args[1]
+                        print(f"Error in future for query '{user_query}': {e}")
+    else:
+        # Sequential processing
+        for args in tqdm(all_query_args, desc="Processing queries sequentially"):
+            result = process_single_query_thread(args)
+            if result is not None:
+                query_response_data.append(result)
+    
+    if query_response_data:
+        # Save to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(query_response_data, f, indent=2, ensure_ascii=False)
+        
+        total_tokens = sum(item['tokens'] for item in query_response_data)
+        print(f"Saved {len(query_response_data)} user query-response pairs to {output_file}")
+        print(f"Total tokens from query-response pairs: {total_tokens:,}")
+    else:
+        print("No user query-response pairs were generated")
+
+
 def create_combined_irrelevant_data(output_dir):
     """Combine all downloaded datasets into a single shuffled file for easy sampling."""
     output_file = os.path.join(output_dir, "combined_irrelevant_data.json")
@@ -216,12 +406,13 @@ def create_combined_irrelevant_data(output_dir):
     
     combined_data = []
     
-    # Load all individual dataset files (train data only)
+    # Load all individual dataset files (train data only) and user query responses
     dataset_files = [
         "hotpotqa_train.json",
         "mmlu_train.json", 
         "gsm8k_train.json",
-        "bigcodebench_train.json"
+        "bigcodebench_train.json",
+        "user_query_responses.json"
     ]
     
     for filename in dataset_files:
@@ -264,7 +455,34 @@ def create_combined_irrelevant_data(output_dir):
     print(f"Dataset statistics saved to {stats_file}")
 
 def main():
-    """Main function to download all irrelevant datasets."""
+    """Main function to download all irrelevant datasets and process user queries."""
+    # Load config from YAML file
+    try:
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+    except Exception as e:
+        print('Error reading the config file')
+        return
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Download irrelevant datasets and optionally process user queries")
+    parser.add_argument('--process-queries', action='store_true', 
+                       help='Process user queries from downloaded datasets and generate LLM responses')
+    parser.add_argument('--model', type=str, default='gpt-4o-mini', 
+                       help='Set LLM model.')
+    parser.add_argument('--parallel', action='store_true',
+                       help='Process queries in parallel batches (default: sequential)')
+    parser.add_argument('--rate-limit-per-min', type=int, default=20,
+                       help='Maximum number of parallel requests per minute (default: 20)')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Print detailed processing information')
+    
+    cmd_args = parser.parse_args()
+    
+    # Override model in config if specified in command line
+    if cmd_args.model is not None:
+        config['models']['llm_model'] = cmd_args.model
+    
     # Create output directory
     output_dir = "data/irrelevant"
     os.makedirs(output_dir, exist_ok=True)
@@ -278,10 +496,21 @@ def main():
     download_gsm8k(output_dir)
     download_bigcodebench(output_dir)
     
+    # Process user queries if requested
+    if cmd_args.process_queries:
+        print("\nProcessing user queries and generating LLM responses...")
+        # Create LLM instance with custom rate limit
+        llm = QueryLLM(config, rate_limit_per_min=cmd_args.rate_limit_per_min)
+        
+        # Process user queries
+        process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, verbose=cmd_args.verbose)
+            
     # Create combined file
     create_combined_irrelevant_data(output_dir)
     
     print("All datasets downloaded successfully!")
+    if cmd_args.process_queries:
+        print("User query processing completed!")
 
 if __name__ == "__main__":
     main()

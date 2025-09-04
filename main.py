@@ -3,10 +3,6 @@ import argparse
 import sys
 import os
 import json
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 from contexts_builder import build_context
 from qa_generator import generate_qa

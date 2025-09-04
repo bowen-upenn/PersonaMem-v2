@@ -66,13 +66,15 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
             print("No irrelevant data available, returning original messages")
         return messages
     
+    # Always shuffle irrelevant data first for randomness
+    irrelevant_data = irrelevant_data.copy()  # Don't modify the cached version
+    random.shuffle(irrelevant_data)
+    
     # Calculate how many tokens we need to add
     tokens_needed = target_token_count - current_token_count
     if verbose:
         print(f"Need to add {tokens_needed} tokens to reach target of {target_token_count}")
-    
-    # Shuffle irrelevant data to get random selection
-    random.shuffle(irrelevant_data)
+        print(f"Shuffled {len(irrelevant_data)} irrelevant data examples")
     
     # Find insertion points (after system message, but spread throughout)
     system_message = messages[0] if messages and messages[0].get('role') == 'system' else None
@@ -123,8 +125,17 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
             irrelevant_item = irrelevant_data[irrelevant_idx]
             item_tokens = irrelevant_item.get('tokens', 0)
             
-            # Add this item if it doesn't exceed our budget too much
-            if insertion_tokens + item_tokens <= target_tokens_for_this_insertion * 1.2:  # Allow 20% overage
+            # Calculate current total tokens if we add this item
+            current_total_tokens = current_token_count + tokens_added + item_tokens
+            
+            # Don't exceed the target token count (strict limit)
+            if current_total_tokens > target_token_count:
+                if verbose:
+                    print(f"Stopping insertion to avoid exceeding target ({current_total_tokens} > {target_token_count})")
+                break
+            
+            # Add this item if it fits within the insertion budget
+            if insertion_tokens + item_tokens <= target_tokens_for_this_insertion * 1.1:  # Allow 10% overage for insertion
                 insertion_messages.extend(irrelevant_item['messages'])
                 insertion_tokens += item_tokens
                 tokens_added += item_tokens
@@ -148,6 +159,28 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
         final_token_count = count_tokens(new_messages, include_images=False)
         print(f"Added {tokens_added} tokens of irrelevant data")
         print(f"Final token count: {final_token_count} (target: {target_token_count})")
+        
+        if final_token_count > target_token_count:
+            print(f"WARNING: Final token count ({final_token_count}) exceeds target ({target_token_count})")
+        elif final_token_count < target_token_count * 0.95:  # Less than 95% of target
+            print(f"INFO: Final token count is {target_token_count - final_token_count} tokens below target")
+    
+    # Final safety check - if somehow we exceeded, trim from the end
+    final_token_count = count_tokens(new_messages, include_images=False)
+    if final_token_count > target_token_count:
+        if verbose:
+            print(f"Performing final trim to ensure we don't exceed {target_token_count} tokens")
+        
+        # Remove messages from the end until we're under the limit
+        while len(new_messages) > 1 and count_tokens(new_messages, include_images=False) > target_token_count:
+            removed_msg = new_messages.pop()
+            if verbose:
+                removed_tokens = count_tokens(removed_msg, include_images=False)
+                print(f"Removed message with {removed_tokens} tokens")
+        
+        if verbose:
+            final_count = count_tokens(new_messages, include_images=False)
+            print(f"After trimming: {final_count} tokens")
     
     return new_messages
 
@@ -461,7 +494,7 @@ def order_conversations_by_dependencies(blocks):
     return ordered_blocks
 
 
-def _build_context_for_single_file(interactions, context_len=None, version='32k', input_filename=None, verbose=False, shared_timestamp=None):
+def _build_context_for_single_file(interactions, context_len=None, version='32k', input_filename=None, verbose=False, shared_timestamp=None, llm=None):
     """
     Internal function to build context for a single file's interactions.
     
@@ -472,6 +505,7 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
         input_filename: Input filename for metadata extraction
         verbose: Whether to print detailed information
         shared_timestamp: Shared timestamp for output files
+        llm: QueryLLM instance for 128k version to query model responses
     """
     for uuid, persona in interactions.items():
         # Extract all conversation blocks
@@ -529,97 +563,99 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
             print(f"Total tokens: {total_tokens}.")
             print("context length: ", context_len)
 
-        # Intelligent trimming by token budget
-        if context_len is not None and total_tokens > context_len:
-            # Step 1: Identify protected conversation blocks (those with user_query or linked to updated preferences with user_query)
-            protected_blocks = set()
-            
-            # Find blocks with user_query (evaluation targets)
-            for i, block in enumerate(ordered_blocks):
-                if 'user_query' in block:
-                    protected_blocks.add(i)
-            
-            # Find blocks whose preference appears as prev_pref in updated blocks with user_query
-            for i, block in enumerate(ordered_blocks):
-                if 'user_query' in block and block.get('prev_pref'):
-                    # Find the original block with this preference
-                    for j, orig_block in enumerate(ordered_blocks):
-                        if orig_block['preference'] == block['prev_pref']:
-                            protected_blocks.add(j)
-                            protected_blocks.add(i)  # Also protect the updated block
-            
-            # Step 2: Create mapping of message indices to blocks
-            message_to_block = {}
-            protected_message_indices = set([0])  # Always protect system message
-            message_idx = 1  # Start after system message
-            
-            for block_idx, block in enumerate(ordered_blocks):
-                block_start = message_idx
-                block_end = message_idx + len(block['messages'])
+        # Handle version-specific processing
+        if version == '32k':
+            # 32k version: Intelligent trimming by token budget
+            if context_len is not None and total_tokens > context_len:
+                # Step 1: Identify protected conversation blocks (those with user_query or linked to updated preferences with user_query)
+                protected_blocks = set()
                 
-                for msg_idx in range(block_start, block_end):
-                    message_to_block[msg_idx] = block_idx
-                    if block_idx in protected_blocks:
-                        protected_message_indices.add(msg_idx)
+                # Find blocks with user_query (evaluation targets)
+                for i, block in enumerate(ordered_blocks):
+                    if 'user_query' in block:
+                        protected_blocks.add(i)
                 
-                message_idx = block_end
-            
-            if verbose:
-                print(f"Protected {len(protected_blocks)} blocks with {len(protected_message_indices)} messages")
-            
-            # Step 3: Build final message list based on token budget
-            final_messages = []
-            current_tokens = 0
-            
-            # First pass: add all protected messages in order
-            for i in range(len(all_messages)):
-                if i in protected_message_indices:
-                    msg_tokens = count_tokens(all_messages[i], include_images=False)
-                    final_messages.append(all_messages[i])
-                    current_tokens += msg_tokens
-            
-            if verbose:
-                print(f"Protected messages: {len(final_messages)} messages, {current_tokens} tokens")
-            
-            # Second pass: add non-protected messages if budget allows
-            if current_tokens <= context_len:
-                remaining_budget = context_len - current_tokens
-                additional_messages = []
+                # Find blocks whose preference appears as prev_pref in updated blocks with user_query
+                for i, block in enumerate(ordered_blocks):
+                    if 'user_query' in block and block.get('prev_pref'):
+                        # Find the original block with this preference
+                        for j, orig_block in enumerate(ordered_blocks):
+                            if orig_block['preference'] == block['prev_pref']:
+                                protected_blocks.add(j)
+                                protected_blocks.add(i)  # Also protect the updated block
                 
-                for i in range(len(all_messages)):
-                    if i not in protected_message_indices:
-                        msg_tokens = count_tokens(all_messages[i], include_images=False)
-                        if msg_tokens <= remaining_budget:
-                            additional_messages.append((i, all_messages[i]))
-                            remaining_budget -= msg_tokens
-                        else:
-                            break
+                # Step 2: Create mapping of message indices to blocks
+                message_to_block = {}
+                protected_message_indices = set([0])  # Always protect system message
+                message_idx = 1  # Start after system message
                 
-                # Insert additional messages in their original order
-                if additional_messages:
-                    # Merge protected and additional messages while preserving order
-                    all_indexed_messages = [(i, msg) for i, msg in enumerate(all_messages) if i in protected_message_indices]
-                    all_indexed_messages.extend(additional_messages)
-                    all_indexed_messages.sort(key=lambda x: x[0])  # Sort by original index
+                for block_idx, block in enumerate(ordered_blocks):
+                    block_start = message_idx
+                    block_end = message_idx + len(block['messages'])
                     
-                    final_messages = [msg for _, msg in all_indexed_messages]
-                    current_tokens = sum(count_tokens(msg, include_images=False) for msg in final_messages)
+                    for msg_idx in range(block_start, block_end):
+                        message_to_block[msg_idx] = block_idx
+                        if block_idx in protected_blocks:
+                            protected_message_indices.add(msg_idx)
+                    
+                    message_idx = block_end
                 
                 if verbose:
-                    print(f"Intelligent trimming: kept {len(final_messages)} messages, {current_tokens} tokens")
-            else:
+                    print(f"Protected {len(protected_blocks)} blocks with {len(protected_message_indices)} messages")
+                
+                # Step 3: Build final message list based on token budget
+                final_messages = []
+                current_tokens = 0
+                
+                # First pass: add all protected messages in order
+                for i in range(len(all_messages)):
+                    if i in protected_message_indices:
+                        msg_tokens = count_tokens(all_messages[i], include_images=False)
+                        final_messages.append(all_messages[i])
+                        current_tokens += msg_tokens
+                
                 if verbose:
-                    print(f"Warning: Protected content ({current_tokens} tokens) exceeds budget ({context_len} tokens)")
-                    print(f"Using only protected content: {len(final_messages)} messages")
-            
-            all_messages = final_messages
-
-        # Handle 128k version: add irrelevant data if needed
-        if version == '128k' and context_len is not None:
+                    print(f"Protected messages: {len(final_messages)} messages, {current_tokens} tokens")
+                
+                # Second pass: add non-protected messages if budget allows
+                if current_tokens <= context_len:
+                    remaining_budget = context_len - current_tokens
+                    additional_messages = []
+                    
+                    for i in range(len(all_messages)):
+                        if i not in protected_message_indices:
+                            msg_tokens = count_tokens(all_messages[i], include_images=False)
+                            if msg_tokens <= remaining_budget:
+                                additional_messages.append((i, all_messages[i]))
+                                remaining_budget -= msg_tokens
+                            else:
+                                break
+                    
+                    # Insert additional messages in their original order
+                    if additional_messages:
+                        # Merge protected and additional messages while preserving order
+                        all_indexed_messages = [(i, msg) for i, msg in enumerate(all_messages) if i in protected_message_indices]
+                        all_indexed_messages.extend(additional_messages)
+                        all_indexed_messages.sort(key=lambda x: x[0])  # Sort by original index
+                        
+                        final_messages = [msg for _, msg in all_indexed_messages]
+                        current_tokens = sum(count_tokens(msg, include_images=False) for msg in final_messages)
+                    
+                    if verbose:
+                        print(f"Intelligent trimming: kept {len(final_messages)} messages, {current_tokens} tokens")
+                else:
+                    if verbose:
+                        print(f"Warning: Protected content ({current_tokens} tokens) exceeds budget ({context_len} tokens)")
+                        print(f"Using only protected content: {len(final_messages)} messages")
+                
+                all_messages = final_messages
+        
+        elif version == '128k':
+            # 128k version: No trimming, add irrelevant data to reach target
             current_tokens = count_tokens(all_messages, include_images=False)
             
             # Set target token count based on context_len or default to 128k
-            if context_len > 32000:  # If user specified a large context length, use it
+            if context_len is not None and context_len > 32000:
                 target_tokens = context_len
             else:
                 target_tokens = 128000  # Default 128k tokens
@@ -627,19 +663,7 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
             if verbose:
                 print(f"128k version: current tokens = {current_tokens}, target = {target_tokens}")
             
-            # Insert irrelevant data to reach target
-            all_messages = insert_irrelevant_data(
-                all_messages, 
-                target_tokens, 
-                current_tokens, 
-                verbose=verbose
-            )
-        elif version == '128k':
-            if verbose:
-                print("128k version requested but no context_len specified, using default 128k tokens")
-            current_tokens = count_tokens(all_messages, include_images=False)
-            target_tokens = 128000
-            
+            # Insert irrelevant data to reach target (no trimming of original content)
             all_messages = insert_irrelevant_data(
                 all_messages, 
                 target_tokens, 
@@ -758,8 +782,6 @@ def build_context(conv_output_dir=None, interactions=None, context_len=None, ver
         
         if verbose:
             print(f"Found {len(persona_files)} persona files to build context from")
-
-            
         
         # Process each persona file individually to preserve filename information
         for file_path in tqdm(persona_files):
