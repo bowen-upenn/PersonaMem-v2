@@ -799,7 +799,7 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
         
         conversations_by_type = persona.get("conversations", {})
         
-        for conv_type, conv_list in conversations_by_type.items():
+        for conv_type, conv_list in tqdm(conversations_by_type.items(), desc="Processing conversations"):
             if verbose:
                 print(f"    Processing conv_type: {conv_type}")
             
