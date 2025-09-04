@@ -270,7 +270,7 @@ def process_single_query_thread(args):
         return None
 
 
-def process_user_queries_and_responses(llm, output_dir, parallel=False, verbose=False):
+def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_size=1000, verbose=False):
     """
     Process user queries from downloaded datasets, generate LLM responses, and save as irrelevant data.
     
@@ -278,6 +278,7 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, verbose=
         llm: QueryLLM instance for generating responses
         output_dir: Directory containing downloaded datasets and to save the processed query-response pairs
         parallel: Whether to process queries in parallel batches
+        sample_size: Number of queries to randomly sample for processing
         verbose: Whether to print detailed information
     """
     output_file = os.path.join(output_dir, "user_query_responses.json")
@@ -297,8 +298,8 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, verbose=
         "bigcodebench_train.json"
     ]
     
-    # Collect all queries to process
-    all_query_args = []
+    # Collect all queries from all datasets first
+    all_queries_pool = []
     
     for filename in tqdm(dataset_files, desc="Loading datasets"):
         filepath = os.path.join(output_dir, filename)
@@ -329,18 +330,25 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, verbose=
                 if not user_query:
                     continue
                 
-                # Add to processing queue
-                all_query_args.append((llm, user_query, user_message, filename, verbose))
+                # Add to the pool for sampling
+                all_queries_pool.append((llm, user_query, user_message, filename, verbose))
         
         except Exception as e:
             print(f"Error loading dataset file {filepath}: {e}")
             continue
     
-    if not all_query_args:
+    if not all_queries_pool:
         print("No queries found to process")
         return
     
-    print(f"Found {len(all_query_args)} queries to process")
+    print(f"Found {len(all_queries_pool)} total queries from all datasets")
+    
+    # Randomly sample the specified number of queries (or all if less than sample_size)
+    actual_sample_size = min(sample_size, len(all_queries_pool))
+    random.shuffle(all_queries_pool)
+    all_query_args = all_queries_pool[:actual_sample_size]
+    
+    print(f"Randomly sampled {len(all_query_args)} queries for processing")
     query_response_data = []
     
     if parallel:
@@ -474,6 +482,8 @@ def main():
                        help='Process queries in parallel batches (default: sequential)')
     parser.add_argument('--rate-limit-per-min', type=int, default=20,
                        help='Maximum number of parallel requests per minute (default: 20)')
+    parser.add_argument('--sample-size', type=int, default=1000,
+                       help='Number of queries to randomly sample for processing (default: 1000)')
     parser.add_argument('--verbose', action='store_true',
                        help='Print detailed processing information')
     
@@ -503,7 +513,7 @@ def main():
         llm = QueryLLM(config, rate_limit_per_min=cmd_args.rate_limit_per_min)
         
         # Process user queries
-        process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, verbose=cmd_args.verbose)
+        process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, sample_size=cmd_args.sample_size, verbose=cmd_args.verbose)
             
     # Create combined file
     create_combined_irrelevant_data(output_dir)
