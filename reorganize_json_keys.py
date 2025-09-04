@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Script to reorganize JSON persona files with proper key ordering:
-1. "short_persona" comes first
-2. All other unfixed persona attributes come next  
-3. Fixed final keys in specific order: stereotypical_preferences, anti_stereotypical_preferences,
+1. Clean "incorrect_answers" arrays by removing null values
+2. "short_persona" comes first
+3. All other unfixed persona attributes come next  
+4. Fixed final keys in specific order: stereotypical_preferences, anti_stereotypical_preferences,
    neutral_preferences, therapy_background, health_and_medical_conditions, sensitive_information,
    matched_images, preference_updates, conversations
 Also removes any "alternate_personas" or "alternate_persona" keys from the files.
@@ -40,6 +41,51 @@ def move_multimodal_to_bottom(conversations_dict):
     reorganized_conversations["multimodal"] = conversations_dict["multimodal"]
     
     return reorganized_conversations
+
+
+def clean_incorrect_answers(data):
+    """
+    Clean all 'incorrect_answers' arrays in the data by removing null values.
+    Ensures that incorrect_answers arrays have exactly 3 non-null elements.
+    
+    Args:
+        data (dict): The persona data dictionary
+        
+    Returns:
+        dict: The data with cleaned incorrect_answers arrays
+    """
+    if not isinstance(data, dict):
+        return data
+    
+    cleaned_count = 0
+    
+    def clean_answers_recursive(obj):
+        nonlocal cleaned_count
+        
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key == "incorrect_answers" and isinstance(value, list):
+                    # Remove null values from the list
+                    original_length = len(value)
+                    cleaned_list = [item for item in value if item is not None]
+                    
+                    if len(cleaned_list) != original_length:
+                        obj[key] = cleaned_list
+                        cleaned_count += 1
+                        print(f"    Cleaned incorrect_answers: removed {original_length - len(cleaned_list)} null values, now has {len(cleaned_list)} items")
+                else:
+                    # Recursively process nested dictionaries and lists
+                    clean_answers_recursive(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                clean_answers_recursive(item)
+    
+    clean_answers_recursive(data)
+    
+    if cleaned_count > 0:
+        print(f"  Total incorrect_answers arrays cleaned: {cleaned_count}")
+    
+    return data
 
 
 def reorganize_persona_keys(data):
@@ -163,8 +209,11 @@ def process_json_files(raw_data_dir):
             with open(json_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
+            # Clean incorrect_answers arrays first
+            cleaned_data = clean_incorrect_answers(data)
+            
             # Reorganize the keys
-            reorganized_data = reorganize_persona_keys(data)
+            reorganized_data = reorganize_persona_keys(cleaned_data)
             
             # Write back to the same file
             with open(json_file, 'w', encoding='utf-8') as f:
@@ -183,6 +232,7 @@ def main():
     raw_data_dir = script_dir / "data" / "raw_data"
     
     print("Starting JSON key reorganization process...")
+    print("- Cleaning 'incorrect_answers' arrays by removing null values")
     print("- Ensuring 'short_persona' is the first key")
     print("- Moving unfixed persona attributes after 'short_persona'")
     print("- Organizing final keys in fixed order: stereotypical_preferences, anti_stereotypical_preferences, neutral_preferences, therapy_background, health_and_medical_conditions, sensitive_information, matched_images, preference_updates, conversations")
