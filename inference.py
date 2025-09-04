@@ -346,7 +346,7 @@ if __name__ == "__main__":
                        help='Path to configuration file')
     # Supported models: gpt-4.1, gpt-4.1-mini, gpt-4o,  gpt-4o-mini, 
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini
-    parser.add_argument('--model_name', type=str, default=None,
+    parser.add_argument('--model_name', type=str, default='gpt-5-chat',
                        help='Model name to use for evaluation (overrides config file)')
     
     args = parser.parse_args()
