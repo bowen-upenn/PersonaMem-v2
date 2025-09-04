@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--data_types', type=str, default="email", nargs="+", help='Conversation types for the user to implicitly express their preferences')
     parser.add_argument('--persona_keys_to_add', type=str, default=None, nargs="+", help='List of persona keys to add (e.g., health_and_medical_conditions)')
     parser.add_argument('--context_length', type=int, default=32000, help='Length of the total context to be generated, including irrelevant tokens')
+    parser.add_argument('--version', type=str, choices=['32k', '128k'], default='32k', help='Context version: 32k (original) or 128k (with irrelevant data padding)')
     parser.add_argument('--self_verify', dest='self_verify', action='store_true', help='Set self_verify to True')
     parser.add_argument('--rate_limit_per_min', type=int, default=5, help='Rate limit for API calls per minute')
     parser.add_argument('--parallel', dest='parallel', action='store_true', help='Enable parallel processing (works with both regular QA generation and minority case augmentation)')
@@ -59,6 +60,7 @@ def main():
     args['data']['data_types'] = cmd_args.data_types if cmd_args.data_types is not None else args['data']['data_types']
     args['data']['persona_keys_to_add'] = cmd_args.persona_keys_to_add if cmd_args.persona_keys_to_add is not None else None
     args['data']['context_length'] = cmd_args.context_length if cmd_args.context_length is not None else args['data']['context_length']
+    args['data']['version'] = cmd_args.version if cmd_args.version is not None else '32k'
     args['inference']['rate_limit_per_min'] = cmd_args.rate_limit_per_min if cmd_args.rate_limit_per_min is not None else args['inference']['rate_limit_per_min']
     args['inference']['parallel'] = cmd_args.parallel if cmd_args.parallel is not None else args['inference'].get('parallel', False)
     args['data']['clean'] = cmd_args.clean if cmd_args.clean is not None else args['data']['clean']
@@ -151,6 +153,7 @@ def main():
         build_context(
             conv_output_dir=args['data']['conv_output_dir'],
             context_len=args['data']['context_length'],
+            version=args['data']['version'],
             persona_start_idx=args['data']['persona_start_idx'], 
             persona_end_idx=args['data']['persona_end_idx'],
             verbose=args['inference']['verbose']

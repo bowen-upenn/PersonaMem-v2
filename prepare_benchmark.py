@@ -10,8 +10,12 @@ import csv
 import os
 import glob
 import re
+import tiktoken
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
+
+# Initialize encoder for token counting (same as contexts_builder.py)
+ENCODER = tiktoken.encoding_for_model("gpt-4o")
 
 
 def extract_persona_number(filename: str) -> Optional[int]:
@@ -32,19 +36,146 @@ def extract_expanded_persona(persona_data: Dict[str, Any]) -> str:
     return json.dumps(expanded_persona, indent=2, ensure_ascii=False)
 
 
-def get_chat_history_links(persona_number: int) -> Tuple[str, str]:
-    """Generate chat history file links for a persona."""
-    # Look for chat history files with the pattern
-    chat_history_pattern = f"data/chat_history/chat_history_*_persona{persona_number}.json"
-    multimodal_pattern = f"data/chat_history_multimodal/chat_history_*_persona{persona_number}.json"
+def get_chat_history_links(persona_number: int) -> Tuple[str, str, str, str]:
+    """Generate chat history file links for a persona (32k and 128k versions)."""
+    # Check if 128k directories exist
+    chat_history_128k_dir_exists = os.path.exists("data/chat_history_128k")
+    multimodal_128k_dir_exists = os.path.exists("data/chat_history_multimodal_128k")
     
-    chat_history_files = glob.glob(chat_history_pattern)
-    multimodal_files = glob.glob(multimodal_pattern)
+    # Print warning once if 128k directories don't exist
+    if not hasattr(get_chat_history_links, '_warned_128k') and (not chat_history_128k_dir_exists or not multimodal_128k_dir_exists):
+        print("Warning: 128k directories not found. Using null values for 128k-related columns.")
+        if not chat_history_128k_dir_exists:
+            print("  Missing: data/chat_history_128k/")
+        if not multimodal_128k_dir_exists:
+            print("  Missing: data/chat_history_multimodal_128k/")
+        get_chat_history_links._warned_128k = True
     
-    chat_history_link = chat_history_files[0] if chat_history_files else ""
-    multimodal_link = multimodal_files[0] if multimodal_files else ""
+    # Look for chat history files with the pattern for both versions
+    chat_history_32k_pattern = f"data/chat_history_32k/chat_history_*_persona{persona_number}.json"
+    multimodal_32k_pattern = f"data/chat_history_multimodal_32k/chat_history_*_persona{persona_number}.json"
     
-    return chat_history_link, multimodal_link
+    chat_history_32k_files = glob.glob(chat_history_32k_pattern)
+    multimodal_32k_files = glob.glob(multimodal_32k_pattern)
+    
+    chat_history_32k_link = chat_history_32k_files[0] if chat_history_32k_files else ""
+    multimodal_32k_link = multimodal_32k_files[0] if multimodal_32k_files else ""
+    
+    # Only look for 128k files if directories exist
+    if chat_history_128k_dir_exists:
+        chat_history_128k_pattern = f"data/chat_history_128k/chat_history_*_persona{persona_number}.json"
+        chat_history_128k_files = glob.glob(chat_history_128k_pattern)
+        chat_history_128k_link = chat_history_128k_files[0] if chat_history_128k_files else ""
+    else:
+        chat_history_128k_link = ""
+    
+    if multimodal_128k_dir_exists:
+        multimodal_128k_pattern = f"data/chat_history_multimodal_128k/chat_history_*_persona{persona_number}.json"
+        multimodal_128k_files = glob.glob(multimodal_128k_pattern)
+        multimodal_128k_link = multimodal_128k_files[0] if multimodal_128k_files else ""
+    else:
+        multimodal_128k_link = ""
+    
+    return chat_history_32k_link, chat_history_128k_link, multimodal_32k_link, multimodal_128k_link
+
+
+def get_total_tokens_from_chat_history(chat_history_file: str) -> int:
+    """Get total token count from chat history JSON file."""
+    if not chat_history_file or not os.path.exists(chat_history_file):
+        return 0
+    
+    try:
+        with open(chat_history_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Get final_token_count from metadata
+        return data.get("metadata", {}).get("final_token_count", 0)
+    except Exception as e:
+        print(f"Error reading chat history file {chat_history_file}: {str(e)}")
+        return 0
+
+
+def count_tokens_in_text(text: str) -> int:
+    """Count tokens in text using the same encoder as contexts_builder.py."""
+    if not text:
+        return 0
+    return len(ENCODER.encode(text))
+
+
+def find_conversation_snippet_in_chat_history(chat_history_file: str, conversation_snippet: str, user_query: str) -> int:
+    """
+    Find the position of conversation snippet in chat history and calculate tokens from the end of chat history 
+    back to where the snippet first appears.
+    
+    Args:
+        chat_history_file: Path to the chat history JSON file
+        conversation_snippet: The related conversation snippet to find
+        user_query: The user query (as dict with role and content) - used for verification
+    
+    Returns:
+        Number of tokens from the end of chat history back to the conversation snippet
+    """
+    if not chat_history_file or not os.path.exists(chat_history_file) or not conversation_snippet:
+        return 0
+    
+    try:
+        with open(chat_history_file, 'r', encoding='utf-8') as f:
+            chat_data = json.load(f)
+        
+        chat_history = chat_data.get("chat_history", [])
+        if not chat_history:
+            return 0
+        
+        # Parse the conversation snippet JSON
+        try:
+            snippet_messages = json.loads(conversation_snippet)
+            if not snippet_messages:
+                return 0
+        except json.JSONDecodeError:
+            return 0
+        
+        # Get the first message content from the snippet to search for
+        first_snippet_msg = snippet_messages[0]
+        first_snippet_content = first_snippet_msg.get("content", "") if isinstance(first_snippet_msg, dict) else str(first_snippet_msg)
+        
+        if not first_snippet_content:
+            return 0
+        
+        # Find the snippet in chat history by matching the first message content
+        snippet_start_idx = -1
+        for i, msg in enumerate(chat_history):
+            msg_content = msg.get("content", "") if isinstance(msg, dict) else str(msg)
+            # Ensure both are strings before comparison
+            if isinstance(msg_content, str) and isinstance(first_snippet_content, str):
+                # Use substring matching to find the snippet
+                if first_snippet_content.strip() in msg_content.strip() or msg_content.strip() in first_snippet_content.strip():
+                    snippet_start_idx = i
+                    break
+        
+        if snippet_start_idx == -1:
+            # Snippet not found in chat history
+            return 0
+        
+        # Calculate tokens from the snippet position to the end of chat history
+        token_count = 0
+        for i in range(snippet_start_idx, len(chat_history)):
+            msg = chat_history[i]
+            msg_content = msg.get("content", "") if isinstance(msg, dict) else str(msg)
+            if isinstance(msg_content, str):
+                token_count += count_tokens_in_text(msg_content)
+            # Handle multimodal content
+            elif isinstance(msg_content, list):
+                for item in msg_content:
+                    if isinstance(item, dict) and 'text' in item:
+                        token_count += count_tokens_in_text(item['text'])
+                    elif isinstance(item, str):
+                        token_count += count_tokens_in_text(item)
+        
+        return token_count
+        
+    except Exception as e:
+        print(f"Error processing chat history file {chat_history_file}: {str(e)}")
+        return 0
 
 
 def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, Any]]:
@@ -55,8 +186,8 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Get chat history links
-        chat_history_link, multimodal_link = get_chat_history_links(persona_number)
+        # Get chat history links for both versions
+        chat_history_32k_link, chat_history_128k_link, multimodal_32k_link, multimodal_128k_link = get_chat_history_links(persona_number)
         
         # Process each persona in the file (usually just one)
         for persona_id_key, persona_data in data.items():
@@ -97,11 +228,25 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                     conversations = item.get("conversations", [])
                     conversations_json = json.dumps(conversations, ensure_ascii=False) if conversations else ""
                     
+                    # Get total tokens from both chat history versions
+                    total_tokens_32k = get_total_tokens_from_chat_history(chat_history_32k_link)
+                    total_tokens_128k = get_total_tokens_from_chat_history(chat_history_128k_link) if chat_history_128k_link else None
+                    
+                    # Calculate tokens from user_query to related_conversation_snippet for both versions
+                    tokens_to_snippet_32k = find_conversation_snippet_in_chat_history(
+                        chat_history_32k_link, conversations_json, user_query
+                    )
+                    tokens_to_snippet_128k = find_conversation_snippet_in_chat_history(
+                        chat_history_128k_link, conversations_json, user_query
+                    ) if chat_history_128k_link else None
+                    
                     # Create row for this user_query
                     row = {
                         "persona_id": persona_number,
-                        "chat_history_link": chat_history_link,
-                        "chat_history_multimodal_link": multimodal_link,
+                        "chat_history_32k_link": chat_history_32k_link,
+                        "chat_history_128k_link": chat_history_128k_link if chat_history_128k_link else None,
+                        "chat_history_multimodal_32k_link": multimodal_32k_link,
+                        "chat_history_multimodal_128k_link": multimodal_128k_link if multimodal_128k_link else None,
                         "raw_persona_file": expanded_persona_file,
                         "short_persona": short_persona,
                         "expanded_persona": expanded_persona,
@@ -116,7 +261,11 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                         "related_conversation_snippet": conversations_json,
                         "who": who,
                         "updated": str(updated),
-                        "prev_pref": prev_pref
+                        "prev_pref": prev_pref,
+                        "total_chat_history_32k_tokens": total_tokens_32k,
+                        "total_chat_history_128k_tokens": total_tokens_128k,
+                        "tokens_from_snippet_to_query_32k": tokens_to_snippet_32k,
+                        "tokens_from_snippet_to_query_128k": tokens_to_snippet_128k
                     }
                     
                     rows.append(row)
@@ -173,8 +322,10 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
         # Define column order as specified
         fieldnames = [
             "persona_id",
-            "chat_history_link", 
-            "chat_history_multimodal_link",
+            "chat_history_32k_link", 
+            "chat_history_128k_link",
+            "chat_history_multimodal_32k_link",
+            "chat_history_multimodal_128k_link",
             "raw_persona_file",
             "short_persona",
             "expanded_persona",
@@ -189,7 +340,11 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
             "related_conversation_snippet",
             "who",
             "updated",
-            "prev_pref"
+            "prev_pref",
+            "total_chat_history_32k_tokens",
+            "total_chat_history_128k_tokens",
+            "tokens_from_snippet_to_query_32k",
+            "tokens_from_snippet_to_query_128k"
         ]
         
         # Ensure output directory exists

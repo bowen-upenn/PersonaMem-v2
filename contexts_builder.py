@@ -12,6 +12,145 @@ import utils
 
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
 
+# Global cache for irrelevant data
+_IRRELEVANT_DATA_CACHE = None
+
+
+def load_irrelevant_data():
+    """Load irrelevant training data from the combined dataset file."""
+    global _IRRELEVANT_DATA_CACHE
+    
+    if _IRRELEVANT_DATA_CACHE is not None:
+        return _IRRELEVANT_DATA_CACHE
+    
+    irrelevant_data_path = "data/irrelevant/combined_irrelevant_data.json"
+    
+    if not os.path.exists(irrelevant_data_path):
+        print(f"Warning: Irrelevant data file not found at {irrelevant_data_path}")
+        print("Please run 'python scripts/download_irrelevant_data.py' first to download the datasets.")
+        return []
+    
+    try:
+        with open(irrelevant_data_path, 'r', encoding='utf-8') as f:
+            _IRRELEVANT_DATA_CACHE = json.load(f)
+        
+        print(f"Loaded {len(_IRRELEVANT_DATA_CACHE)} irrelevant data examples")
+        return _IRRELEVANT_DATA_CACHE
+    
+    except Exception as e:
+        print(f"Error loading irrelevant data: {e}")
+        return []
+
+
+def insert_irrelevant_data(messages, target_token_count, current_token_count, verbose=False):
+    """
+    Insert irrelevant training data into the chat history to reach target token count.
+    
+    Args:
+        messages: List of current chat messages
+        target_token_count: Target total token count (e.g., 128000)
+        current_token_count: Current token count of the messages
+        verbose: Whether to print detailed information
+    
+    Returns:
+        Updated list of messages with irrelevant data inserted
+    """
+    if current_token_count >= target_token_count:
+        if verbose:
+            print(f"Current token count ({current_token_count}) already meets or exceeds target ({target_token_count})")
+        return messages
+    
+    irrelevant_data = load_irrelevant_data()
+    if not irrelevant_data:
+        if verbose:
+            print("No irrelevant data available, returning original messages")
+        return messages
+    
+    # Calculate how many tokens we need to add
+    tokens_needed = target_token_count - current_token_count
+    if verbose:
+        print(f"Need to add {tokens_needed} tokens to reach target of {target_token_count}")
+    
+    # Shuffle irrelevant data to get random selection
+    random.shuffle(irrelevant_data)
+    
+    # Find insertion points (after system message, but spread throughout)
+    system_message = messages[0] if messages and messages[0].get('role') == 'system' else None
+    conversation_messages = messages[1:] if system_message else messages
+    
+    # Calculate insertion points - we'll insert irrelevant data at multiple points
+    num_insertions = min(10, len(conversation_messages) // 5 + 1)  # Insert at most 10 times
+    if len(conversation_messages) > 0:
+        insertion_points = sorted(random.sample(range(len(conversation_messages) + 1), 
+                                               min(num_insertions, len(conversation_messages) + 1)))
+    else:
+        insertion_points = [0]
+    
+    # Distribute tokens roughly evenly across insertion points
+    tokens_per_insertion = tokens_needed // len(insertion_points)
+    
+    if verbose:
+        print(f"Will insert irrelevant data at {len(insertion_points)} points, ~{tokens_per_insertion} tokens each")
+    
+    # Build new message list
+    new_messages = []
+    if system_message:
+        new_messages.append(system_message)
+    
+    tokens_added = 0
+    irrelevant_idx = 0
+    
+    for i, insertion_point in enumerate(insertion_points):
+        # Add conversation messages up to this insertion point
+        if i == 0:
+            start_idx = 0
+        else:
+            start_idx = insertion_points[i-1]
+        
+        new_messages.extend(conversation_messages[start_idx:insertion_point])
+        
+        # Add irrelevant data at this insertion point
+        target_tokens_for_this_insertion = tokens_per_insertion
+        if i == len(insertion_points) - 1:  # Last insertion gets remaining tokens
+            target_tokens_for_this_insertion = tokens_needed - tokens_added
+        
+        insertion_tokens = 0
+        insertion_messages = []
+        
+        while (insertion_tokens < target_tokens_for_this_insertion and 
+               irrelevant_idx < len(irrelevant_data)):
+            
+            irrelevant_item = irrelevant_data[irrelevant_idx]
+            item_tokens = irrelevant_item.get('tokens', 0)
+            
+            # Add this item if it doesn't exceed our budget too much
+            if insertion_tokens + item_tokens <= target_tokens_for_this_insertion * 1.2:  # Allow 20% overage
+                insertion_messages.extend(irrelevant_item['messages'])
+                insertion_tokens += item_tokens
+                tokens_added += item_tokens
+            
+            irrelevant_idx += 1
+            
+            # Stop if we've used all irrelevant data
+            if irrelevant_idx >= len(irrelevant_data):
+                break
+        
+        new_messages.extend(insertion_messages)
+        
+        if verbose and insertion_messages:
+            print(f"Inserted {len(insertion_messages)} irrelevant messages ({insertion_tokens} tokens) at position {insertion_point}")
+    
+    # Add remaining conversation messages
+    if insertion_points:
+        new_messages.extend(conversation_messages[insertion_points[-1]:])
+    
+    if verbose:
+        final_token_count = count_tokens(new_messages, include_images=False)
+        print(f"Added {tokens_added} tokens of irrelevant data")
+        print(f"Final token count: {final_token_count} (target: {target_token_count})")
+    
+    return new_messages
+
 
 def load_image_as_base64(image_path):
     """Load an image file and convert it to base64 encoding."""
@@ -115,16 +254,27 @@ def save_chat_history_versions(output_data, filename, persona_number, shared_tim
     multimodal_token_count = count_tokens(multimodal_messages, include_images=True)
     multimodal_data['metadata']['final_token_count'] = multimodal_token_count
     
-    # Save multimodal version
+    # Save multimodal version with version-specific directory
     if persona_number is not None and shared_timestamp:
-        multimodal_filename = f"data/chat_history_multimodal/chat_history_{shared_timestamp}_persona{persona_number}.json"
+        # Determine version from filename path
+        if "chat_history_128k" in filename:
+            multimodal_filename = f"data/chat_history_multimodal_128k/chat_history_{shared_timestamp}_persona{persona_number}.json"
+            multimodal_dir = "data/chat_history_multimodal_128k"
+        else:
+            multimodal_filename = f"data/chat_history_multimodal_32k/chat_history_{shared_timestamp}_persona{persona_number}.json"
+            multimodal_dir = "data/chat_history_multimodal_32k"
     else:
         # Fallback naming
         base_name = os.path.splitext(os.path.basename(filename))[0]
-        multimodal_filename = f"data/chat_history_multimodal/{base_name}.json"
+        if "128k" in filename:
+            multimodal_filename = f"data/chat_history_multimodal_128k/{base_name}.json"
+            multimodal_dir = "data/chat_history_multimodal_128k"
+        else:
+            multimodal_filename = f"data/chat_history_multimodal_32k/{base_name}.json"
+            multimodal_dir = "data/chat_history_multimodal_32k"
     
-    # Ensure the multimodal directory exists
-    os.makedirs("data/chat_history_multimodal", exist_ok=True)
+    # Ensure the version-specific multimodal directory exists
+    os.makedirs(multimodal_dir, exist_ok=True)
     
     utils.save_json(multimodal_data, multimodal_filename, clean=True)
 
@@ -311,9 +461,17 @@ def order_conversations_by_dependencies(blocks):
     return ordered_blocks
 
 
-def _build_context_for_single_file(interactions, context_len=None, input_filename=None, verbose=False, shared_timestamp=None):
+def _build_context_for_single_file(interactions, context_len=None, version='32k', input_filename=None, verbose=False, shared_timestamp=None):
     """
     Internal function to build context for a single file's interactions.
+    
+    Args:
+        interactions: Dictionary of persona interactions
+        context_len: Token limit for the context (default: None for no limit)
+        version: Context version - '32k' for original, '128k' for with irrelevant data
+        input_filename: Input filename for metadata extraction
+        verbose: Whether to print detailed information
+        shared_timestamp: Shared timestamp for output files
     """
     for uuid, persona in interactions.items():
         # Extract all conversation blocks
@@ -456,6 +614,39 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
             
             all_messages = final_messages
 
+        # Handle 128k version: add irrelevant data if needed
+        if version == '128k' and context_len is not None:
+            current_tokens = count_tokens(all_messages, include_images=False)
+            
+            # Set target token count based on context_len or default to 128k
+            if context_len > 32000:  # If user specified a large context length, use it
+                target_tokens = context_len
+            else:
+                target_tokens = 128000  # Default 128k tokens
+            
+            if verbose:
+                print(f"128k version: current tokens = {current_tokens}, target = {target_tokens}")
+            
+            # Insert irrelevant data to reach target
+            all_messages = insert_irrelevant_data(
+                all_messages, 
+                target_tokens, 
+                current_tokens, 
+                verbose=verbose
+            )
+        elif version == '128k':
+            if verbose:
+                print("128k version requested but no context_len specified, using default 128k tokens")
+            current_tokens = count_tokens(all_messages, include_images=False)
+            target_tokens = 128000
+            
+            all_messages = insert_irrelevant_data(
+                all_messages, 
+                target_tokens, 
+                current_tokens, 
+                verbose=verbose
+            )
+
         # Count final tokens using only message content
         final_content_tokens = 0
         for msg in all_messages:
@@ -507,32 +698,24 @@ def _build_context_for_single_file(interactions, context_len=None, input_filenam
         }
 
         # Generate output filename using shared timestamp and persona format like conv_generator
-        if persona_number is not None and shared_timestamp:
-            filename = f"data/chat_history/chat_history_{shared_timestamp}_persona{persona_number}.json"
-        elif persona_number is not None:
-            # Fallback: generate timestamp if shared_timestamp not provided
-            import pytz
-            from datetime import datetime
-            
-            pacific_tz = pytz.timezone('US/Pacific')
-            now = datetime.now(pacific_tz)
-            pacific_timestamp = now.strftime('%y%m%d_%H%M%S')
-            
-            filename = f"data/chat_history/chat_history_{pacific_timestamp}_persona{persona_number}.json"
+        if version == '128k':
+            filename = f"data/chat_history_128k/chat_history_{shared_timestamp}_persona{persona_number}.json"
         else:
-            # Fallback to old naming if we can't extract persona info
-            filename = f"data/chat_history/chat_history_{uuid}.json"
-        
-        # Ensure the chat_history directory exists
+            filename = f"data/chat_history_32k/chat_history_{shared_timestamp}_persona{persona_number}.json"
+
+        # Ensure the version-specific chat_history directory exists
         import os
-        os.makedirs("data/chat_history", exist_ok=True)
+        if version == '128k':
+            os.makedirs("data/chat_history_128k", exist_ok=True)
+        else:
+            os.makedirs("data/chat_history_32k", exist_ok=True)
         
         # Save both text-only and multimodal versions
         save_chat_history_versions(output_data, filename, persona_number, shared_timestamp)
         print(f"Saved chat history to {filename} and multimodal version.")
 
 
-def build_context(conv_output_dir=None, interactions=None, context_len=None, input_filename=None, persona_start_idx=-1, persona_end_idx=-1, verbose=False):
+def build_context(conv_output_dir=None, interactions=None, context_len=None, version='32k', input_filename=None, persona_start_idx=-1, persona_end_idx=-1, verbose=False):
     """
     Constructs a multi-turn conversation list for each persona by extracting all conversations,
     ordering them based on dependencies, and optionally trimming by token budget.
@@ -543,6 +726,7 @@ def build_context(conv_output_dir=None, interactions=None, context_len=None, inp
         conv_output_dir: Directory containing persona files (if processing multiple files)
         interactions: Dictionary of persona data (if processing single file data)
         context_len: Optional token limit for trimming conversations
+        version: Context version - '32k' for original, '128k' for with irrelevant data padding
         input_filename: Optional filename for metadata extraction (used when interactions is provided)
         persona_start_idx: Starting persona index (-1 for beginning)
         persona_end_idx: Ending persona index (-1 for end)
@@ -586,7 +770,7 @@ def build_context(conv_output_dir=None, interactions=None, context_len=None, inp
                     file_data = json.load(file)
                 
                 # Process this individual persona file
-                _build_context_for_single_file(file_data, context_len, file_path, verbose, shared_timestamp)
+                _build_context_for_single_file(file_data, context_len, version, file_path, verbose, shared_timestamp)
                 
             except json.JSONDecodeError as e:
                 print(f"ERROR: Failed to parse JSON in {file_path}")
@@ -604,6 +788,6 @@ def build_context(conv_output_dir=None, interactions=None, context_len=None, inp
     
     # If interactions is provided, process single file data
     elif interactions:
-        _build_context_for_single_file(interactions, context_len, input_filename, verbose, shared_timestamp)
+        _build_context_for_single_file(interactions, context_len, version, input_filename, verbose, shared_timestamp)
     else:
         raise ValueError("Either conv_output_dir or interactions must be provided")
