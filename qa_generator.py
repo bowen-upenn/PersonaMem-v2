@@ -645,7 +645,15 @@ def save_qa_topic_counts(output_dir, verbose=False):
     return topic_counts_path
 
 
-def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False, validate_qa=False):
+def generate_qa(llm, input_path, output_dir, parallel=False, verbose=False, validate_qa=False, add_more_minority=False):
+    # Special handling for minority case augmentation mode
+    # "Minority" refers to underrepresented cases in the current dataset:
+    # - Case 1: Preferences from other people (who != 'self') 
+    # - Case 2: Updated preferences (updated == True)
+    # These cases currently have very few Q&A pairs, creating data imbalance
+    if add_more_minority:
+        return generate_qa_add_more_minority(llm, input_path, output_dir, parallel, verbose, validate_qa)
+    
     # Load data - input_path should be a list of files for this use case
     if not isinstance(input_path, list):
         raise ValueError("input_path should be a list of persona files for QA generation")
@@ -957,3 +965,371 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
     # Save the updated data back to the same file
     utils.save_json(data, file_path, clean=True)  # Use clean=True to overwrite
     return True
+
+
+def count_minority_cases_in_file(data):
+    """
+    Count minority cases in a persona file data structure.
+    
+    Returns:
+        tuple: (case1_total, case1_with_qa, case2_total, case2_with_qa)
+        - case1_total: Total preferences from other people (who != 'self')
+        - case1_with_qa: Preferences from other people that have user_query
+        - case2_total: Total updated preferences (updated == True)  
+        - case2_with_qa: Updated preferences that have user_query
+    """
+    case1_total = 0  # who != 'self'
+    case1_with_qa = 0
+    case2_total = 0  # updated == True
+    case2_with_qa = 0
+    
+    for uuid, persona in data.items():
+        conversations_by_type = persona.get("conversations", {})
+        
+        for conv_type, conv_list in conversations_by_type.items():
+            for conv_elem in conv_list:
+                who = conv_elem.get('who')
+                updated = conv_elem.get('updated', False)
+                user_query = conv_elem.get('user_query')
+                
+                # Count MINORITY Case 1: Preferences from other people (who != 'self')
+                if who != 'self':
+                    case1_total += 1
+                    if user_query:
+                        case1_with_qa += 1
+                
+                # Count MINORITY Case 2: Updated preferences (updated == True)
+                if updated is True:
+                    case2_total += 1
+                    if user_query:
+                        case2_with_qa += 1
+    
+    return case1_total, case1_with_qa, case2_total, case2_with_qa
+
+
+def generate_qa_add_more_minority(llm, input_path, output_dir, parallel=False, verbose=False, validate_qa=False):
+    """
+    Generate additional Q&A pairs for MINORITY cases to achieve balanced distribution.
+    
+    MINORITY CASES (underrepresented in current dataset):
+    1. Preferences from OTHER PEOPLE (who != 'self'):
+       - These are preferences that belong to someone other than the user
+       - Currently rare in the dataset, creating imbalance
+       - Example: "My friend likes spicy food" vs "I like spicy food"
+    
+    2. UPDATED preferences (updated == True):
+       - These are preferences that have been modified/updated from previous values
+       - Currently rare because most preferences are initial, not updates
+       - Example: User changes preference from "I like tea" to "I like coffee"
+    
+    The term "minority" refers to these being statistically underrepresented cases
+    that need augmentation to create a more balanced training dataset.
+    
+    Process:
+    - Iterates over all preferences for all files under data/raw_data
+    - Skips preferences that already have user_query (no regeneration)
+    - Identifies preferences matching either minority case
+    - Generates Q&A pairs using up to 6 retry attempts for Case 1 (who != 'self') 
+      and up to 3 retry attempts for Case 2 (updated == True)
+    - Provides detailed statistics about minority case coverage
+    """
+    # Get all files in data/raw_data directory
+    if isinstance(input_path, list):
+        # Use provided input_path if it's a list
+        all_files = input_path
+    else:
+        # Find all persona files in data/raw_data
+        raw_data_dir = "data/raw_data"
+        if not os.path.exists(raw_data_dir):
+            print(f"Directory {raw_data_dir} does not exist")
+            return
+        
+        all_files = []
+        for filename in os.listdir(raw_data_dir):
+            if filename.startswith("raw_data_persona") and filename.endswith(".json"):
+                all_files.append(os.path.join(raw_data_dir, filename))
+    
+    if not all_files:
+        print("No persona files found to process")
+        return
+    
+    # Sort files numerically by persona number to ensure proper consecutive batching
+    def extract_persona_number(file_path):
+        """Extract numeric persona ID from file path for proper sorting."""
+        import re
+        match = re.search(r'persona(\d+)', os.path.basename(file_path))
+        return int(match.group(1)) if match else 0
+    
+    # Sort input files by persona number to ensure consecutive ordering
+    all_files_sorted = sorted(all_files, key=extract_persona_number)
+    
+    print(f"Found {len(all_files_sorted)} persona files to process for minority case augmentation")
+    
+    # Statistics tracking for minority case augmentation
+    total_preferences_processed = 0
+    case1_matches = 0  # MINORITY: Preferences from other people (who != 'self')
+    case2_matches = 0  # MINORITY: Updated preferences (updated == True)
+    new_qa_pairs = 0
+    failed_qa_pairs = 0
+    skipped_existing = 0
+    
+    # Global before/after tracking
+    global_case1_total_before = 0
+    global_case1_with_qa_before = 0
+    global_case2_total_before = 0
+    global_case2_with_qa_before = 0
+    global_case1_total_after = 0
+    global_case1_with_qa_after = 0
+    global_case2_total_after = 0
+    global_case2_with_qa_after = 0
+    
+    # Process each file
+    for file_path in tqdm(all_files_sorted, desc="Processing files for minority case augmentation"):
+        file_name = os.path.basename(file_path)
+        print(f"\n{'='*60}")
+        print(f"Processing file: {file_name}")
+        
+        # Load the persona file
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"Error loading {file_path}: {e}")
+            continue
+        
+        # Count minority cases BEFORE processing
+        case1_total_before, case1_with_qa_before, case2_total_before, case2_with_qa_before = count_minority_cases_in_file(data)
+        
+        # Accumulate global before statistics
+        global_case1_total_before += case1_total_before
+        global_case1_with_qa_before += case1_with_qa_before
+        global_case2_total_before += case2_total_before
+        global_case2_with_qa_before += case2_with_qa_before
+        
+        print(f"BEFORE processing {file_name}:")
+        print(f"  MINORITY Case 1 (who != 'self'): {case1_with_qa_before}/{case1_total_before} have user_query")
+        print(f"  MINORITY Case 2 (updated == True): {case2_with_qa_before}/{case2_total_before} have user_query")
+        
+        # Initialize global topics at the file level for topic categorization consistency
+        global_topics = []
+        file_modified = False
+        file_new_qa_pairs = 0
+        
+        # Process each persona in the file
+        for uuid, persona in data.items():
+            if verbose:
+                print(f"  Processing persona: {uuid}")
+            
+            conversations_by_type = persona.get("conversations", {})
+            
+            for conv_type, conv_list in tqdm(conversations_by_type.items(), desc="Processing conv_types"):
+                if verbose:
+                    print(f"    Processing conv_type: {conv_type}")
+                
+                # Process each preference in the conversation
+                for i, conv_elem in enumerate(conv_list):
+                    try:
+                        preference = conv_elem.get('preference')
+                        who = conv_elem.get('who')
+                        updated = conv_elem.get('updated', False)
+                        user_query = conv_elem.get('user_query')
+                        
+                        total_preferences_processed += 1
+                        
+                        # Skip if preference already has user_query
+                        if user_query:
+                            skipped_existing += 1
+                            if verbose:
+                                print(f"      Skipping preference '{preference}' - already has user_query")
+                            continue
+                        
+                        # Check for the two MINORITY cases (underrepresented in dataset)
+                        # MINORITY Case 1: Preferences from OTHER PEOPLE (who != 'self')
+                        # These are rare because most preferences are self-reported
+                        case1_match = (who != 'self')
+                        
+                        # MINORITY Case 2: UPDATED preferences (updated == True)
+                        # These are rare because most preferences are initial, not modifications
+                        case2_match = (updated is True)
+                        
+                        if not (case1_match or case2_match):
+                            # This preference doesn't match either minority case, skip it
+                            continue
+                        
+                        # Log which minority case matched
+                        if case1_match:
+                            case1_matches += 1
+                            if verbose:
+                                print(f"      MINORITY Case 1 match: who='{who}' != 'self' (other person's preference) for '{preference}' - will try up to 6 attempts")
+                        
+                        if case2_match:
+                            case2_matches += 1
+                            if verbose:
+                                print(f"      MINORITY Case 2 match: updated=True (modified preference) for '{preference}' - will try up to 3 attempts")
+                        
+                        # Generate persona context
+                        llm.reset_history()
+                        persona_keys = list(persona.keys())
+                        if 'stereotypical_preferences' in persona_keys:
+                            idx = persona_keys.index('stereotypical_preferences')
+                            keys_before = persona_keys[:idx]
+                            curr_persona_dict = {k: persona[k] for k in keys_before if k in persona}
+                            curr_persona = str(curr_persona_dict)
+                        else:
+                            curr_persona = str(persona)
+                        
+                        groundtruth_preference = conv_elem.get("preference", "")
+                        
+                        # Use while loop to generate Q&A pairs with different max attempts based on case
+                        # Give more attempts for MINORITY Case 1 (who != 'self') since it's rarer
+                        max_attempts = 6 if who != 'self' else 3
+                        attempt = 0
+                        qa_generated = False
+                        
+                        while attempt < max_attempts and not qa_generated:
+                            attempt += 1
+                            if verbose:
+                                print(f"        Attempting Q&A generation for '{preference}' (attempt {attempt}/{max_attempts})")
+                            
+                            try:
+                                # Generate QA fields
+                                qa_fields = None
+                                if "sensitive_info" in conv_elem:
+                                    qa_fields = generate_qa_for_sensitive_info(llm, conv_elem.copy(), curr_persona, global_topics, verbose=verbose)
+                                else:
+                                    ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
+                                    qa_fields = generate_qa_for_each_element(llm, conv_elem.copy(), curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                                
+                                # Check if QA generation was successful
+                                if qa_fields is None:
+                                    if verbose:
+                                        print(f"          QA generation failed for attempt {attempt}")
+                                    continue  # Try again
+                                
+                                user_query_generated = qa_fields.get("user_query")
+                                correct_answer = qa_fields.get("correct_answer")
+                                incorrect_answers = qa_fields.get("incorrect_answers")
+                                
+                                # Validate the QA pair only if validate_qa is enabled
+                                if validate_qa:
+                                    is_valid = validate_qa_pair(llm, groundtruth_preference, user_query_generated, correct_answer, incorrect_answers, verbose=verbose)
+                                    
+                                    if is_valid:
+                                        # Only add to the conversation list if validation passes
+                                        conv_elem.update({
+                                            "user_query": user_query_generated,
+                                            "correct_answer": correct_answer,
+                                            "incorrect_answers": incorrect_answers,
+                                        })
+                                        new_qa_pairs += 1
+                                        file_new_qa_pairs += 1
+                                        qa_generated = True
+                                        file_modified = True
+                                        if verbose:
+                                            print(f"          ✓ QA pair VALID on attempt {attempt} - Added to dataset")
+                                    else:
+                                        if verbose:
+                                            print(f"          ✗ QA pair INVALID on attempt {attempt} - Retrying")
+                                else:
+                                    # Skip validation, accept the first successful generation
+                                    conv_elem.update({
+                                        "user_query": user_query_generated,
+                                        "correct_answer": correct_answer,
+                                        "incorrect_answers": incorrect_answers,
+                                    })
+                                    new_qa_pairs += 1
+                                    file_new_qa_pairs += 1
+                                    qa_generated = True
+                                    file_modified = True
+                                    if verbose:
+                                        print(f"          ✓ QA pair generated on attempt {attempt} (validation disabled)")
+                                
+                            except Exception as e:
+                                if verbose:
+                                    print(f"          Error on attempt {attempt}: {e}")
+                                continue  # Try again
+                        
+                        # If we couldn't generate a valid Q&A pair after all attempts
+                        if not qa_generated:
+                            failed_qa_pairs += 1
+                            if verbose:
+                                print(f"        Failed to generate valid Q&A pair for '{preference}' after {max_attempts} attempts")
+                    
+                    except Exception as e:
+                        if verbose:
+                            print(f"      Error processing preference: {e}")
+                        continue
+        
+        # Count minority cases AFTER processing
+        case1_total_after, case1_with_qa_after, case2_total_after, case2_with_qa_after = count_minority_cases_in_file(data)
+        
+        # Accumulate global after statistics
+        global_case1_total_after += case1_total_after
+        global_case1_with_qa_after += case1_with_qa_after
+        global_case2_total_after += case2_total_after
+        global_case2_with_qa_after += case2_with_qa_after
+        
+        print(f"AFTER processing {file_name}:")
+        print(f"  MINORITY Case 1 (who != 'self'): {case1_with_qa_after}/{case1_total_after} have user_query")
+        print(f"  MINORITY Case 2 (updated == True): {case2_with_qa_after}/{case2_total_after} have user_query")
+        
+        # Calculate and show the difference
+        case1_added = case1_with_qa_after - case1_with_qa_before
+        case2_added = case2_with_qa_after - case2_with_qa_before
+        total_added_this_file = case1_added + case2_added
+        
+        print(f"ADDED in {file_name}:")
+        print(f"  MINORITY Case 1: +{case1_added} user_query entries")
+        print(f"  MINORITY Case 2: +{case2_added} user_query entries")
+        print(f"  Total added: {total_added_this_file} user_query entries")
+        
+        # Save the updated data back to the same file if any modifications were made
+        if file_modified:
+            try:
+                utils.save_json(data, file_path, clean=True)
+                print(f"  ✓ Saved updated data to {file_name}")
+            except Exception as e:
+                print(f"  ✗ Error saving {file_path}: {e}")
+        else:
+            print(f"  No changes made to {file_name}")
+        
+        print(f"{'='*60}")
+    
+    # Print final statistics for minority case augmentation
+    print(f"\n{'='*80}")
+    print(f"FINAL MINORITY CASE QA GENERATION SUMMARY")
+    print(f"{'='*80}")
+    
+    # Global before/after comparison
+    global_case1_added = global_case1_with_qa_after - global_case1_with_qa_before
+    global_case2_added = global_case2_with_qa_after - global_case2_with_qa_before
+    total_global_added = global_case1_added + global_case2_added
+    
+    print(f"GLOBAL BEFORE/AFTER COMPARISON:")
+    print(f"  MINORITY Case 1 (who != 'self'):")
+    print(f"    BEFORE: {global_case1_with_qa_before}/{global_case1_total_before} had user_query")
+    print(f"    AFTER:  {global_case1_with_qa_after}/{global_case1_total_after} have user_query")
+    print(f"    ADDED:  +{global_case1_added} user_query entries")
+    
+    print(f"  MINORITY Case 2 (updated == True):")
+    print(f"    BEFORE: {global_case2_with_qa_before}/{global_case2_total_before} had user_query")
+    print(f"    AFTER:  {global_case2_with_qa_after}/{global_case2_total_after} have user_query")
+    print(f"    ADDED:  +{global_case2_added} user_query entries")
+    
+    print(f"  TOTAL ADDED ACROSS ALL FILES: {total_global_added} user_query entries")
+    
+    print(f"\nPROCESSING STATISTICS:")
+    print(f"  Total preferences processed: {total_preferences_processed}")
+    print(f"  Skipped (already have user_query): {skipped_existing}")
+    print(f"  MINORITY Case 1 matches (who != 'self' - other people's preferences): {case1_matches}")
+    print(f"  MINORITY Case 2 matches (updated == True - modified preferences): {case2_matches}")
+    print(f"  New Q&A pairs generated for minority cases: {new_qa_pairs}")
+    print(f"  Failed Q&A generation: {failed_qa_pairs}")
+    
+    if case1_matches + case2_matches > 0:
+        success_rate = (new_qa_pairs / (case1_matches + case2_matches)) * 100
+        print(f"  Success rate for minority cases: {success_rate:.1f}%")
+    
+    # Save topic counts after all QA processing is complete
+    topic_counts_file = save_qa_topic_counts(output_dir or ".", verbose=verbose)
+    print(f"QA topic categorization complete. Counts saved to: {topic_counts_file}")

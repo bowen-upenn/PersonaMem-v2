@@ -60,14 +60,18 @@ def process_conversation_section(section_name: str, section_data: List[Dict],
             "conversation_scenario": section_name,
             "pref_type": pref_type,
             "topic_preference": topic_preference,
-            "conversations": conversations_json,
             "user_query": user_query,
             "topic_query": topic_query,
             "correct_answer": correct_answer,
             "incorrect_answers": incorrect_answers,
             "who": who,
             "updated": str(updated),
-            "prev_pref": prev_pref
+            "prev_pref": prev_pref,
+            "raw_persona_file": "",
+            "expanded_persona": "",
+            "chat_history_link": conversations_json,  # Put conversations in chat_history_link
+            "related_conversation_snippet": "",
+            "chat_history_multimodal_link": ""
         }
         
         rows.append(row)
@@ -130,14 +134,18 @@ def process_all_json_files(input_dir: str, output_dir: str) -> None:
                     "conversation_scenario": "",
                     "pref_type": "",
                     "topic_preference": "",
-                    "conversations": "",
                     "user_query": "",
                     "topic_query": "",
                     "correct_answer": "",
                     "incorrect_answers": "",
                     "who": "",
                     "updated": "",
-                    "prev_pref": ""
+                    "prev_pref": "",
+                    "raw_persona_file": os.path.basename(json_file),
+                    "expanded_persona": expanded_persona,
+                    "chat_history_link": "",
+                    "related_conversation_snippet": "",
+                    "chat_history_multimodal_link": ""
                 }
                 all_csv_rows.append(metadata_row)
                 
@@ -167,8 +175,10 @@ def process_all_json_files(input_dir: str, output_dir: str) -> None:
         output_csv = os.path.join(output_dir, "all_personas_preview.csv")
         fieldnames = [
             "persona_id", "short_persona", "preference", "conversation_scenario", "pref_type", 
-            "topic_preference", "conversations", "user_query", "topic_query", "correct_answer", 
-            "incorrect_answers", "who", "updated", "prev_pref"
+            "topic_preference", "user_query", "topic_query", "correct_answer", 
+            "incorrect_answers", "who", "updated", "prev_pref", "raw_persona_file", 
+            "expanded_persona", "chat_history_link", "related_conversation_snippet", 
+            "chat_history_multimodal_link"
         ]
         
         with open(output_csv, 'w', newline='', encoding='utf-8') as csvfile:

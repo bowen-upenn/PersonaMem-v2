@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     parser.add_argument('--validate_qa', dest='validate_qa', action='store_true', help='Enable QA validation to filter out problematic pairs')
     parser.add_argument('--refresh_mem', type=int, default=None, help='Number of files to process before refreshing memory (saving and reloading topics). If not specified, no memory refresh is performed.')
+    parser.add_argument('--add_more_minority', dest='add_more_minority', action='store_true', help='Add more Q&A pairs for minority cases to achieve balanced distribution: case 1 (who != "self" - preferences from other people) and case 2 (updated == True - updated preferences). These are called "minority" because they are underrepresented in the current dataset.')
     cmd_args = parser.parse_args()
 
     # Override args from config.yaml with command-line arguments if provided
@@ -67,6 +68,7 @@ def main():
     args['data']['persona_start_idx'] = cmd_args.persona_start_idx if cmd_args.persona_start_idx is not None else -1
     args['data']['persona_end_idx'] = cmd_args.persona_end_idx if cmd_args.persona_end_idx is not None else -1
     args['inference']['refresh_mem'] = cmd_args.refresh_mem if cmd_args.refresh_mem is not None else None
+    args['inference']['add_more_minority'] = cmd_args.add_more_minority if cmd_args.add_more_minority is not None else False
     print(args)
 
     # Build persona and preferences
@@ -141,7 +143,8 @@ def main():
         
         # Generate Q&A using the updated generate_qa function that supports parallel processing
         generate_qa(llm, persona_files, qa_output_path, parallel=args['inference']['parallel'], 
-                   verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'])
+                   verbose=args['inference']['verbose'], validate_qa=args['inference']['validate_qa'],
+                   add_more_minority=args['inference']['add_more_minority'])
 
     # Build long context
     elif args['inference']['step'] == 'build_chat_history':
