@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--context_length', type=int, default=32000, help='Length of the total context to be generated, including irrelevant tokens')
     parser.add_argument('--self_verify', dest='self_verify', action='store_true', help='Set self_verify to True')
     parser.add_argument('--rate_limit_per_min', type=int, default=5, help='Rate limit for API calls per minute')
-    parser.add_argument('--parallel', dest='parallel', action='store_true', help='Enable parallel processing')
+    parser.add_argument('--parallel', dest='parallel', action='store_true', help='Enable parallel processing (works with both regular QA generation and minority case augmentation)')
     parser.add_argument('--clean', dest='clean', action='store_true', help='Remove existing data and start from scratch')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='Set verbose to True')
     parser.add_argument('--validate_qa', dest='validate_qa', action='store_true', help='Enable QA validation to filter out problematic pairs')
