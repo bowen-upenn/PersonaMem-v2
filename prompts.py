@@ -1105,3 +1105,54 @@ Additional check for neutrality:
 
 Think step by step. Then answer only "KEEP" or "REMOVE" after ###Decision"""
     return prompt
+
+
+def generate_buggy_code_from_solution(original_question, working_solution):
+    """
+    Generate a prompt to create buggy code from a working solution.
+    """
+    return f"""You are given a coding problem and its working solution. Your task is to introduce realistic bugs that a human programmer might make, then return the buggy version.
+
+Original Problem:
+{original_question}
+
+Working Solution:
+{working_solution}
+
+Please introduce 1-2 realistic bugs that a human programmer would commonly make. Consider these types of bugs:
+- Off-by-one errors in loops or array indexing
+- Incorrect variable initialization
+- Wrong comparison operators (>, >=, <, <=)
+- Missing edge case handling
+- Incorrect logic in conditional statements
+- Variable naming confusion or scope issues
+- Missing return statements or wrong return values
+
+Return both the buggy code and the buggy chain of thought analysis before the code and summarization after the code. The code and texts should look like a genuine attempt that has subtle bugs.
+"""
+
+
+def generate_debugging_request():
+    """
+    Generate a prompt for the LLM to create a realistic debugging request from a user.
+    """
+    return """Generate a realistic debugging request that a user would make when they encounter issues with their code. The request should sound natural and mention specific problems like runtime errors, incorrect output, failing test cases, or logical issues. 
+
+Return only the user's debugging request."""
+
+
+def generate_feature_request():
+    """
+    Generate a prompt for the LLM to create a realistic feature enhancement request from a user.
+    """
+    return """Generate a realistic feature enhancement request that a user would make to improve existing working code. The request should ask for improvements like optimization, error handling, additional functionality, better code structure, testing, documentation, or other enhancements that would make the code more robust or professional.
+
+Return only the user's feature request."""
+
+
+def generate_chain_of_thought_instruction():
+    """
+    Generate instruction for chain of thought analysis.
+    """
+    return """
+Please provide a detailed plan and analysis before writing the code, and a detailed summary and analysis to the user after the code."""

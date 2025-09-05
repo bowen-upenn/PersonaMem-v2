@@ -42,7 +42,7 @@ def load_irrelevant_data():
         return []
 
 
-def insert_irrelevant_data(messages, target_token_count, current_token_count, verbose=False):
+def insert_irrelevant_data(messages, target_token_count, current_token_count, verbose=False, block_boundaries=None):
     """
     Insert irrelevant training data into the chat history to reach target token count.
     
@@ -51,6 +51,8 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
         target_token_count: Target total token count (e.g., 128000)
         current_token_count: Current token count of the messages
         verbose: Whether to print detailed information
+        block_boundaries: List of message indices that mark the end of each conversation block
+                         If provided, irrelevant data will only be inserted at these boundaries
     
     Returns:
         Updated list of messages with irrelevant data inserted
@@ -76,17 +78,28 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
         print(f"Need to add {tokens_needed} tokens to reach target of {target_token_count}")
         print(f"Shuffled {len(irrelevant_data)} irrelevant data examples")
     
-    # Find insertion points (after system message, but spread throughout)
-    system_message = messages[0] if messages and messages[0].get('role') == 'system' else None
-    conversation_messages = messages[1:] if system_message else messages
-    
-    # Calculate insertion points - we'll insert irrelevant data at multiple points
-    num_insertions = min(10, len(conversation_messages) // 5 + 1)  # Insert at most 10 times
-    if len(conversation_messages) > 0:
-        insertion_points = sorted(random.sample(range(len(conversation_messages) + 1), 
-                                               min(num_insertions, len(conversation_messages) + 1)))
+    # Find insertion points - use block boundaries if provided, otherwise use random points
+    if block_boundaries is not None:
+        # Use block boundaries as insertion points (respecting conversation block integrity)
+        insertion_points = block_boundaries.copy()
+        if verbose:
+            print(f"Using {len(insertion_points)} block boundaries as insertion points: {insertion_points}")
     else:
-        insertion_points = [0]
+        # Fallback to original random insertion logic
+        system_message = messages[0] if messages and messages[0].get('role') == 'system' else None
+        conversation_messages = messages[1:] if system_message else messages
+        
+        # Calculate insertion points - we'll insert irrelevant data at multiple points
+        num_insertions = min(10, len(conversation_messages) // 5 + 1)  # Insert at most 10 times
+        if len(conversation_messages) > 0:
+            insertion_points = sorted(random.sample(range(len(conversation_messages) + 1), 
+                                                   min(num_insertions, len(conversation_messages) + 1)))
+        else:
+            insertion_points = [0]
+        
+        # Adjust insertion points to be relative to full message list
+        if system_message:
+            insertion_points = [p + 1 for p in insertion_points]  # Offset by 1 for system message
     
     # Distribute tokens roughly evenly across insertion points
     tokens_per_insertion = tokens_needed // len(insertion_points)
@@ -94,22 +107,15 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
     if verbose:
         print(f"Will insert irrelevant data at {len(insertion_points)} points, ~{tokens_per_insertion} tokens each")
     
-    # Build new message list
+    # Build new message list by inserting irrelevant data at the specified insertion points
     new_messages = []
-    if system_message:
-        new_messages.append(system_message)
-    
     tokens_added = 0
     irrelevant_idx = 0
+    last_insertion_point = 0
     
     for i, insertion_point in enumerate(insertion_points):
-        # Add conversation messages up to this insertion point
-        if i == 0:
-            start_idx = 0
-        else:
-            start_idx = insertion_points[i-1]
-        
-        new_messages.extend(conversation_messages[start_idx:insertion_point])
+        # Add original messages up to this insertion point
+        new_messages.extend(messages[last_insertion_point:insertion_point])
         
         # Add irrelevant data at this insertion point
         target_tokens_for_this_insertion = tokens_per_insertion
@@ -149,11 +155,13 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
         new_messages.extend(insertion_messages)
         
         if verbose and insertion_messages:
-            print(f"Inserted {len(insertion_messages)} irrelevant messages ({insertion_tokens} tokens) at position {insertion_point}")
+            print(f"Inserted {len(insertion_messages)} irrelevant messages ({insertion_tokens} tokens) at block boundary {insertion_point}")
+        
+        last_insertion_point = insertion_point
     
-    # Add remaining conversation messages
-    if insertion_points:
-        new_messages.extend(conversation_messages[insertion_points[-1]:])
+    # Add any remaining original messages after the last insertion point
+    if last_insertion_point < len(messages):
+        new_messages.extend(messages[last_insertion_point:])
     
     if verbose:
         final_token_count = count_tokens(new_messages, include_images=False)
@@ -552,10 +560,13 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
             "content": system_prompt
         }
         
-        # Flatten to single list of messages
+        # Flatten to single list of messages, keeping track of block boundaries for 128k version
         all_messages = [system_message]  # Start with system message
+        block_boundaries = [1]  # Start after system message
+        
         for block in ordered_blocks:
             all_messages.extend(block['messages'])
+            block_boundaries.append(len(all_messages))  # Mark end of this block
         
         # Compute total tokens
         total_tokens = count_tokens(all_messages, include_images=False)
@@ -664,11 +675,13 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
                 print(f"128k version: current tokens = {current_tokens}, target = {target_tokens}")
             
             # Insert irrelevant data to reach target (no trimming of original content)
+            # Pass block boundaries to ensure irrelevant data is inserted between blocks, not within them
             all_messages = insert_irrelevant_data(
                 all_messages, 
                 target_tokens, 
                 current_tokens, 
-                verbose=verbose
+                verbose=verbose,
+                block_boundaries=block_boundaries
             )
 
         # Count final tokens using only message content

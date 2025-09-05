@@ -22,6 +22,8 @@ import time
 # Add parent directory to path to import project modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from query_llm import QueryLLM
+import prompts
+import utils
 
 # Initialize tokenizer
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
@@ -268,6 +270,191 @@ def process_single_query_thread(args):
         return None
 
 
+def add_coding_questions(llm, output_dir, parallel=False, verbose=False):
+    """
+    Process coding questions from random_code_questions.txt and create multi-turn debugging conversations.
+    
+    Args:
+        llm: QueryLLM instance for generating responses
+        output_dir: Directory containing the coding questions file
+        parallel: Whether to process queries in parallel batches
+        verbose: Whether to print detailed information
+    
+    Returns:
+        List of processed multi-turn coding conversations in OpenAI format
+    """
+    coding_questions_file = os.path.join(output_dir, "random_code_questions.txt")
+    
+    if not os.path.exists(coding_questions_file):
+        print(f"Coding questions file not found at {coding_questions_file}")
+        return []
+    
+    print("Processing coding questions and creating multi-turn debugging conversations...")
+    
+    # Load all coding questions
+    coding_questions = []
+    try:
+        with open(coding_questions_file, 'r', encoding='utf-8') as f:
+            coding_questions = [line.strip() for line in f if line.strip()]
+    except Exception as e:
+        print(f"Error loading coding questions: {e}")
+        return []
+    
+    if not coding_questions:
+        print("No coding questions found")
+        return []
+    
+    print(f"Found {len(coding_questions)} coding questions")
+    
+    # Prepare arguments for processing
+    all_query_args = []
+    for i, question in enumerate(coding_questions):
+        all_query_args.append((llm, question, i, verbose))
+    
+    coding_conversations = []
+    
+    if parallel:
+        # Parallel processing in batches
+        max_workers = min(llm.rate_limit_per_min, len(all_query_args))
+        batch_size = max_workers
+        num_batches = math.ceil(len(all_query_args) / batch_size)
+        
+        print(f"Processing in {num_batches} batches with up to {batch_size} parallel workers each")
+        
+        for batch_idx in tqdm(range(num_batches)):
+            batch_start_idx = batch_idx * batch_size
+            batch_end_idx = min((batch_idx + 1) * batch_size, len(all_query_args))
+            batch_args = all_query_args[batch_start_idx:batch_end_idx]
+            
+            # Process batch in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(batch_args)) as executor:
+                # Submit all tasks for this batch
+                future_to_args = {executor.submit(process_single_coding_question, args): args for args in batch_args}
+                
+                # Collect results
+                for future in concurrent.futures.as_completed(future_to_args):
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            with RESULTS_LOCK:
+                                coding_conversations.extend(result)
+                    except Exception as e:
+                        args = future_to_args[future]
+                        question = args[1][:50] + "..." if len(args[1]) > 50 else args[1]
+                        print(f"Error in future for coding question '{question}': {e}")
+    else:
+        # Sequential processing
+        for args in tqdm(all_query_args, desc="Processing coding questions sequentially"):
+            result = process_single_coding_question(args)
+            # print the result in json format
+            if verbose:
+                print(json.dumps(result, indent=2))
+            if result is not None:
+                coding_conversations.extend(result)
+    
+    if coding_conversations:
+        total_tokens = sum(item['tokens'] for item in coding_conversations)
+        print(f"Generated {len(coding_conversations)} multi-turn coding conversation pairs")
+        print(f"Total tokens from coding conversations: {total_tokens:,}")
+        return coding_conversations
+    else:
+        print("No coding conversations were generated")
+        return []
+
+
+def process_single_coding_question(args):
+    """
+    Generate multi-turn coding conversations with probabilistic flows:
+    - 10%: Simple request -> code
+    - 60%: Request -> buggy code -> debug request -> better code  
+    - 30%: Request -> buggy code -> debug -> better code -> feature request -> updated code
+    
+    Args:
+        args: Tuple containing (llm, question, question_index, verbose)
+    
+    Returns:
+        List of conversation pairs in OpenAI format
+    """
+    llm, question, question_index, verbose = args
+    
+    # Set a unique random seed for this thread
+    random.seed(int(time.time() * 1000000) + threading.get_ident() + question_index)
+    
+    conversation_pairs = []
+    
+    if verbose:
+        print(f"Processing coding question {question_index}: {question[:100]}...")
+    
+    # Determine conversation flow based on probability
+    flow_prob = random.random()
+    if flow_prob < 0.1:
+        flow_type = "simple"  # Just request -> code
+    elif flow_prob < 0.6:
+        flow_type = "debug"   # request -> buggy -> debug -> better
+    else:
+        flow_type = "full"    # request -> buggy -> debug -> better -> feature -> updated
+    
+    if verbose:
+        print(f"Using flow type: {flow_type} (prob: {flow_prob:.3f})")
+    
+    # Always start with user question
+    user_question = {"role": "user", "content": question}
+    
+    if flow_type == "simple":
+        # Simple flow: get direct answer with chain of thought
+        llm.reset_history()
+        response = llm.query_llm(question + prompts.generate_chain_of_thought_instruction(), use_history=False, verbose=False)
+        assistant_response = {"role": "assistant", "content": response}
+        pair = {
+            "messages": [user_question, assistant_response],
+            "tokens": count_tokens(question) + count_tokens(response)
+        }
+        conversation_pairs.append(pair)
+        
+    else:
+        # Debug flow or full flow - start with buggy code
+        # Step 1: Generate working solution first
+        llm.reset_history()
+        working_solution = llm.query_llm(question + prompts.generate_chain_of_thought_instruction(), use_history=True, verbose=False)
+        
+        # Step 2: Generate buggy version
+        buggy_prompt = prompts.generate_buggy_code_from_solution(question, working_solution)
+        buggy_response = llm.query_llm(buggy_prompt, use_history=True, verbose=False)
+        assistant_response = {"role": "assistant", "content": buggy_response}
+        
+        # Step 3: Generate debug request
+        debug_prompt = prompts.generate_debugging_request()
+        debug_request = llm.query_llm(debug_prompt, use_history=True, verbose=False)
+        debug_message = {"role": "user", "content": debug_request}
+        
+        # Step 4: Generate debug response
+        debug_response = llm.query_llm(debug_request + prompts.generate_chain_of_thought_instruction(), use_history=True, verbose=False)
+        debug_assistant = {"role": "assistant", "content": debug_response}
+
+        pair = {
+            "messages": [user_question, assistant_response, debug_message, debug_assistant],
+            "tokens": count_tokens(question) + count_tokens(buggy_response) + count_tokens(debug_request) + count_tokens(debug_response)
+        }
+        
+        # Step 6: For full flow, add feature enhancement
+        if flow_type == "full":
+            # Generate feature request
+            feature_prompt = prompts.generate_feature_request()
+            feature_request = llm.query_llm(feature_prompt, use_history=True, verbose=False)
+            feature_message = {"role": "user", "content": feature_request}
+            feature_response = llm.query_llm(feature_request + prompts.generate_chain_of_thought_instruction(), use_history=True, verbose=False)
+            feature_assistant = {"role": "assistant", "content": feature_response}
+
+            pair = {
+                "messages": [user_question, assistant_response, debug_message, debug_assistant, feature_message, feature_assistant],
+                "tokens": count_tokens(question) + count_tokens(buggy_response) + count_tokens(debug_request) + count_tokens(debug_response) + count_tokens(feature_request) + count_tokens(feature_response)
+            }
+        
+        conversation_pairs.append(pair)
+    
+    return conversation_pairs
+
+
 def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_size=1000, verbose=False):
     """
     Process user queries from downloaded datasets, generate LLM responses, and return as irrelevant data.
@@ -496,6 +683,8 @@ def main():
                        help='Maximum number of parallel requests per minute (default: 20)')
     parser.add_argument('--sample-size', type=int, default=1000,
                        help='Number of queries to randomly sample for processing (default: 1000)')
+    parser.add_argument('--add-code', action='store_true',
+                       help='Process coding questions and create multi-turn debugging conversations')
     parser.add_argument('--verbose', action='store_true',
                        help='Print detailed processing information')
     
@@ -518,15 +707,23 @@ def main():
     download_gsm8k(output_dir)
     download_bigcodebench(output_dir)
     
-    # Process user queries if requested
+    # Process user queries and/or coding questions if requested
     processed_queries = []
-    if cmd_args.process_queries:
-        print("\nProcessing user queries and generating LLM responses...")
+    if cmd_args.process_queries or cmd_args.add_code:
         # Create LLM instance with custom rate limit
         llm = QueryLLM(config, rate_limit_per_min=cmd_args.rate_limit_per_min)
         
-        # Process user queries and get results
-        processed_queries = process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, sample_size=cmd_args.sample_size, verbose=cmd_args.verbose)
+        if cmd_args.process_queries:
+            print("\nProcessing user queries and generating LLM responses...")
+            # Process user queries and get results
+            user_queries = process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, sample_size=cmd_args.sample_size, verbose=cmd_args.verbose)
+            processed_queries.extend(user_queries)
+        
+        if cmd_args.add_code:
+            print("\nProcessing coding questions and creating multi-turn debugging conversations...")
+            # Process coding questions and get results
+            coding_conversations = add_coding_questions(llm, output_dir, parallel=cmd_args.parallel, verbose=cmd_args.verbose)
+            processed_queries.extend(coding_conversations)
             
     # Create combined file with processed queries
     create_combined_irrelevant_data(output_dir, processed_queries)
@@ -534,6 +731,8 @@ def main():
     print("All datasets downloaded successfully!")
     if cmd_args.process_queries:
         print("User query processing completed!")
+    if cmd_args.add_code:
+        print("Coding question processing completed!")
 
 if __name__ == "__main__":
     main()
