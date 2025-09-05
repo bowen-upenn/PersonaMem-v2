@@ -320,7 +320,7 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_s
                 if user_message.get('role') != 'user':
                     continue
                 
-                user_query = user_message.get('content', '') + " Let us think step by step."
+                user_query = user_message.get('content', '')
                 if not user_query:
                     continue
                 

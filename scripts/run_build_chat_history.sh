@@ -13,7 +13,7 @@ for version in 128k; do
     --persona_start_idx 0 \
     --persona_end_idx -1 \
     --version $version \
-    --verbose
+    # --verbose
   
   echo "Completed version: $version"
   echo ""

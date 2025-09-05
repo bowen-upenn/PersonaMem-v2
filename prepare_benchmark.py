@@ -240,6 +240,20 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                         chat_history_128k_link, conversations_json, user_query
                     ) if chat_history_128k_link else None
                     
+                    # Calculate proportion of persona-relevant tokens
+                    # For 32k: always 100% since no irrelevant data is added
+                    proportion_persona_relevant_32k = 1.0  # 100%
+                    
+                    # For 128k: calculate proportion of original persona tokens vs total tokens
+                    proportion_persona_relevant_128k = None
+                    if total_tokens_128k and total_tokens_32k and total_tokens_128k > 0:
+                        # The persona-relevant tokens are approximately the same as 32k version
+                        # The 128k version adds irrelevant data on top
+                        proportion_persona_relevant_128k = total_tokens_32k / total_tokens_128k
+                    elif total_tokens_128k and total_tokens_128k > 0:
+                        # Fallback: if we don't have 32k data, assume minimal relevant content
+                        proportion_persona_relevant_128k = 0.0
+                    
                     # Create row for this user_query
                     row = {
                         "persona_id": persona_number,
@@ -265,7 +279,9 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                         "total_chat_history_32k_tokens": total_tokens_32k,
                         "total_chat_history_128k_tokens": total_tokens_128k,
                         "tokens_from_snippet_to_query_32k": tokens_to_snippet_32k,
-                        "tokens_from_snippet_to_query_128k": tokens_to_snippet_128k
+                        "tokens_from_snippet_to_query_128k": tokens_to_snippet_128k,
+                        "proportion_of_persona_relevant_tokens_32k": proportion_persona_relevant_32k,
+                        "proportion_of_persona_relevant_tokens_128k": proportion_persona_relevant_128k
                     }
                     
                     rows.append(row)
@@ -344,7 +360,9 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
             "total_chat_history_32k_tokens",
             "total_chat_history_128k_tokens",
             "tokens_from_snippet_to_query_32k",
-            "tokens_from_snippet_to_query_128k"
+            "tokens_from_snippet_to_query_128k",
+            "proportion_of_persona_relevant_tokens_32k",
+            "proportion_of_persona_relevant_tokens_128k"
         ]
         
         # Ensure output directory exists
