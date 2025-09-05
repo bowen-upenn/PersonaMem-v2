@@ -8,5 +8,4 @@ python download_irrelevant_data.py \
   --add-code \
   --sample-size 1000
 
-
 # python download_irrelevant_data.py --add-code --model o3-mini --parallel --rate-limit-per-min 30

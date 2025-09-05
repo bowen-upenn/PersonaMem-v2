@@ -592,29 +592,29 @@ def create_combined_irrelevant_data(output_dir, processed_queries=None):
     
     combined_data = []
     
+    # Always load original datasets first
+    dataset_files = [
+        "hotpotqa_train.json",
+        "mmlu_train.json", 
+        "gsm8k_train.json",
+        "bigcodebench_train.json"
+    ]
+    
+    for filename in dataset_files:
+        filepath = os.path.join(output_dir, filename)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    combined_data.extend(data)
+                    print(f"Loaded {len(data)} examples from {filename}")
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
+    
+    # Then add processed queries (coding conversations, user query responses, etc.)
     if processed_queries:
-        # If we have processed queries, use them as the main content
         combined_data.extend(processed_queries)
         print(f"Added {len(processed_queries)} processed query-response pairs")
-    else:
-        # If no processed queries, load original datasets (fallback behavior)
-        dataset_files = [
-            "hotpotqa_train.json",
-            "mmlu_train.json", 
-            "gsm8k_train.json",
-            "bigcodebench_train.json"
-        ]
-        
-        for filename in dataset_files:
-            filepath = os.path.join(output_dir, filename)
-            if os.path.exists(filepath):
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        combined_data.extend(data)
-                        print(f"Loaded {len(data)} examples from {filename}")
-                except Exception as e:
-                    print(f"Error loading {filename}: {e}")
     
     # Shuffle the combined data
     random.shuffle(combined_data)
@@ -631,29 +631,29 @@ def create_combined_irrelevant_data(output_dir, processed_queries=None):
     print(f"Saved to {output_file}")
     
     # Create summary statistics
+    datasets_included = []
+    
+    # Count original datasets
+    for filename in dataset_files:
+        filepath = os.path.join(output_dir, filename)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    datasets_included.append(f"{filename} ({len(data)} examples)")
+            except:
+                pass
+    
+    # Add processed queries info
     if processed_queries:
-        # When using processed queries, stats reflect only the processed sample
-        stats = {
-            "total_examples": len(combined_data),
-            "total_tokens": total_tokens,
-            "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
-            "datasets_included": [f"processed_queries_sample ({len(processed_queries)} queries from all datasets)"]
-        }
-    else:
-        # Fallback: original dataset stats
-        dataset_files = [
-            "hotpotqa_train.json",
-            "mmlu_train.json", 
-            "gsm8k_train.json",
-            "bigcodebench_train.json"
-        ]
-        datasets_included = [f for f in dataset_files if os.path.exists(os.path.join(output_dir, f))]
-        stats = {
-            "total_examples": len(combined_data),
-            "total_tokens": total_tokens,
-            "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
-            "datasets_included": datasets_included
-        }
+        datasets_included.append(f"processed_queries ({len(processed_queries)} examples)")
+    
+    stats = {
+        "total_examples": len(combined_data),
+        "total_tokens": total_tokens,
+        "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
+        "datasets_included": datasets_included
+    }
     
     stats_file = os.path.join(output_dir, "dataset_stats.json")
     with open(stats_file, 'w', encoding='utf-8') as f:
@@ -693,6 +693,7 @@ def main():
     # Override model in config if specified in command line
     if cmd_args.model is not None:
         config['models']['llm_model'] = cmd_args.model
+    print(cmd_args)
     
     # Create output directory
     output_dir = "data/irrelevant"

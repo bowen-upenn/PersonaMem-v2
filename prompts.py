@@ -1128,7 +1128,8 @@ Please introduce 1-2 realistic bugs that a human programmer would commonly make.
 - Variable naming confusion or scope issues
 - Missing return statements or wrong return values
 
-Return both the buggy code and the buggy chain of thought analysis before the code and summarization after the code. The code and texts should look like a genuine attempt that has subtle bugs.
+Return both the buggy code and the buggy chain of thought analysis before the code and summarization after the code.
+In your response, the code and texts should look like a genuine attempt that has subtle bugs. DO NOT mention that this is a buggy code!
 """
 
 
