@@ -242,15 +242,13 @@ def process_single_query_thread(args):
         model_response = llm.query_llm(user_query, use_history=False, verbose=verbose)
         
         if model_response:
-            # Create assistant message
-            assistant_message = {"role": "assistant", "content": model_response}
-            
-            # Create chat entry with query and response
+            # Create simple OpenAI format with user and assistant messages only
             chat_entry = {
-                "messages": [user_message, assistant_message],
-                "tokens": count_tokens(user_query) + count_tokens(model_response),
-                "source": f"llm_response_{filename.replace('_train.json', '')}",
-                "original_dataset": filename
+                "messages": [
+                    {"role": "user", "content": user_query},
+                    {"role": "assistant", "content": model_response}
+                ],
+                "tokens": count_tokens(user_query) + count_tokens(model_response)
             }
             
             if verbose:
@@ -272,22 +270,18 @@ def process_single_query_thread(args):
 
 def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_size=1000, verbose=False):
     """
-    Process user queries from downloaded datasets, generate LLM responses, and save as irrelevant data.
+    Process user queries from downloaded datasets, generate LLM responses, and return as irrelevant data.
     
     Args:
         llm: QueryLLM instance for generating responses
-        output_dir: Directory containing downloaded datasets and to save the processed query-response pairs
+        output_dir: Directory containing downloaded datasets
         parallel: Whether to process queries in parallel batches
         sample_size: Number of queries to randomly sample for processing
         verbose: Whether to print detailed information
+    
+    Returns:
+        List of processed query-response pairs in OpenAI format
     """
-    output_file = os.path.join(output_dir, "user_query_responses.json")
-    
-    # Check if already processed
-    if os.path.exists(output_file):
-        print(f"User query responses already exist at {output_file}, skipping processing")
-        return
-    
     print("Processing user queries from downloaded datasets and generating LLM responses...")
     
     # Dataset files to process for user queries
@@ -390,49 +384,50 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_s
                 query_response_data.append(result)
     
     if query_response_data:
-        # Save to file
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(query_response_data, f, indent=2, ensure_ascii=False)
-        
         total_tokens = sum(item['tokens'] for item in query_response_data)
-        print(f"Saved {len(query_response_data)} user query-response pairs to {output_file}")
+        print(f"Generated {len(query_response_data)} user query-response pairs")
         print(f"Total tokens from query-response pairs: {total_tokens:,}")
+        return query_response_data
     else:
         print("No user query-response pairs were generated")
+        return []
 
 
-def create_combined_irrelevant_data(output_dir):
-    """Combine all downloaded datasets into a single shuffled file for easy sampling."""
+def create_combined_irrelevant_data(output_dir, processed_queries=None):
+    """Create combined irrelevant data file with processed queries and original datasets."""
     output_file = os.path.join(output_dir, "combined_irrelevant_data.json")
     
-    # Check if combined file already exists
+    # Always regenerate the combined file and stats
     if os.path.exists(output_file):
-        print(f"Combined irrelevant data already exists at {output_file}, skipping creation")
-        return
-    
-    print("Creating combined irrelevant data file...")
+        print("Regenerating combined irrelevant data file...")
+    else:
+        print("Creating combined irrelevant data file...")
     
     combined_data = []
     
-    # Load all individual dataset files (train data only) and user query responses
-    dataset_files = [
-        "hotpotqa_train.json",
-        "mmlu_train.json", 
-        "gsm8k_train.json",
-        "bigcodebench_train.json",
-        "user_query_responses.json"
-    ]
-    
-    for filename in dataset_files:
-        filepath = os.path.join(output_dir, filename)
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    combined_data.extend(data)
-                    print(f"Loaded {len(data)} examples from {filename}")
-            except Exception as e:
-                print(f"Error loading {filename}: {e}")
+    if processed_queries:
+        # If we have processed queries, use them as the main content
+        combined_data.extend(processed_queries)
+        print(f"Added {len(processed_queries)} processed query-response pairs")
+    else:
+        # If no processed queries, load original datasets (fallback behavior)
+        dataset_files = [
+            "hotpotqa_train.json",
+            "mmlu_train.json", 
+            "gsm8k_train.json",
+            "bigcodebench_train.json"
+        ]
+        
+        for filename in dataset_files:
+            filepath = os.path.join(output_dir, filename)
+            if os.path.exists(filepath):
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        combined_data.extend(data)
+                        print(f"Loaded {len(data)} examples from {filename}")
+                except Exception as e:
+                    print(f"Error loading {filename}: {e}")
     
     # Shuffle the combined data
     random.shuffle(combined_data)
@@ -449,12 +444,29 @@ def create_combined_irrelevant_data(output_dir):
     print(f"Saved to {output_file}")
     
     # Create summary statistics
-    stats = {
-        "total_examples": len(combined_data),
-        "total_tokens": total_tokens,
-        "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
-        "datasets_included": [f for f in dataset_files if os.path.exists(os.path.join(output_dir, f))]
-    }
+    if processed_queries:
+        # When using processed queries, stats reflect only the processed sample
+        stats = {
+            "total_examples": len(combined_data),
+            "total_tokens": total_tokens,
+            "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
+            "datasets_included": [f"processed_queries_sample ({len(processed_queries)} queries from all datasets)"]
+        }
+    else:
+        # Fallback: original dataset stats
+        dataset_files = [
+            "hotpotqa_train.json",
+            "mmlu_train.json", 
+            "gsm8k_train.json",
+            "bigcodebench_train.json"
+        ]
+        datasets_included = [f for f in dataset_files if os.path.exists(os.path.join(output_dir, f))]
+        stats = {
+            "total_examples": len(combined_data),
+            "total_tokens": total_tokens,
+            "average_tokens_per_example": total_tokens / len(combined_data) if combined_data else 0,
+            "datasets_included": datasets_included
+        }
     
     stats_file = os.path.join(output_dir, "dataset_stats.json")
     with open(stats_file, 'w', encoding='utf-8') as f:
@@ -507,16 +519,17 @@ def main():
     download_bigcodebench(output_dir)
     
     # Process user queries if requested
+    processed_queries = []
     if cmd_args.process_queries:
         print("\nProcessing user queries and generating LLM responses...")
         # Create LLM instance with custom rate limit
         llm = QueryLLM(config, rate_limit_per_min=cmd_args.rate_limit_per_min)
         
-        # Process user queries
-        process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, sample_size=cmd_args.sample_size, verbose=cmd_args.verbose)
+        # Process user queries and get results
+        processed_queries = process_user_queries_and_responses(llm, output_dir, parallel=cmd_args.parallel, sample_size=cmd_args.sample_size, verbose=cmd_args.verbose)
             
-    # Create combined file
-    create_combined_irrelevant_data(output_dir)
+    # Create combined file with processed queries
+    create_combined_irrelevant_data(output_dir, processed_queries)
     
     print("All datasets downloaded successfully!")
     if cmd_args.process_queries:
