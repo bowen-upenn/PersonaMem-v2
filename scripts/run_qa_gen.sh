@@ -5,11 +5,11 @@ python main.py \
   --step generate_qa \
   --conv_output_dir data/raw_data/ \
   --qa_output_dir data/raw_data/ \
-  --persona_start_idx 1 \
+  --persona_start_idx 235 \
   --persona_end_idx -1 \
   --validate_qa \
   --add_more_minority \
-  --rate_limit_per_min 5 \
+  --rate_limit_per_min 10 \
   --parallel \
 
 # Examples of specifying persona ranges:

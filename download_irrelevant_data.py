@@ -581,7 +581,7 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_s
 
 
 def create_combined_irrelevant_data(output_dir, processed_queries=None):
-    """Create combined irrelevant data file with processed queries and original datasets."""
+    """Create combined irrelevant data file with only processed queries."""
     output_file = os.path.join(output_dir, "combined_irrelevant_data.json")
     
     # Always regenerate the combined file and stats
@@ -592,29 +592,12 @@ def create_combined_irrelevant_data(output_dir, processed_queries=None):
     
     combined_data = []
     
-    # Always load original datasets first
-    dataset_files = [
-        "hotpotqa_train.json",
-        "mmlu_train.json", 
-        "gsm8k_train.json",
-        "bigcodebench_train.json"
-    ]
-    
-    for filename in dataset_files:
-        filepath = os.path.join(output_dir, filename)
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    combined_data.extend(data)
-                    print(f"Loaded {len(data)} examples from {filename}")
-            except Exception as e:
-                print(f"Error loading {filename}: {e}")
-    
-    # Then add processed queries (coding conversations, user query responses, etc.)
+    # Only add processed queries (coding conversations, user query responses, etc.)
     if processed_queries:
         combined_data.extend(processed_queries)
         print(f"Added {len(processed_queries)} processed query-response pairs")
+    else:
+        print("Warning: No processed queries provided - combined file will be empty")
     
     # Shuffle the combined data
     random.shuffle(combined_data)
@@ -632,17 +615,6 @@ def create_combined_irrelevant_data(output_dir, processed_queries=None):
     
     # Create summary statistics
     datasets_included = []
-    
-    # Count original datasets
-    for filename in dataset_files:
-        filepath = os.path.join(output_dir, filename)
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    datasets_included.append(f"{filename} ({len(data)} examples)")
-            except:
-                pass
     
     # Add processed queries info
     if processed_queries:
