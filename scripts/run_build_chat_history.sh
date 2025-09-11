@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Loop through both 32k and 128k versions
-for version in 128k; do
+# for version in 128k; do
+for version in 32k 128k; do
   echo "============================================"
   echo "Building chat history for version: $version"
   echo "============================================"

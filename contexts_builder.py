@@ -55,18 +55,18 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
                          If provided, irrelevant data will only be inserted at these boundaries
     
     Returns:
-        Updated list of messages with irrelevant data inserted
+        Tuple of (updated_messages, num_relevant_tokens, num_irrelevant_tokens)
     """
     if current_token_count >= target_token_count:
         if verbose:
             print(f"Current token count ({current_token_count}) already meets or exceeds target ({target_token_count})")
-        return messages
+        return messages, current_token_count, 0
     
     irrelevant_data = load_irrelevant_data()
     if not irrelevant_data:
         if verbose:
             print("No irrelevant data available, returning original messages")
-        return messages
+        return messages, current_token_count, 0
     
     # Always shuffle irrelevant data first for randomness
     irrelevant_data = irrelevant_data.copy()  # Don't modify the cached version
@@ -190,7 +190,7 @@ def insert_irrelevant_data(messages, target_token_count, current_token_count, ve
             final_count = count_tokens(new_messages, include_images=False)
             print(f"After trimming: {final_count} tokens")
     
-    return new_messages
+    return new_messages, current_token_count, tokens_added
 
 
 def load_image_as_base64(image_path):
@@ -552,7 +552,7 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
         # Create system prompt from persona information
         import json
         persona_json_str = json.dumps(persona_info, indent=2, ensure_ascii=False)
-        system_prompt = f"You are an AI assistant helping a user with the following persona:\n\n{persona_json_str}\n\nPlease respond in a way that's appropriate for this user's background, interests, and communication style."
+        system_prompt = f"You are an AI assistant helping a user with the following persona:\n\n{persona_json_str}\n\n"
         
         # Create system message
         system_message = {
@@ -570,10 +570,16 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
         
         # Compute total tokens
         total_tokens = count_tokens(all_messages, include_images=False)
+        current_tokens = total_tokens  # Store current token count for later use
+        
         if verbose:
             print(f"Total tokens: {total_tokens}.")
             print("context length: ", context_len)
 
+        # Initialize token counts for metadata
+        num_relevant_tokens = current_tokens  # Original conversation tokens
+        num_irrelevant_tokens = 0  # Will be updated for 128k version
+        
         # Handle version-specific processing
         if version == '32k':
             # 32k version: Intelligent trimming by token budget
@@ -660,10 +666,11 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
                         print(f"Using only protected content: {len(final_messages)} messages")
                 
                 all_messages = final_messages
+                # Update relevant token count after trimming
+                num_relevant_tokens = count_tokens(final_messages, include_images=False)
         
         elif version == '128k':
             # 128k version: No trimming, add irrelevant data to reach target
-            current_tokens = count_tokens(all_messages, include_images=False)
             
             # Set target token count based on context_len or default to 128k
             if context_len is not None and context_len > 32000:
@@ -676,7 +683,7 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
             
             # Insert irrelevant data to reach target (no trimming of original content)
             # Pass block boundaries to ensure irrelevant data is inserted between blocks, not within them
-            all_messages = insert_irrelevant_data(
+            all_messages, num_relevant_tokens, num_irrelevant_tokens = insert_irrelevant_data(
                 all_messages, 
                 target_tokens, 
                 current_tokens, 
@@ -724,13 +731,20 @@ def _build_context_for_single_file(interactions, context_len=None, version='32k'
                 timestamp = f"{date_part}_{time_part}"
 
         # Create output object with metadata and messages
+        metadata = {
+            "total_messages": len(all_messages),
+            "final_token_count": final_content_tokens,
+            "persona_id": persona_number,
+            "input_filename": input_filename
+        }
+        
+        # Add token breakdown for 128k version
+        if version == '128k':
+            metadata["num_relevant_tokens"] = num_relevant_tokens
+            metadata["num_irrelevant_tokens"] = num_irrelevant_tokens
+        
         output_data = {
-            "metadata": {
-                "total_messages": len(all_messages),
-                "final_token_count": final_content_tokens,
-                "persona_id": persona_number,
-                "input_filename": input_filename
-            },
+            "metadata": metadata,
             "chat_history": all_messages
         }
 
@@ -800,25 +814,25 @@ def build_context(conv_output_dir=None, interactions=None, context_len=None, ver
         for file_path in tqdm(persona_files):
             if verbose:
                 print(f"\nProcessing {file_path}")
-            try:
-                with open(file_path, 'r') as file:
-                    file_data = json.load(file)
+            # try:
+            with open(file_path, 'r') as file:
+                file_data = json.load(file)
+            
+            # Process this individual persona file
+            _build_context_for_single_file(file_data, context_len, version, file_path, verbose, shared_timestamp)
                 
-                # Process this individual persona file
-                _build_context_for_single_file(file_data, context_len, version, file_path, verbose, shared_timestamp)
-                
-            except json.JSONDecodeError as e:
-                print(f"ERROR: Failed to parse JSON in {file_path}")
-                if verbose:
-                    print(f"JSON Error: {e}")
-                print(f"Skipping this file and continuing with next...")
-                continue
-            except Exception as e:
-                print(f"ERROR: Failed to process {file_path}")
-                if verbose:
-                    print(f"Error: {e}")
-                print(f"Skipping this file and continuing with next...")
-                continue
+            # except json.JSONDecodeError as e:
+            #     print(f"ERROR: Failed to parse JSON in {file_path}")
+            #     if verbose:
+            #         print(f"JSON Error: {e}")
+            #     print(f"Skipping this file and continuing with next...")
+            #     continue
+            # except Exception as e:
+            #     print(f"ERROR: Failed to process {file_path}")
+            #     if verbose:
+            #         print(f"Error: {e}")
+            #     print(f"Skipping this file and continuing with next...")
+            #     continue
         return
     
     # If interactions is provided, process single file data

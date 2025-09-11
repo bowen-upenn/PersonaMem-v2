@@ -13,6 +13,7 @@ import re
 import tiktoken
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
+from tqdm import tqdm
 
 # Initialize encoder for token counting (same as contexts_builder.py)
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
@@ -93,6 +94,31 @@ def get_total_tokens_from_chat_history(chat_history_file: str) -> int:
     except Exception as e:
         print(f"Error reading chat history file {chat_history_file}: {str(e)}")
         return 0
+
+
+def get_token_breakdown_from_128k_chat_history(chat_history_file: str) -> Tuple[int, int, int]:
+    """
+    Get token breakdown from 128k chat history JSON file.
+    
+    Returns:
+        Tuple of (total_tokens, num_relevant_tokens, num_irrelevant_tokens)
+    """
+    if not chat_history_file or not os.path.exists(chat_history_file):
+        return 0, 0, 0
+    
+    try:
+        with open(chat_history_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        metadata = data.get("metadata", {})
+        total_tokens = metadata.get("final_token_count", 0)
+        num_relevant_tokens = metadata.get("num_relevant_tokens", 0)
+        num_irrelevant_tokens = metadata.get("num_irrelevant_tokens", 0)
+        
+        return total_tokens, num_relevant_tokens, num_irrelevant_tokens
+    except Exception as e:
+        print(f"Error reading 128k chat history file {chat_history_file}: {str(e)}")
+        return 0, 0, 0
 
 
 def count_tokens_in_text(text: str) -> int:
@@ -178,7 +204,7 @@ def find_conversation_snippet_in_chat_history(chat_history_file: str, conversati
         return 0
 
 
-def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, Any]]:
+def process_persona_file(file_path: str, persona_number: int, use_multimodal: bool = False) -> List[Dict[str, Any]]:
     """Process a single persona file and extract all user_query rows."""
     rows = []
     
@@ -188,6 +214,14 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
         
         # Get chat history links for both versions
         chat_history_32k_link, chat_history_128k_link, multimodal_32k_link, multimodal_128k_link = get_chat_history_links(persona_number)
+        
+        # Select appropriate links based on version type
+        if use_multimodal:
+            active_32k_link = multimodal_32k_link
+            active_128k_link = multimodal_128k_link
+        else:
+            active_32k_link = chat_history_32k_link
+            active_128k_link = chat_history_128k_link
         
         # Process each persona in the file (usually just one)
         for persona_id_key, persona_data in data.items():
@@ -229,38 +263,33 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                     conversations_json = json.dumps(conversations, ensure_ascii=False) if conversations else ""
                     
                     # Get total tokens from both chat history versions
-                    total_tokens_32k = get_total_tokens_from_chat_history(chat_history_32k_link)
-                    total_tokens_128k = get_total_tokens_from_chat_history(chat_history_128k_link) if chat_history_128k_link else None
+                    total_tokens_32k = get_total_tokens_from_chat_history(active_32k_link)
+                    
+                    # Get detailed token breakdown for 128k version
+                    total_tokens_128k = None
+                    num_relevant_tokens_128k = None
+                    num_irrelevant_tokens_128k = None
+                    
+                    if active_128k_link:
+                        total_tokens_128k, num_relevant_tokens_128k, num_irrelevant_tokens_128k = get_token_breakdown_from_128k_chat_history(active_128k_link)
                     
                     # Calculate tokens from user_query to related_conversation_snippet for both versions
                     tokens_to_snippet_32k = find_conversation_snippet_in_chat_history(
-                        chat_history_32k_link, conversations_json, user_query
+                        active_32k_link, conversations_json, user_query
                     )
                     tokens_to_snippet_128k = find_conversation_snippet_in_chat_history(
-                        chat_history_128k_link, conversations_json, user_query
-                    ) if chat_history_128k_link else None
+                        active_128k_link, conversations_json, user_query
+                    ) if active_128k_link else None
                     
-                    # Calculate proportion of persona-relevant tokens
-                    # For 32k: always 100% since no irrelevant data is added
-                    proportion_persona_relevant_32k = 1.0  # 100%
-                    
-                    # For 128k: calculate proportion of original persona tokens vs total tokens
-                    proportion_persona_relevant_128k = None
-                    if total_tokens_128k and total_tokens_32k and total_tokens_128k > 0:
-                        # The persona-relevant tokens are approximately the same as 32k version
-                        # The 128k version adds irrelevant data on top
-                        proportion_persona_relevant_128k = total_tokens_32k / total_tokens_128k
-                    elif total_tokens_128k and total_tokens_128k > 0:
-                        # Fallback: if we don't have 32k data, assume minimal relevant content
-                        proportion_persona_relevant_128k = 0.0
+                    # Skip this row if either distance_from_related_snippet_to_query is 0
+                    if tokens_to_snippet_32k == 0 or tokens_to_snippet_128k == 0:
+                        continue
                     
                     # Create row for this user_query
                     row = {
                         "persona_id": persona_number,
-                        "chat_history_32k_link": chat_history_32k_link,
-                        "chat_history_128k_link": chat_history_128k_link if chat_history_128k_link else None,
-                        "chat_history_multimodal_32k_link": multimodal_32k_link,
-                        "chat_history_multimodal_128k_link": multimodal_128k_link if multimodal_128k_link else None,
+                        "chat_history_32k_link": active_32k_link,
+                        "chat_history_128k_link": active_128k_link if active_128k_link else None,
                         "raw_persona_file": expanded_persona_file,
                         "short_persona": short_persona,
                         "expanded_persona": expanded_persona,
@@ -276,12 +305,16 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
                         "who": who,
                         "updated": str(updated),
                         "prev_pref": prev_pref,
-                        "total_chat_history_32k_tokens": total_tokens_32k,
-                        "total_chat_history_128k_tokens": total_tokens_128k,
-                        "tokens_from_snippet_to_query_32k": tokens_to_snippet_32k,
-                        "tokens_from_snippet_to_query_128k": tokens_to_snippet_128k,
-                        "proportion_of_persona_relevant_tokens_32k": proportion_persona_relevant_32k,
-                        "proportion_of_persona_relevant_tokens_128k": proportion_persona_relevant_128k
+                        "total_tokens_in_chat_history_32k": total_tokens_32k,
+                        "total_tokens_in_chat_history_128k": total_tokens_128k,
+                        "distance_from_related_snippet_to_query_32k": tokens_to_snippet_32k,
+                        "distance_from_related_snippet_to_query_128k": tokens_to_snippet_128k,
+                        # Token breakdown for 32k version (all tokens are relevant)
+                        "num_persona_relevant_tokens_32k": total_tokens_32k,
+                        "num_persona_irrelevant_tokens_32k": 0,
+                        # Token breakdown for 128k version (from metadata)
+                        "num_persona_relevant_tokens_128k": num_relevant_tokens_128k,
+                        "num_persona_irrelevant_tokens_128k": num_irrelevant_tokens_128k
                     }
                     
                     rows.append(row)
@@ -294,7 +327,7 @@ def process_persona_file(file_path: str, persona_number: int) -> List[Dict[str, 
     return rows
 
 
-def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
+def create_benchmark_csv(raw_data_dir: str, output_file: str, use_multimodal: bool = False) -> None:
     """Create comprehensive benchmark CSV from all persona files."""
     
     # Find all JSON files in raw_data directory
@@ -314,7 +347,7 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
         if persona_number is not None:
             file_persona_pairs.append((json_file, persona_number))
         else:
-            print(f"Warning: Could not extract persona number from {json_file}")
+            print(f"Warning: Could not extract persona number from {json_file}") 
     
     # Sort by persona number
     file_persona_pairs.sort(key=lambda x: x[1])
@@ -329,10 +362,10 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
     all_rows = []
     
     # Process each file in order (persona 0 to 999)
-    for file_path, persona_number in file_persona_pairs:
-        persona_rows = process_persona_file(file_path, persona_number)
+    for file_path, persona_number in tqdm(file_persona_pairs, desc="Processing personas", total=len(file_persona_pairs)):
+        persona_rows = process_persona_file(file_path, persona_number, use_multimodal)
         all_rows.extend(persona_rows)
-    
+
     # Write to CSV file
     if all_rows:
         # Define column order as specified
@@ -340,8 +373,6 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
             "persona_id",
             "chat_history_32k_link", 
             "chat_history_128k_link",
-            "chat_history_multimodal_32k_link",
-            "chat_history_multimodal_128k_link",
             "raw_persona_file",
             "short_persona",
             "expanded_persona",
@@ -357,12 +388,14 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str) -> None:
             "who",
             "updated",
             "prev_pref",
-            "total_chat_history_32k_tokens",
-            "total_chat_history_128k_tokens",
-            "tokens_from_snippet_to_query_32k",
-            "tokens_from_snippet_to_query_128k",
-            "proportion_of_persona_relevant_tokens_32k",
-            "proportion_of_persona_relevant_tokens_128k"
+            "total_tokens_in_chat_history_32k",
+            "total_tokens_in_chat_history_128k",
+            "distance_from_related_snippet_to_query_32k",
+            "distance_from_related_snippet_to_query_128k",
+            "num_persona_relevant_tokens_32k",
+            "num_persona_irrelevant_tokens_32k",
+            "num_persona_relevant_tokens_128k",
+            "num_persona_irrelevant_tokens_128k"
         ]
         
         # Ensure output directory exists
@@ -429,16 +462,26 @@ def generate_summary_stats(rows: List[Dict[str, Any]]) -> None:
 
 
 def main():
-    """Main function to create benchmark CSV."""
+    """Main function to create benchmark CSV files."""
     raw_data_dir = "data/raw_data"
-    output_file = "data/benchmark.csv"
+    output_file_text = "data/benchmark.csv"
+    output_file_multimodal = "data/benchmark_multimodal.csv"
     
-    print("Creating comprehensive benchmark CSV...")
+    print("Creating comprehensive benchmark CSV files...")
     print(f"Input directory: {raw_data_dir}")
-    print(f"Output file: {output_file}")
     
-    create_benchmark_csv(raw_data_dir, output_file)
+    # Create text-only benchmark CSV
+    print(f"\nCreating text-only benchmark: {output_file_text}")
+    create_benchmark_csv(raw_data_dir, output_file_text, use_multimodal=False)
+    
+    # Create multimodal benchmark CSV
+    print(f"\nCreating multimodal benchmark: {output_file_multimodal}")
+    create_benchmark_csv(raw_data_dir, output_file_multimodal, use_multimodal=True)
+    
     print("\nBenchmark preparation complete!")
+    print(f"Generated files:")
+    print(f"  - {output_file_text}")
+    print(f"  - {output_file_multimodal}")
 
 
 if __name__ == "__main__":

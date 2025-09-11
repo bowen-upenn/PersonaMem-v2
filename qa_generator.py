@@ -1466,3 +1466,144 @@ def generate_qa_add_more_minority(llm, input_path, output_dir, parallel=False, v
     # Save topic counts after all QA processing is complete
     topic_counts_file = save_qa_topic_counts(output_dir or ".", verbose=verbose)
     print(f"QA topic categorization complete. Counts saved to: {topic_counts_file}")
+
+
+def process_single_file_fill_category(args):
+    """Process fill category for a single persona file in parallel."""
+    file_path, llm, verbose = args
+    
+    try:
+        return file_path, process_single_file_fill_category_sequential(file_path, llm, verbose)
+    except Exception as e:
+        print(f"Error processing file {file_path}: {e}")
+        return file_path, 0
+
+
+def process_single_file_fill_category_sequential(file_path, llm, verbose):
+    """Process fill category for a single persona file sequentially."""
+    file_name = os.path.basename(file_path)
+    
+    try:
+        # Load the JSON file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        file_filled = 0
+        modified = False
+        
+        # Iterate through all personas in the file
+        for persona_id, persona_data in data.items():
+            if 'conversations' not in persona_data:
+                continue
+            
+            # Iterate through conversation types
+            for conv_type, conversations in persona_data['conversations'].items():
+                # Each conversation type contains a list of conversation dicts
+                for conv_dict in conversations:
+                    # Check if this dict has user_query but not topic_query
+                    if 'user_query' in conv_dict and 'topic_query' not in conv_dict:
+                        user_query = conv_dict['user_query']
+                        
+                        if verbose:
+                            print(f"  [{file_name}] Found user_query without topic_query: {user_query[:100]}...")
+                        
+                        # Try to categorize with retry mechanism (max 5 attempts)
+                        topic = None
+                        for attempt in range(5):
+                            try:
+                                topic = categorize_user_query(llm, user_query, verbose=verbose)
+                                if topic and topic.strip():  # Non-null and non-empty topic
+                                    break
+                            except Exception as e:
+                                if verbose:
+                                    print(f"    [{file_name}] Attempt {attempt + 1} failed: {e}")
+                                continue
+                        
+                        # If we got a valid topic, save it
+                        if topic and topic.strip():
+                            conv_dict['topic_query'] = topic.strip()
+                            file_filled += 1
+                            modified = True
+                            
+                            if verbose:
+                                print(f"    [{file_name}] Added topic_query: {topic.strip()}")
+                        else:
+                            if verbose:
+                                print(f"    [{file_name}] Failed to categorize after 5 attempts")
+        
+        # Save the file if any modifications were made
+        if modified:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"[{file_name}] Filled {file_filled} topic_query entries and saved file")
+        else:
+            if verbose:
+                print(f"[{file_name}] No missing topic_query entries found")
+        
+        return file_filled
+        
+    except Exception as e:
+        print(f"[{file_name}] Error processing file: {e}")
+        return 0
+
+
+def fill_category_topics(llm, persona_files=None, data_dir="data/raw_data", parallel=False, verbose=False):
+    """
+    Fill in missing topic_query fields by categorizing user_query entries in JSON files.
+    
+    Args:
+        llm: QueryLLM instance for categorization
+        persona_files: List of specific persona files to process (optional)
+        data_dir: Directory containing JSON files to process (used if persona_files not provided)
+        parallel: Whether to use parallel processing
+        verbose: Whether to print debug information
+    """
+    import glob
+    
+    # Use provided persona files or scan directory
+    if persona_files:
+        json_files = persona_files
+        print(f"Processing {len(json_files)} specified persona files")
+    else:
+        # Get all JSON files in the data directory
+        json_files = glob.glob(os.path.join(data_dir, "*.json"))
+        if not json_files:
+            print(f"No JSON files found in {data_dir}")
+            return
+        print(f"Found {len(json_files)} JSON files to process")
+    
+    total_filled = 0
+    
+    if parallel and len(json_files) > 1:
+        print(f"Using parallel processing for {len(json_files)} files")
+        
+        # Prepare arguments for parallel processing
+        args_list = [(file_path, llm, verbose) for file_path in json_files]
+        
+        # Process files in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(json_files), 10)) as executor:
+            # Submit all tasks
+            future_to_args = {executor.submit(process_single_file_fill_category, args): args for args in args_list}
+            
+            # Collect results with progress bar
+            for future in tqdm(concurrent.futures.as_completed(future_to_args), 
+                             desc="Fill Category Processing", 
+                             total=len(args_list)):
+                try:
+                    file_path, file_filled = future.result()
+                    total_filled += file_filled
+                except Exception as e:
+                    print(f"Error in parallel processing: {e}")
+                    continue
+    else:
+        print("Using sequential processing")
+        # Sequential processing (original logic)
+        for json_file in tqdm(json_files, desc="Processing files for fill category"):
+            if verbose:
+                print(f"\nProcessing: {json_file}")
+            
+            file_filled = process_single_file_fill_category_sequential(json_file, llm, verbose)
+            total_filled += file_filled
+    
+    print(f"\nFill category processing complete!")
+    print(f"Total topic_query entries filled: {total_filled}")
