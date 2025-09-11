@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to download irrelevant datasets for context padding in 128k token version.
-Downloads HotpotQA, MMLU, GSM8K, and BigCodeBench datasets.
+Downloads GSM8K (math), Omni-MATH (math), and BigCodeBench (code) datasets.
 """
 
 import os
@@ -38,96 +38,7 @@ def count_tokens(text):
     else:
         return len(ENCODER.encode(str(text)))
 
-def download_hotpotqa(output_dir):
-    """Download HotpotQA dataset (train split only)."""
-    output_file = os.path.join(output_dir, "hotpotqa_train.json")
-    
-    # Check if already downloaded
-    if os.path.exists(output_file):
-        print(f"HotpotQA train data already exists at {output_file}, skipping download")
-        return
-    
-    print("Downloading HotpotQA dataset...")
-    
-    try:
-        # Load the dataset
-        ds = load_dataset("hotpotqa/hotpot_qa", "fullwiki")
-        
-        # Process training split only
-        train_data = []
-        for item in tqdm(ds['train'], desc="Processing HotpotQA train"):
-            # Create chat format
-            question = item['question']
-            answer = item['answer']
-            
-            chat_entry = {
-                "messages": [
-                    {"role": "user", "content": question},
-                    {"role": "assistant", "content": answer}
-                ],
-                "tokens": count_tokens(question) + count_tokens(answer)
-            }
-            train_data.append(chat_entry)
-        
-        # Save to file
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(train_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"Saved {len(train_data)} HotpotQA training examples to {output_file}")
-    
-    except Exception as e:
-        print(f"Error downloading HotpotQA: {e}")
 
-def download_mmlu(output_dir):
-    """Download MMLU dataset (dev/train split only)."""
-    output_file = os.path.join(output_dir, "mmlu_train.json")
-    
-    # Check if already downloaded
-    if os.path.exists(output_file):
-        print(f"MMLU train data already exists at {output_file}, skipping download")
-        return
-    
-    print("Downloading MMLU dataset...")
-    
-    try:
-        # Load the dataset
-        ds = load_dataset("cais/mmlu", "all")
-        
-        # Process dev split (closest to train data)
-        train_data = []
-        split_to_use = 'dev' if 'dev' in ds else 'train' if 'train' in ds else 'test'
-        
-        for item in tqdm(ds[split_to_use], desc=f"Processing MMLU {split_to_use}"):
-            # Create multiple choice question
-            question = item['question']
-            choices = item['choices']
-            answer_idx = item['answer']
-            
-            # Format as multiple choice
-            formatted_question = f"{question}\n"
-            for i, choice in enumerate(choices):
-                formatted_question += f"{chr(65+i)}. {choice}\n"
-            
-            answer = f"The answer is {chr(65+answer_idx)}."
-            
-            chat_entry = {
-                "messages": [
-                    {"role": "user", "content": formatted_question.strip()},
-                    {"role": "assistant", "content": answer}
-                ],
-                "tokens": count_tokens(formatted_question) + count_tokens(answer),
-                "subject": item['subject']
-            }
-            train_data.append(chat_entry)
-        
-        # Save to file
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(train_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"Saved {len(train_data)} MMLU {split_to_use} examples to {output_file}")
-    
-    except Exception as e:
-        print(f"Error downloading MMLU: {e}")
 
 def download_gsm8k(output_dir):
     """Download GSM8K dataset (train split only)."""
@@ -167,6 +78,52 @@ def download_gsm8k(output_dir):
     
     except Exception as e:
         print(f"Error downloading GSM8K: {e}")
+
+def download_omnimath(output_dir):
+    """Download Omni-MATH dataset."""
+    output_file = os.path.join(output_dir, "omnimath_train.json")
+    
+    # Check if already downloaded
+    if os.path.exists(output_file):
+        print(f"Omni-MATH data already exists at {output_file}, skipping download")
+        return
+    
+    print("Downloading Omni-MATH dataset...")
+    
+    try:
+        # Load the dataset
+        ds = load_dataset("KbsdJames/Omni-MATH")
+        
+        # Process the dataset (get the first available split)
+        split_name = list(ds.keys())[0]  # Get the first available split
+        data = []
+        
+        for item in tqdm(ds[split_name], desc="Processing Omni-MATH"):
+            # Extract relevant fields
+            problem = item.get('problem', '')
+            solution = item.get('solution', '')
+            
+            # Create a math problem format
+            question = f"Problem:\n{problem}"
+            answer = f"Solution:\n{solution}"
+            
+            chat_entry = {
+                "messages": [
+                    {"role": "user", "content": question},
+                    {"role": "assistant", "content": answer}
+                ],
+                "tokens": count_tokens(question) + count_tokens(answer)
+            }
+            data.append(chat_entry)
+        
+        # Save to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        print(f"Saved {len(data)} Omni-MATH examples to {output_file}")
+    
+    except Exception as e:
+        print(f"Error downloading Omni-MATH: {e}")
 
 def download_bigcodebench(output_dir):
     """Download BigCodeBench dataset."""
@@ -272,7 +229,9 @@ def process_single_query_thread(args):
 
 def add_coding_questions(llm, output_dir, parallel=False, verbose=False):
     """
-    Process coding questions from random_code_questions.txt and create multi-turn debugging conversations.
+    Process coding questions and create multi-turn debugging conversations.
+    First checks for existing random_code_questions.json file and loads it if available.
+    Otherwise, processes coding questions from random_code_questions.txt.
     
     Args:
         llm: QueryLLM instance for generating responses
@@ -283,6 +242,28 @@ def add_coding_questions(llm, output_dir, parallel=False, verbose=False):
     Returns:
         List of processed multi-turn coding conversations in OpenAI format
     """
+    # First check if random_code_questions.json already exists
+    existing_json_file = os.path.join(output_dir, "random_code_questions.json")
+    
+    if os.path.exists(existing_json_file):
+        print(f"Found existing random_code_questions.json at {existing_json_file}")
+        print("Loading existing coding question conversations...")
+        try:
+            with open(existing_json_file, 'r', encoding='utf-8') as f:
+                existing_conversations = json.load(f)
+            
+            if existing_conversations:
+                total_tokens = sum(item['tokens'] for item in existing_conversations)
+                print(f"Loaded {len(existing_conversations)} existing coding conversation pairs")
+                print(f"Total tokens from existing coding conversations: {total_tokens:,}")
+                return existing_conversations
+            else:
+                print("Warning: Existing JSON file is empty, will regenerate from text file")
+        except Exception as e:
+            print(f"Error loading existing JSON file: {e}")
+            print("Will regenerate from text file")
+    
+    # If no existing JSON file or it failed to load, process from text file
     coding_questions_file = os.path.join(output_dir, "random_code_questions.txt")
     
     if not os.path.exists(coding_questions_file):
@@ -356,6 +337,15 @@ def add_coding_questions(llm, output_dir, parallel=False, verbose=False):
         total_tokens = sum(item['tokens'] for item in coding_conversations)
         print(f"Generated {len(coding_conversations)} multi-turn coding conversation pairs")
         print(f"Total tokens from coding conversations: {total_tokens:,}")
+        
+        # Save the generated conversations to JSON file for future use
+        try:
+            with open(existing_json_file, 'w', encoding='utf-8') as f:
+                json.dump(coding_conversations, f, indent=2, ensure_ascii=False)
+            print(f"Saved generated conversations to {existing_json_file}")
+        except Exception as e:
+            print(f"Warning: Could not save conversations to JSON file: {e}")
+        
         return coding_conversations
     else:
         print("No coding conversations were generated")
@@ -473,9 +463,8 @@ def process_user_queries_and_responses(llm, output_dir, parallel=False, sample_s
     
     # Dataset files to process for user queries
     dataset_files = [
-        "hotpotqa_train.json",
-        "mmlu_train.json", 
         "gsm8k_train.json",
+        "omnimath_train.json",
         "bigcodebench_train.json"
     ]
     
@@ -675,10 +664,9 @@ def main():
     print("Note: You may need to login with 'huggingface-cli login' for some datasets")
     
     # Download each dataset
-    download_hotpotqa(output_dir)
-    download_mmlu(output_dir)
     download_gsm8k(output_dir)
     download_bigcodebench(output_dir)
+    download_omnimath(output_dir)
     
     # Process user queries and/or coding questions if requested
     processed_queries = []
