@@ -722,12 +722,11 @@ def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_
     
     # Generate output filenames
     input_path = Path(input_file)
-    base_name = input_path.stem
     output_dir = input_path.parent
     
-    train_file = output_dir / f"{base_name}_train.csv"
-    val_file = output_dir / f"{base_name}_val.csv"
-    benchmark_file = output_dir / f"{base_name}_benchmark.csv"
+    train_file = output_dir / "train.csv"
+    val_file = output_dir / "val.csv"
+    benchmark_file = output_dir / "benchmark.csv"
     
     # Save the splits
     print(f"\nSaving splits...")
@@ -748,10 +747,10 @@ def main():
     parser = argparse.ArgumentParser(description="Prepare benchmark data from raw persona files")
     parser.add_argument("--raw-data-dir", type=str, default="data/raw_data",
                        help="Directory containing raw persona JSON files (default: data/raw_data)")
-    parser.add_argument("--output-text", type=str, default="data/benchmark.csv",
-                       help="Output file for text benchmark (default: data/benchmark.csv)")
-    parser.add_argument("--output-multimodal", type=str, default="data/benchmark_multimodal.csv",
-                       help="Output file for multimodal benchmark (default: data/benchmark_multimodal.csv)")
+    parser.add_argument("--output-text", type=str, default="benchmark/text/benchmark.csv",
+                       help="Output file for text benchmark (default: benchmark/text/benchmark.csv)")
+    parser.add_argument("--output-multimodal", type=str, default="benchmark/multimodal/benchmark.csv",
+                       help="Output file for multimodal benchmark (default: benchmark/multimodal/benchmark.csv)")
     parser.add_argument("--split", action="store_true",
                        help="Split the generated benchmark files into train/val/benchmark sets")
     parser.add_argument("--benchmark-size", type=int, default=5000,
