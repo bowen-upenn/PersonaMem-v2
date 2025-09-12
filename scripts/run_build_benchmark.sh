@@ -7,7 +7,7 @@ echo "Starting benchmark preparation..."
 echo "Input directory: data/raw_data"
 echo "Output file: data/benchmark.csv"
 
-python prepare_benchmark.py
+python prepare_benchmark.py --split --benchmark-size 5000 --train-val-split 0.8 --min-coverage 100 --random-seed 42
 
 if [ $? -eq 0 ]; then
     echo ""

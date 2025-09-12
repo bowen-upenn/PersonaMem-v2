@@ -469,27 +469,358 @@ def generate_summary_stats(rows: List[Dict[str, Any]]) -> None:
         print(f"  {updated}: {count}")
 
 
+def ensure_coverage(df: pd.DataFrame, min_coverage: int = 100) -> pd.DataFrame:
+    """
+    Ensure that the benchmark set has at least min_coverage items for each unique value
+    in the key columns: persona_id, conversation_scenario, pref_type, who, updated, sensitive_info.
+    
+    Args:
+        df: The full dataset
+        min_coverage: Minimum number of items per unique value (default 100)
+    
+    Returns:
+        DataFrame subset that ensures coverage
+    """
+    key_columns = ['persona_id', 'conversation_scenario', 'pref_type', 'who', 'updated', 'sensitive_info']
+    
+    # Get all unique values for each key column
+    coverage_requirements = {}
+    for col in key_columns:
+        if col in df.columns:
+            unique_values = df[col].unique()
+            coverage_requirements[col] = unique_values
+            print(f"Column '{col}': {len(unique_values)} unique values")
+    
+    # Start with empty benchmark set
+    benchmark_indices = set()
+    
+    # For each column and its unique values, ensure we have enough samples
+    for col, unique_values in coverage_requirements.items():
+        print(f"\nEnsuring coverage for column '{col}':")
+        
+        for value in unique_values:
+            # Get all rows with this value
+            matching_rows = df[df[col] == value]
+            
+            if len(matching_rows) < min_coverage:
+                # If we don't have enough samples, take all available
+                selected_indices = matching_rows.index.tolist()
+                print(f"  {col}={value}: Only {len(matching_rows)} available (< {min_coverage}), taking all")
+            else:
+                # Randomly sample min_coverage items
+                selected_indices = matching_rows.sample(n=min_coverage, random_state=42).index.tolist()
+                print(f"  {col}={value}: Selected {min_coverage} out of {len(matching_rows)}")
+            
+            benchmark_indices.update(selected_indices)
+    
+    print(f"\nTotal unique indices selected for coverage: {len(benchmark_indices)}")
+    return df.loc[list(benchmark_indices)]
+
+
+def stratified_sample_remaining(df: pd.DataFrame, target_size: int, coverage_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Sample additional rows to reach target_size while maintaining distribution balance.
+    
+    Args:
+        df: The full dataset
+        target_size: Target size for the benchmark set
+        coverage_df: DataFrame already selected for coverage
+    
+    Returns:
+        Additional rows to add to the benchmark set
+    """
+    # Remove already selected rows
+    remaining_df = df.drop(coverage_df.index)
+    additional_needed = target_size - len(coverage_df)
+    
+    if additional_needed <= 0:
+        print(f"Coverage selection already meets target size ({len(coverage_df)} >= {target_size})")
+        return pd.DataFrame()
+    
+    if len(remaining_df) < additional_needed:
+        print(f"Not enough remaining data. Taking all {len(remaining_df)} remaining rows.")
+        return remaining_df
+    
+    # Stratified sampling based on key columns
+    key_columns = ['conversation_scenario', 'pref_type', 'who', 'updated']
+    
+    # Create stratification key
+    remaining_df = remaining_df.copy()
+    remaining_df['strat_key'] = remaining_df[key_columns].astype(str).agg('_'.join, axis=1)
+    
+    # Calculate proportional sampling
+    strat_counts = remaining_df['strat_key'].value_counts()
+    strat_proportions = strat_counts / len(remaining_df)
+    
+    additional_samples = []
+    remaining_to_sample = additional_needed
+    
+    # Sample proportionally from each stratum
+    for strat_key, proportion in strat_proportions.items():
+        if remaining_to_sample <= 0:
+            break
+            
+        strat_data = remaining_df[remaining_df['strat_key'] == strat_key]
+        n_to_sample = min(int(proportion * additional_needed), len(strat_data), remaining_to_sample)
+        
+        if n_to_sample > 0:
+            sampled = strat_data.sample(n=n_to_sample, random_state=42)
+            additional_samples.append(sampled)
+            remaining_to_sample -= n_to_sample
+    
+    # If we still need more samples, randomly sample from remaining
+    if remaining_to_sample > 0:
+        already_sampled_indices = set()
+        for sample_df in additional_samples:
+            already_sampled_indices.update(sample_df.index)
+        
+        still_remaining = remaining_df.drop(list(already_sampled_indices))
+        if len(still_remaining) > 0:
+            final_sample = still_remaining.sample(n=min(remaining_to_sample, len(still_remaining)), random_state=42)
+            additional_samples.append(final_sample)
+    
+    if additional_samples:
+        additional_df = pd.concat(additional_samples, ignore_index=False)
+        additional_df = additional_df.drop('strat_key', axis=1)
+        return additional_df
+    else:
+        return pd.DataFrame()
+
+
+def print_split_summary_statistics(train_df: pd.DataFrame, val_df: pd.DataFrame, benchmark_df: pd.DataFrame) -> None:
+    """Print summary statistics for the splits."""
+    
+    print(f"\n{'='*60}")
+    print(f"SUMMARY STATISTICS")
+    print(f"{'='*60}")
+    
+    datasets = {
+        'Train': train_df,
+        'Validation': val_df,
+        'Benchmark': benchmark_df
+    }
+    
+    # Overall sizes
+    print(f"\nDataset Sizes:")
+    total_size = len(train_df) + len(val_df) + len(benchmark_df)
+    for name, df in datasets.items():
+        percentage = len(df) / total_size * 100
+        print(f"  {name}: {len(df):,} rows ({percentage:.1f}%)")
+    print(f"  Total: {total_size:,} rows")
+    
+    # Key columns for analysis
+    key_columns = ['persona_id', 'conversation_scenario', 'pref_type', 'who', 'updated', 'sensitive_info']
+    
+    for col in key_columns:
+        if col in train_df.columns:
+            print(f"\n{col.upper()} Distribution:")
+            print(f"{'Value':<20} {'Train':<10} {'Val':<10} {'Benchmark':<12} {'Total':<10}")
+            print("-" * 62)
+            
+            # Get all unique values across all datasets
+            all_values = set()
+            for df in datasets.values():
+                all_values.update(df[col].unique())
+            
+            for value in sorted(all_values):
+                counts = []
+                for name, df in datasets.items():
+                    count = len(df[df[col] == value])
+                    counts.append(count)
+                
+                total_count = sum(counts)
+                value_str = str(value)[:19]  # Truncate long values
+                print(f"{value_str:<20} {counts[0]:<10} {counts[1]:<10} {counts[2]:<12} {total_count:<10}")
+    
+    # Check coverage in benchmark set
+    print(f"\nBENCHMARK COVERAGE ANALYSIS:")
+    print("-" * 40)
+    
+    for col in key_columns:
+        if col in benchmark_df.columns:
+            value_counts = benchmark_df[col].value_counts()
+            min_count = value_counts.min()
+            max_count = value_counts.max()
+            mean_count = value_counts.mean()
+            
+            print(f"{col}:")
+            print(f"  Unique values: {len(value_counts)}")
+            print(f"  Min coverage: {min_count}")
+            print(f"  Max coverage: {max_count}")
+            print(f"  Mean coverage: {mean_count:.1f}")
+            
+            # Show values with low coverage
+            low_coverage = value_counts[value_counts < 100]
+            if len(low_coverage) > 0:
+                print(f"  Values with <100 coverage: {len(low_coverage)}")
+                for val, count in low_coverage.items():
+                    print(f"    {val}: {count}")
+            print()
+
+
+def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_split: float = 0.8, 
+                        min_coverage: int = 100, random_seed: int = 42) -> None:
+    """
+    Split benchmark data into train, validation, and benchmark sets.
+    
+    Args:
+        input_file: Path to the input CSV file
+        benchmark_size: Size of the benchmark set (default 5000)
+        train_val_split: Ratio for train/val split of remaining data (default 0.8)
+        min_coverage: Minimum coverage per variable value (default 100)
+        random_seed: Random seed for reproducibility
+    """
+    print(f"Loading data from {input_file}...")
+    
+    # Load the data
+    df = pd.read_csv(input_file)
+    print(f"Loaded {len(df)} rows")
+    
+    # Set random seeds
+    random.seed(random_seed)
+    np.random.seed(random_seed)
+    
+    # Shuffle the entire dataset first
+    df_shuffled = df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
+    print(f"Data shuffled with random seed {random_seed}")
+    
+    # Step 1: Ensure coverage for benchmark set
+    print(f"\nStep 1: Ensuring coverage of at least {min_coverage} items per variable...")
+    coverage_df = ensure_coverage(df_shuffled, min_coverage)
+    
+    # Step 2: Sample additional rows to reach target benchmark size
+    print(f"\nStep 2: Sampling additional rows to reach benchmark size of {benchmark_size}...")
+    additional_df = stratified_sample_remaining(df_shuffled, benchmark_size, coverage_df)
+    
+    # Combine coverage and additional samples for benchmark set
+    if len(additional_df) > 0:
+        benchmark_df = pd.concat([coverage_df, additional_df]).drop_duplicates()
+    else:
+        benchmark_df = coverage_df
+    
+    # Trim to exact target size if needed
+    if len(benchmark_df) > benchmark_size:
+        benchmark_df = benchmark_df.sample(n=benchmark_size, random_state=random_seed)
+    
+    print(f"Final benchmark set size: {len(benchmark_df)}")
+    
+    # Step 3: Split remaining data into train and validation
+    remaining_df = df_shuffled.drop(benchmark_df.index)
+    
+    # Calculate train/val sizes
+    train_size = int(len(remaining_df) * train_val_split)
+    val_size = len(remaining_df) - train_size
+    
+    print(f"\nStep 3: Splitting remaining {len(remaining_df)} rows into train/val...")
+    print(f"Train size: {train_size} ({train_val_split:.1%})")
+    print(f"Validation size: {val_size} ({1-train_val_split:.1%})")
+    
+    # Shuffle remaining data and split
+    remaining_shuffled = remaining_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
+    train_df = remaining_shuffled.iloc[:train_size]
+    val_df = remaining_shuffled.iloc[train_size:]
+    
+    # Generate output filenames
+    input_path = Path(input_file)
+    base_name = input_path.stem
+    output_dir = input_path.parent
+    
+    train_file = output_dir / f"{base_name}_train.csv"
+    val_file = output_dir / f"{base_name}_val.csv"
+    benchmark_file = output_dir / f"{base_name}_benchmark.csv"
+    
+    # Save the splits
+    print(f"\nSaving splits...")
+    train_df.to_csv(train_file, index=False)
+    val_df.to_csv(val_file, index=False)
+    benchmark_df.to_csv(benchmark_file, index=False)
+    
+    print(f"Train set saved to: {train_file}")
+    print(f"Validation set saved to: {val_file}")
+    print(f"Benchmark set saved to: {benchmark_file}")
+    
+    # Generate summary statistics
+    print_split_summary_statistics(train_df, val_df, benchmark_df)
+
+
 def main():
-    """Main function to create benchmark CSV files."""
-    raw_data_dir = "data/raw_data"
-    output_file_text = "data/benchmark.csv"
-    output_file_multimodal = "data/benchmark_multimodal.csv"
+    """Main function to create benchmark CSV files and optionally split them."""
+    parser = argparse.ArgumentParser(description="Prepare benchmark data from raw persona files")
+    parser.add_argument("--raw-data-dir", type=str, default="data/raw_data",
+                       help="Directory containing raw persona JSON files (default: data/raw_data)")
+    parser.add_argument("--output-text", type=str, default="data/benchmark.csv",
+                       help="Output file for text benchmark (default: data/benchmark.csv)")
+    parser.add_argument("--output-multimodal", type=str, default="data/benchmark_multimodal.csv",
+                       help="Output file for multimodal benchmark (default: data/benchmark_multimodal.csv)")
+    parser.add_argument("--split", action="store_true",
+                       help="Split the generated benchmark files into train/val/benchmark sets")
+    parser.add_argument("--benchmark-size", type=int, default=5000,
+                       help="Size of benchmark set when splitting (default: 5000)")
+    parser.add_argument("--train-val-split", type=float, default=0.8,
+                       help="Train/validation split ratio when splitting (default: 0.8)")
+    parser.add_argument("--min-coverage", type=int, default=100,
+                       help="Minimum coverage per variable value when splitting (default: 100)")
+    parser.add_argument("--random-seed", type=int, default=42,
+                       help="Random seed for reproducibility when splitting (default: 42)")
+    
+    args = parser.parse_args()
     
     print("Creating comprehensive benchmark CSV files...")
-    print(f"Input directory: {raw_data_dir}")
+    print(f"Input directory: {args.raw_data_dir}")
     
     # Create text-only benchmark CSV
-    print(f"\nCreating text-only benchmark: {output_file_text}")
-    create_benchmark_csv(raw_data_dir, output_file_text, use_multimodal=False)
+    print(f"\nCreating text-only benchmark: {args.output_text}")
+    create_benchmark_csv(args.raw_data_dir, args.output_text, use_multimodal=False)
     
     # Create multimodal benchmark CSV
-    print(f"\nCreating multimodal benchmark: {output_file_multimodal}")
-    create_benchmark_csv(raw_data_dir, output_file_multimodal, use_multimodal=True)
+    print(f"\nCreating multimodal benchmark: {args.output_multimodal}")
+    create_benchmark_csv(args.raw_data_dir, args.output_multimodal, use_multimodal=True)
     
     print("\nBenchmark preparation complete!")
     print(f"Generated files:")
-    print(f"  - {output_file_text}")
-    print(f"  - {output_file_multimodal}")
+    print(f"  - {args.output_text}")
+    print(f"  - {args.output_multimodal}")
+    
+    # Optionally split the benchmark files
+    if args.split:
+        print(f"\n{'='*80}")
+        print("SPLITTING BENCHMARK FILES")
+        print(f"{'='*80}")
+        print(f"Split parameters:")
+        print(f"  Benchmark size: {args.benchmark_size}")
+        print(f"  Train/val split: {args.train_val_split:.1%}/{1-args.train_val_split:.1%}")
+        print(f"  Minimum coverage: {args.min_coverage}")
+        print(f"  Random seed: {args.random_seed}")
+        
+        # Split text benchmark
+        if os.path.exists(args.output_text):
+            print(f"\n{'-'*60}")
+            print(f"Splitting text benchmark: {args.output_text}")
+            print(f"{'-'*60}")
+            split_benchmark_data(
+                args.output_text,
+                args.benchmark_size,
+                args.train_val_split,
+                args.min_coverage,
+                args.random_seed
+            )
+        
+        # Split multimodal benchmark
+        if os.path.exists(args.output_multimodal):
+            print(f"\n{'-'*60}")
+            print(f"Splitting multimodal benchmark: {args.output_multimodal}")
+            print(f"{'-'*60}")
+            split_benchmark_data(
+                args.output_multimodal,
+                args.benchmark_size,
+                args.train_val_split,
+                args.min_coverage,
+                args.random_seed
+            )
+        
+        print(f"\n{'='*80}")
+        print("SPLITTING COMPLETE")
+        print(f"{'='*80}")
 
 
 if __name__ == "__main__":
