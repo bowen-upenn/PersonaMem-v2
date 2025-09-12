@@ -18,7 +18,7 @@ from query_llm import QueryLLM
 
 
 class PersonaBenchmarkEvaluator:
-    def __init__(self, config_path: str = "config.yaml", model_name: str = None):
+    def __init__(self, config_path: str = "config.yaml", model_name: str = None, result_path: str = "results/"):
         """Initialize the evaluator with configuration."""
         self.config = self._load_config(config_path)
         
@@ -27,7 +27,7 @@ class PersonaBenchmarkEvaluator:
             self.config['models']['llm_model'] = self._map_model_name(model_name)
         
         self.query_llm = QueryLLM(self.config)
-        self.results_dir = Path("results")
+        self.results_dir = Path(result_path)
         self.results_dir.mkdir(exist_ok=True)
         
 
@@ -222,9 +222,16 @@ class PersonaBenchmarkEvaluator:
         return predicted_text == correct_answer
     
 
-    def run_evaluation(self, benchmark_file: str, eval_mode: str = "mcq", 
+    def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
                       use_multimodal: bool = False, max_items: int = None) -> str:
         """Run evaluation on the benchmark dataset."""
+        # Auto-select benchmark file if not specified
+        if benchmark_file is None:
+            if use_multimodal:
+                benchmark_file = "data/benchmark_multimodal.csv"
+            else:
+                benchmark_file = "data/benchmark.csv"
+        
         print(f"Starting evaluation...")
         print(f"Benchmark file: {benchmark_file}")
         print(f"Evaluation mode: {eval_mode}")
@@ -334,8 +341,8 @@ class PersonaBenchmarkEvaluator:
 if __name__ == "__main__":
     """Main function to run evaluation."""
     parser = argparse.ArgumentParser(description='Run evaluation on ImplicitPersona benchmark')
-    parser.add_argument('--benchmark_file', type=str, default='data/benchmark.csv',
-                       help='Path to benchmark CSV file')
+    parser.add_argument('--benchmark_file', type=str, default=None,
+                       help='Path to benchmark CSV file (auto-selects based on --use_multimodal if not specified)')
     parser.add_argument('--eval_mode', type=str, choices=['mcq', 'generative'], default='mcq',
                        help='Evaluation mode: mcq or generative')
     parser.add_argument('--use_multimodal', action='store_true',
@@ -348,11 +355,13 @@ if __name__ == "__main__":
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini
     parser.add_argument('--model_name', type=str, default='gpt-5-chat',
                        help='Model name to use for evaluation (overrides config file)')
+    parser.add_argument('--result_path', type=str, default='results/',
+                       help='Directory to save evaluation results (default: results/)')
     
     args = parser.parse_args()
     
     # Initialize evaluator
-    evaluator = PersonaBenchmarkEvaluator(args.config, args.model_name)
+    evaluator = PersonaBenchmarkEvaluator(args.config, args.model_name, args.result_path)
     
     # Run evaluation
     output_file = evaluator.run_evaluation(
