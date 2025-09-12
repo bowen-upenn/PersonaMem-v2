@@ -15,6 +15,7 @@ import time
 import base64
 import threading
 from collections import defaultdict
+from dotenv import load_dotenv
 
 
 class QueryLLM:

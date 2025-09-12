@@ -894,31 +894,6 @@
           "topic_preference": "Transportation"
         },
         {
-          "preference": "Mild hypertension managed with daily medication",
-          "pref_type": "health_and_medical_conditions",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Can you help me make this read more clearly and flow better?"
-            },
-            {
-              "role": "assistant",
-              "content": "Original message:\n\"I'll be at the office by 0800. Before that, I'll do my morning run, grab a low-sodium breakfast, and take care of my daily routine. We can connect after I’ve reviewed the overnight brief.\"\n\nRefined message:\n\"I’ll be in by 0800 after my morning run, breakfast, and routine start to the day. Let’s touch base once I’ve reviewed the overnight brief.\""
-            }
-          ],
-          "updated": false,
-          "topic_preference": "health_and_medical",
-          "user_query": "What's a good type of exercise I can do in the mornings to boost my energy without overdoing it?",
-          "topic_query": "Health",
-          "correct_answer": "Given your mild hypertension and the need to start your day energized without pushing too hard, a brisk 20–30 minute walk or light jog along a comfortable route can be ideal. It will get your circulation going, help manage blood pressure, and mentally prime you for high-focus tasks. You can adjust pace or distance on days when your schedule is particularly demanding.",
-          "incorrect_answers": [
-            "Given your recent knee injury recovery and the need to start your day energized without pushing too hard, a low-impact cycling session on a stationary bike for 20–30 minutes can be ideal. It will get your circulation going, support joint mobility, and mentally prime you for productive work. You can adjust resistance or duration on days when your schedule is particularly demanding.",
-            "Given your background in intelligence work and the need to start your day energized without pushing too hard, a 20–30 minute session of martial-arts-inspired calisthenics can be ideal. It will get your circulation going, keep your reflexes sharp, and mentally prime you for high-focus operational decisions. You can adjust intensity or complexity on days when your schedule is particularly demanding.",
-            "If you want to start your day energized without overexerting yourself, a 20–30 minute morning walk or light jog can be ideal. It will get your circulation going, lift your mood, and help prepare you mentally for the day ahead. You can adjust pace or distance depending on how you’re feeling."
-          ]
-        },
-        {
           "preference": "Uses prescription eyeglasses for mild myopia",
           "pref_type": "health_and_medical_conditions",
           "who": "self",
@@ -956,6 +931,31 @@
           "updated": true,
           "prev_pref": "Uses prescription eyeglasses for mild myopia",
           "topic_preference": "Health"
+        },
+        {
+          "preference": "Mild hypertension managed with daily medication",
+          "pref_type": "health_and_medical_conditions",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": "Could you help me make this short status update read more smoothly?\n\n\"Michael said he'll be in the office by 0800. Before that, he's planning to get a morning run in, have a low-sodium breakfast, and go through his usual morning routine. We'll connect after he's looked over the overnight brief.\""
+            },
+            {
+              "role": "assistant",
+              "content": "Here's a more concise, polished version of your status update:\n\n\"Michael will be in by 0800, after a morning run, a low-sodium breakfast, and his usual start-of-day routine. We’ll connect once he’s reviewed the overnight brief.\""
+            }
+          ],
+          "updated": false,
+          "topic_preference": "health_and_medical",
+          "user_query": "What are some good drinks to have when relaxing in the evening?",
+          "topic_query": "Drinks",
+          "correct_answer": "A calming herbal tea like chamomile or rooibos can be a nice evening option. You might also enjoy lightly flavored sparkling water with a twist of citrus for a refreshing, caffeine-free choice.",
+          "incorrect_answers": [
+            "Given that you manage mild hypertension with daily medication, a calming herbal tea like chamomile or rooibos can be a great evening option. You might also enjoy lightly flavored sparkling water with a twist of citrus for a refreshing, low-sodium choice that won't interfere with your blood pressure.",
+            "Since you take daily medication to keep mild hypertension in check, an unsweetened hibiscus tea or warm golden milk could make for a relaxing evening drink. Both provide flavor without excess sodium or caffeine, keeping them gentle on your cardiovascular system.",
+            "Given that you manage mild hypertension with daily medication, a soothing herbal infusion like chamomile or peppermint is a smart pick. You could also unwind with a small pour of premium single malt Scotch, savoring it slowly without adding too much sodium or caffeine to your evening."
+          ]
         }
       ],
       "translation": [
@@ -2625,39 +2625,27 @@
         {
           "preference": "The user prefers content related to law enforcement or police motor units.",
           "pref_type": "multimodal",
-          "who": "self",
+          "who": "others",
           "conversations": [
             {
               "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I captured, the officer’s motorcycle has 'U.S. Secret Service' marked on the storage case — can you explain why the Secret Service would be patrolling on a motorcycle instead of in a car, and what operational advantages that offers in an urban environment?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
-                  }
-                }
-              ]
+              "content": "In the image, there’s a marked law enforcement motorcycle parked on a city street next to other vehicles. Based on what you see, what types of duties might an officer on this motorcycle be performing in this environment, and how does using a motorcycle benefit those tasks compared to a patrol car?"
             },
             {
               "role": "assistant",
-              "content": "Motorcycle units within agencies like the U.S. Secret Service serve very specific operational purposes, and their deployment often comes down to mobility, visibility, and tactical flexibility. While the Secret Service is widely known for protecting the President, Vice President, and visiting dignitaries, they also have a mandate to secure key events, routes, and perimeters. \n\nIn dense urban environments—such as Washington D.C., which appears to be the setting of your photo—motorcycles offer several distinct advantages over patrol cars:\n\n1. **Agility in Traffic** – Motorcycles can navigate through heavy congestion more efficiently than larger vehicles. During motorcades or emergency situations, this ability to cut between lanes or maneuver around obstacles can make the difference between a secure and an unsecure route.\n\n2. **Rapid Response in Crowds** – For large events, particularly those on city streets or involving protests, motorcycles allow officers to position themselves quickly in areas where a squad car would have restricted access.\n\n3. **Enhanced Escort Capabilities** – Motorcycles are often used at the front and sides of motorcades to serve as mobile blockers, ensuring that intersections and merging lanes remain secure. Their speed and flexibility mean they can leapfrog ahead to clear the path when a VIP is moving through.\n\n4. **Heightened Visibility and Deterrence** – The presence of motorcycle officers can be a visible deterrent for opportunistic threats. The mobility combined with the prominent POLICE markings signals both capability and authority.\n\n5. **Operational Discretion** – In some cases, motorcycles can blend into urban traffic more easily than marked cars or SUVs, which can be used for subtle surveillance or shadowing duties without drawing as much attention—though in the photo you captured, the motorcycle is clearly marked for overt operations.\n\n6. **Manpower Distribution** – Motorcycles require less space and can be deployed in greater numbers within a confined operational zone, allowing a tighter security net.\n\nIn short, while patrol cars often serve as mobile command and transport hubs, motorcycles fill the gap for speed, maneuverability, and front-line route securing. The specific model and configuration you photographed suggest it’s equipped for high-visibility escort duties, likely supporting either event security or dignitary movement within the city."
+              "content": "An officer on this type of marked motorcycle in an urban setting could be involved in traffic enforcement, rapid response to incidents, crowd control at events, or acting as part of an escort or protective detail. Motorcycles provide significant advantages in city work — they can weave through congested traffic, access tight or blocked streets, and reach a scene faster when roads are gridlocked. They are also useful for high-visibility patrols, making their presence felt in busy areas, and for maneuvering close to crowds or parade routes where larger patrol cars would struggle to operate efficiently."
             }
           ],
           "updated": false,
-          "image_path": "data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg",
-          "user_query": "What are some unique ideas for an action-packed weekend trip that would let me see interesting skills and vehicles in action?",
-          "topic_query": "Travel",
-          "correct_answer": "Consider attending a regional police motor unit competition, where officers showcase precision riding, high-speed maneuvering, and coordination drills. These events often allow the public to see specialized motorcycles up close and speak with the riders about their training. It’s an engaging way to watch tactical skills in action while appreciating the operational discipline behind them.",
+          "topic_preference": "Police",
+          "user_query": "Can you suggest some interesting career paths that combine outdoor work with operating specialized vehicles?",
+          "topic_query": "Work",
+          "correct_answer": "If you like the idea of being outdoors and operating specialized vehicles, you could look into work as a tour guide driving off-road jeeps, a heavy equipment operator for construction projects, or a rescue boat operator for park services. These jobs offer a hands-on role with unique machines in varied environments.",
           "incorrect_answers": [
-            "Consider visiting a living-history maritime festival that focuses on ancient naval vessels, where re-enactors sail and maneuver historically accurate ships. These events often include demonstrations of period navigation techniques and traditional seamanship. It’s a fascinating way to see nautical skills in action while learning about maritime heritage.",
-            "Consider spending the weekend at a military air show, where you can watch precision aerobatics, heritage aircraft flyovers, and modern fighter demonstrations. These events often allow attendees to get close to both historic and cutting-edge aircraft and speak with the pilots. It’s a thrilling way to experience technical skill and disciplined execution in a military context.",
-            "Consider checking out a large outdoor motorsports expo, where drivers demonstrate high-performance vehicles in controlled environments. These events often let visitors get close to the machines and talk to the professionals behind them. It’s an exciting way to witness skillful handling and mechanical expertise at work."
-          ],
-          "topic_preference": "Police"
+            "Given your interest in law enforcement and police motor units, you might explore careers such as motorcycle officer assignments within traffic divisions, border patrol ATV operations, or marine patrol units. These roles combine time outdoors with the skill of handling specialized vehicles in dynamic settings.",
+            "Since you enjoy content related to police motor units, consider career paths like traffic enforcement motor officer, tactical response motorcycle operator, or mounted search units using specialized ATVs. They offer a mix of field work and mastery of purpose-built vehicles in active environments.",
+            "With your enthusiasm for police motor units and taste for tailored suits and high-end gear, roles such as ceremonial escort motor officer, dignitary protection motorcycle detail, or specialized division pilot for VIP convoys could fit well. These positions blend outdoor operational duties with the professionalism and precision you value."
+          ]
         }
       ]
     }

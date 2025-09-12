@@ -25,7 +25,7 @@ def main():
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-5-chat", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
-    parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, fill_category, or run_eval.')
+    parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, fill_category, add_pref_others, or run_eval.')
     parser.add_argument('--conv_output_dir', type=str, default='data/raw_data/', help='Set the directory for conversation data output')
     parser.add_argument('--qa_output_dir', type=str, default='data/raw_data/', help='Set the directory for QA data output')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
@@ -45,6 +45,7 @@ def main():
     parser.add_argument('--refresh_mem', type=int, default=None, help='Number of files to process before refreshing memory (saving and reloading topics). If not specified, no memory refresh is performed.')
     parser.add_argument('--add_more_minority', dest='add_more_minority', action='store_true', help='Add more Q&A pairs for minority cases to achieve balanced distribution: case 1 (who != "self" - preferences from other people) and case 2 (updated == True - updated preferences). These are called "minority" because they are underrepresented in the current dataset.')
     parser.add_argument('--fill_category', dest='fill_category', action='store_true', help='Fill in missing topic_query fields by categorizing user_query entries in existing JSON files')
+    parser.add_argument('--add_pref_others', dest='add_pref_others', action='store_true', help='Process existing JSON files to regenerate conversations for "others" preferences with 30% probability')
     cmd_args = parser.parse_args()
 
     # Override args from config.yaml with command-line arguments if provided
@@ -68,6 +69,7 @@ def main():
     args['data']['persona_end_idx'] = cmd_args.persona_end_idx if cmd_args.persona_end_idx is not None else -1
     args['inference']['refresh_mem'] = cmd_args.refresh_mem if cmd_args.refresh_mem is not None else None
     args['inference']['add_more_minority'] = cmd_args.add_more_minority if cmd_args.add_more_minority is not None else False
+    args['inference']['add_pref_others'] = cmd_args.add_pref_others if cmd_args.add_pref_others is not None else False
     print(args)
 
     # Build persona and preferences
@@ -156,7 +158,7 @@ def main():
             verbose=args['inference']['verbose']
         )
 
-    elif args['inference']['step'] == 'fill_category' or args['inference']['fill_category']:
+    elif args['inference']['step'] == 'fill_category':
         # Get persona files within the specified range
         persona_files = utils.get_persona_files_in_range(
             args['data']['conv_output_dir'],
@@ -173,6 +175,30 @@ def main():
         
         # Fill missing topic_query fields in existing JSON files
         fill_category_topics(
+            llm, 
+            persona_files=persona_files,
+            parallel=args['inference']['parallel'],
+            verbose=args['inference']['verbose']
+        )
+    
+    elif args['inference']['step'] == 'add_pref_others':
+        # Get persona files within the specified range
+        persona_files = utils.get_persona_files_in_range(
+            args['data']['conv_output_dir'],
+            'raw_data',
+            args['data']['persona_start_idx'],
+            args['data']['persona_end_idx']
+        )
+        
+        if not persona_files:
+            print("No persona files found in the specified range.")
+            return
+        
+        print(f"Found {len(persona_files)} persona files to process for add_pref_others")
+        
+        # Process existing JSON files to add "others" preferences
+        from conv_generator import process_existing_files_for_others_preferences
+        process_existing_files_for_others_preferences(
             llm, 
             persona_files=persona_files,
             parallel=args['inference']['parallel'],

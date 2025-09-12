@@ -309,31 +309,6 @@
     "conversations": {
       "personal_email": [
         {
-          "preference": "Keeps a reusable water bottle and tote bags",
-          "pref_type": "stereotypical_pref",
-          "who": "self",
-          "conversations": [
-            {
-              "role": "user",
-              "content": "Hi, can you help me refine the language in this personal email?\n\n---\nHey Alex,\n\nLooking forward to the neighborhood walking tour this Saturday. I think it’ll be interesting to see how the city has been handling the new mixed-use developments near the transit hub. It might give me some ideas for our own community proposals.\n\nI’ll bring my usual water bottle and tote so we can grab coffee or any local goods along the way. Should we meet at the waterfront plaza around 9:30?\n\nSee you then,\nJon"
-            },
-            {
-              "role": "assistant",
-              "content": "Sure, here’s a refined version of your email that keeps the friendly tone while smoothing the flow:\n\n---\nHi Alex,\n\nI’m really looking forward to the neighborhood walking tour this Saturday. It should be fascinating to see how the city is approaching the new mixed-use developments near the transit hub—it might even spark some useful ideas for our own community proposals.\n\nI’ll bring my water bottle and tote so we can pick up coffee or any interesting local goods along the way. Shall we plan to meet at the waterfront plaza around 9:30?\n\nSee you then,\nJon"
-            }
-          ],
-          "updated": false,
-          "topic_preference": "Environment",
-          "user_query": "What are some practical ways I can cut down on waste in my daily routine, especially when I’m out and about?",
-          "topic_query": "Environment",
-          "correct_answer": "Since you already carry a reusable water bottle and tote bags, you might also bring a compact reusable coffee cup for cafés, pack snacks in washable containers, and use a foldable utensil set to avoid single-use plastics while exploring the city or commuting.",
-          "incorrect_answers": [
-            "Since you already keep a small sketch notebook on hand, you might also bring a compact reusable coffee cup for cafés, pack snacks in washable containers, and use a foldable utensil set to avoid single-use plastics while exploring the city or commuting.",
-            "Since you’re likely to have a bike helmet with you when cycling to work, you might also bring a compact reusable coffee cup for cafés, pack snacks in washable containers, and use a foldable utensil set to avoid single-use plastics while exploring the city or commuting.",
-            "To cut down on waste when you’re out, you might bring a compact reusable coffee cup for cafés, pack snacks in washable containers, and use a foldable utensil set to avoid single-use plastics while exploring the city or commuting."
-          ]
-        },
-        {
           "preference": "Is an avid fan of retro arcade and pinball games",
           "pref_type": "anti_stereotypical_pref",
           "who": "self",
@@ -379,6 +354,31 @@
           "updated": true,
           "prev_pref": "Is an avid fan of retro arcade and pinball games",
           "topic_preference": "Gaming"
+        },
+        {
+          "preference": "Keeps a reusable water bottle and tote bags",
+          "pref_type": "stereotypical_pref",
+          "who": "others",
+          "conversations": [
+            {
+              "role": "user",
+              "content": "Can you help me figure out what this email I just got from my colleague might be hinting at?\n\n---\n\nHi Jon,\n\nFor tomorrow’s site walk-through near the waterfront redevelopment, I’m planning to swing by that little market across from the light rail station on the way. They’ve usually got good coffee and some fresh local snacks we can bring along for the route. No need to pick anything up yourself unless you want something specific — I’ll already have my own container and bags with me. We can meet by the station entrance at 9:00 and head over together.\n\nBest,\nKaren\n---"
+            },
+            {
+              "role": "assistant",
+              "content": "It sounds like Karen is giving you the plan for meeting up before your waterfront site walk-through, with an extra detail about stopping at the market for coffee and snacks. The noteworthy part is that she explicitly mentions already having her own container and bags — this subtly implies she tends to carry reusable items for drinks and shopping. It suggests she’s mindful about avoiding disposable containers and plastic bags, perhaps as part of a personal habit around sustainability or convenience during outings."
+            }
+          ],
+          "updated": false,
+          "topic_preference": "Environment",
+          "user_query": "What are some simple ways I can make my daily routine more eco-friendly without spending a lot of money?",
+          "topic_query": "Environment",
+          "correct_answer": "You could make your daily routine more eco-friendly by carrying a reusable coffee cup, buying bulk items to avoid excess packaging, and turning off lights and electronics when not in use.",
+          "incorrect_answers": [
+            "Since you already carry a reusable water bottle and tote bags, you could also switch to making your morning coffee at home in a travel mug, choose unpackaged produce at the market, and take advantage of Seattle’s transit or walking routes for short trips instead of driving.",
+            "Because you’re in the habit of bringing your own tote bags and refillable water bottle, you might add small tweaks like using reusable produce sacks, opting for bulk pantry items to cut packaging waste, and combining errands on foot to minimize unnecessary transport.",
+            "Since you already bring your reusable water bottle and tote bags, and you enjoy cycling through urban greenways, you could ride to the farmers market for local produce, skip single-use plastics by buying in bulk, and compost food scraps to keep them out of landfill."
+          ]
         }
       ],
       "professional_email": [
@@ -2616,58 +2616,27 @@
         {
           "preference": "The user has an interest in police motorcycles or law enforcement vehicles.",
           "pref_type": "multimodal",
-          "who": "self",
+          "who": "others",
           "conversations": [
             {
               "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "In this shot I took downtown, the police officer is on what looks like a specially equipped motorcycle—can you explain what modifications these bikes usually have compared to standard civilian models and why they’re chosen?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
-                  }
-                }
-              ]
+              "content": "In this parade photo, a motorcycle with extra lights, a windscreen, and large side panniers is leading the procession—what are some reasons a public safety department might choose this type of vehicle over a standard patrol car for such an event?"
             },
             {
               "role": "assistant",
-              "content": "Certainly! Police motorcycles like the one you captured in your photo are typically purpose-built or heavily modified from a civilian base model to meet the demands of law enforcement work. The bike in your image appears to be a Harley-Davidson Electra Glide or a similar touring model, which is a popular choice for police departments due to its balance of maneuverability, comfort, and carrying capacity.\n\nHere are some of the primary modifications and the reasoning behind them:\n\n**1. Emergency lighting and sirens:**\nPolice motorcycles are equipped with high-intensity LED lights (often in red, blue, and white combinations, depending on jurisdiction) mounted on the front forks, fairing, and rear of the bike. They also have integrated siren systems. These are essential for signaling other drivers during emergency responses and in traffic control situations.\n\n**2. Communication equipment:**\nYou'll often find a dedicated police radio system that allows the officer to communicate directly with dispatch and other officers, sometimes with a handlebar-mounted push-to-talk button so they don't have to take their hands off the controls.\n\n**3. Storage compartments:**\nThe large saddlebags or panniers — like the ones visible here — are used to carry enforcement gear such as radar or lidar speed detection units, first-aid kits, traffic cones, report forms, and sometimes less-lethal weapons or protective gear.\n\n**4. Performance tuning:**\nPolice versions of these motorcycles may have upgraded suspension to handle heavy loads from gear, reinforced frames for durability, and sometimes re-geared transmissions for smoother acceleration rather than sheer top speed. These adjustments make the bike more capable of sustained, low-speed control during escorts or urban patrolling.\n\n**5. Comfort and ergonomics:**\nBecause officers can spend many hours in the saddle, police bikes often have specialized seats, higher handlebars for a more upright riding posture, and windshields to reduce fatigue during long shifts.\n\n**6. Markings and visibility:**\nDistinctive POLICE decals, as in your photo, are part of their visual deterrence role. High-contrast paint or reflective striping ensures the bike is visible in both day and night conditions.\n\n**7. Additional instrumentation:**\nSome have handlebar or dash-mounted computers for quick license-plate checks, GPS navigation, and even ticket printing, making the motorcycle a mobile enforcement platform.\n\nOverall, these modifications turn what may start as a luxury touring motorcycle into a highly specialized enforcement tool. Departments choose motorcycles like this because they can navigate congested traffic more easily than patrol cars, are less expensive to operate, and have a strong public outreach image, especially in community policing roles."
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "You mentioned upgraded suspension as one of the modifications—can you go into more detail about what kind of suspension changes are made and how they help officers during different types of operations?"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "data:image/jpeg;base64,data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg"
-                  }
-                }
-              ]
-            },
-            {
-              "role": "assistant",
-              "content": "Absolutely. On police motorcycles, the suspension is often reinforced and tuned to handle the increased weight from onboard equipment and to improve ride stability under varying conditions. Here’s what this typically involves:\n\n**1. Heavy-duty springs and shocks:** The stock springs may be replaced with higher-rate versions to better manage added weight without excessive sag. Heavy-duty shock absorbers can provide more controlled rebound and compression, giving the officer better control during sudden maneuvers.\n\n**2. Adjustable preload and damping:** Many police bikes are equipped with adjustable preload settings, allowing suspension stiffness to be altered depending on load—useful when carrying extra gear or a passenger (like in escort duties). Adjustable damping lets the bike be fine-tuned for smoother city ride comfort or firmer, more responsive handling at speed.\n\n**3. Improved stability under braking:** With upgraded forks or cartridge systems in the front suspension, the bike can remain more stable during hard braking—important for emergency stops or when weaving through traffic.\n\n**4. Increased durability:** Suspension components in police models are built to withstand more abuse, whether from constant stop-and-go traffic riding, mounting curbs, or operating in poor road conditions.\n\nIn practice, these improvements mean the motorcycle maintains good handling characteristics and officer comfort even under heavy load, and can safely execute rapid direction changes during pursuits or crowd-control operations."
+              "content": "Public safety departments often select motorcycles with touring-style features for parade duty because they combine high visibility with agility. The elevated windscreen and bright auxiliary lights improve conspicuity in crowded, distraction-heavy environments, while large panniers allow officers to carry first-aid kits, comms equipment, and traffic-control tools without following support vehicles. Compared to a standard patrol car, a motorcycle can maneuver through tight formations, adjust position quickly, and maintain an approachable presence for public engagement. They also project a strong ceremonial image, which is fitting for processional and community events."
             }
           ],
           "updated": false,
-          "image_path": "data/photobook_images/car_motorcycle/COCO_train2014_000000293647.jpg",
-          "user_query": "What are some unique types of vehicles I could photograph at public parades or community events that would really stand out in a photo collection?",
-          "topic_query": "Transportation",
-          "correct_answer": "You might look for specialized law enforcement vehicles like vintage police motorcycles, community-policing electric bikes, or mounted-unit transport vans. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
+          "topic_preference": "Police",
+          "user_query": "What are some of the most iconic vehicles used in action scenes in movies or TV shows, and what makes them stand out?",
+          "topic_query": "Entertainment",
+          "correct_answer": "Iconic action scene vehicles often include the Aston Martin DB5 from James Bond, the DeLorean from Back to the Future, and the Batmobile from various Batman films. They stand out for their unique designs, memorable features, and the way they’ve become cultural symbols beyond their screen time.",
           "incorrect_answers": [
-            "You might look for eye-catching hot air balloons, art cars covered in mosaic tiles, or mobile science exhibits. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
-            "You might look for historic streetcars, restored mid-century buses, or innovative electric trams. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity.",
-            "You might look for brightly decorated parade floats, antique cars, or oversized novelty vehicles. These have distinctive visual appeal and can be especially striking when framed against urban architecture or lively street activity."
-          ],
-          "topic_preference": "Police"
+            "As someone with a keen eye for police motorcycles and other law enforcement vehicles, you might appreciate the Kawasaki KZ1000P bikes in shows like CHiPs, or the sleek BMW R1200RT units in modern thrillers. They stand out for their authentic detailing, precise handling in chase scenes, and the visual authority they bring to high-stakes moments.",
+            "Given your interest in law enforcement motorcycles, it's hard to overlook the Harley-Davidson Electra Glide police models featured in films like Terminator 2 and various crime dramas. They pop on screen thanks to their commanding presence, distinctive silhouette, and the way stunt sequences use their weight and stability to dramatic effect.",
+            "With your appreciation for police motorcycles and a background rooted in urban planning, you might gravitate toward the BMW police bikes in European action films, or even the specialized tactical SUVs used in city-based thrillers. Their integration into urban chase scenes adds realism and complements the dense, metropolitan settings you know well."
+          ]
         }
       ]
     }

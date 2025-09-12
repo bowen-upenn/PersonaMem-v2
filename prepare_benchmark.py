@@ -11,9 +11,14 @@ import os
 import glob
 import re
 import tiktoken
+import pandas as pd
+import numpy as np
+import argparse
+import random
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 from tqdm import tqdm
+from collections import Counter
 
 # Initialize encoder for token counting (same as contexts_builder.py)
 ENCODER = tiktoken.encoding_for_model("gpt-4o")
@@ -248,7 +253,7 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                     }
                     
                     # Extract all required fields
-                    preference = item.get("preference", "")
+                    preference = item.get("preference", "sensitive_info")
                     pref_type = item.get("pref_type", "")
                     topic_preference = item.get("topic_preference", "")
                     topic_query = item.get("topic_query", "")
@@ -257,6 +262,7 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                     who = item.get("who", "")
                     updated = item.get("updated", False)
                     prev_pref = item.get("prev_pref", "")
+                    sensitive_info = True if "sensitive_info" in item else False
                     
                     # Keep conversations as properly formatted JSON string
                     conversations = item.get("conversations", [])
@@ -305,6 +311,7 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                         "who": who,
                         "updated": str(updated),
                         "prev_pref": prev_pref,
+                        "sensitive_info": sensitive_info,
                         "total_tokens_in_chat_history_32k": total_tokens_32k,
                         "total_tokens_in_chat_history_128k": total_tokens_128k,
                         "distance_from_related_snippet_to_query_32k": tokens_to_snippet_32k,
@@ -388,6 +395,7 @@ def create_benchmark_csv(raw_data_dir: str, output_file: str, use_multimodal: bo
             "who",
             "updated",
             "prev_pref",
+            "sensitive_info",
             "total_tokens_in_chat_history_32k",
             "total_tokens_in_chat_history_128k",
             "distance_from_related_snippet_to_query_32k",
