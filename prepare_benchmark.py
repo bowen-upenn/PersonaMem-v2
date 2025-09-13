@@ -209,6 +209,42 @@ def find_conversation_snippet_in_chat_history(chat_history_file: str, conversati
         return 0
 
 
+def filter_knowledge_query_by_highest_idx_repeat(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Filter knowledge_query items to only include those with idx_repeat key,
+    and for each preference, only keep the item with the highest idx_repeat value.
+    
+    Args:
+        items: List of knowledge_query items
+    
+    Returns:
+        Filtered list with only the highest idx_repeat item per preference
+    """
+    # Only include items that have idx_repeat key
+    items_with_idx_repeat = [item for item in items if "idx_repeat" in item]
+    
+    if not items_with_idx_repeat:
+        return []
+    
+    # Group by preference and find the highest idx_repeat for each
+    preference_groups = {}
+    for item in items_with_idx_repeat:
+        preference = item.get("preference", "")
+        if not preference:
+            continue
+            
+        idx_repeat = item.get("idx_repeat", 0)
+        
+        if preference not in preference_groups:
+            preference_groups[preference] = item
+        else:
+            # Keep the item with higher idx_repeat
+            if idx_repeat > preference_groups[preference].get("idx_repeat", 0):
+                preference_groups[preference] = item
+    
+    return list(preference_groups.values())
+
+
 def process_persona_file(file_path: str, persona_number: int, use_multimodal: bool = False) -> List[Dict[str, Any]]:
     """Process a single persona file and extract all user_query rows."""
     rows = []
@@ -231,6 +267,13 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
         # Process each persona in the file (usually just one)
         for persona_id_key, persona_data in data.items():
             short_persona = persona_data.get("short_persona", "")
+            if "persona" in short_persona:
+                try:
+                    short_persona = json.loads(short_persona)
+                    short_persona = short_persona["persona"]
+                except:
+                    short_persona = short_persona
+
             expanded_persona = extract_expanded_persona(persona_data)
             expanded_persona_file = file_path
             
@@ -240,6 +283,10 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
             for scenario_name, scenario_items in conversations_data.items():
                 if not isinstance(scenario_items, list):
                     continue
+                
+                # Special handling for knowledge_query: filter by highest idx_repeat per preference
+                if scenario_name == "knowledge_query":
+                    scenario_items = filter_knowledge_query_by_highest_idx_repeat(scenario_items)
                 
                 for item in scenario_items:
                     # Only include items that have user_query (skip if no user_query)
@@ -661,7 +708,9 @@ def print_split_summary_statistics(train_df: pd.DataFrame, val_df: pd.DataFrame,
 def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_split: float = 0.8, 
                         min_coverage: int = 100, random_seed: int = 42) -> None:
     """
-    Split benchmark data into train, validation, and benchmark sets.
+    Split benchmark data into train, validation, and benchmark sets with separate persona IDs.
+    
+    The benchmark set will use a completely separate set of persona IDs from train/val sets.
     
     Args:
         input_file: Path to the input CSV file
@@ -680,45 +729,105 @@ def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_
     random.seed(random_seed)
     np.random.seed(random_seed)
     
-    # Shuffle the entire dataset first
-    df_shuffled = df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
-    print(f"Data shuffled with random seed {random_seed}")
+    # Step 1: Separate personas by ID for benchmark vs train/val
+    print(f"\nStep 1: Separating persona IDs for benchmark vs train/val...")
     
-    # Step 1: Ensure coverage for benchmark set
-    print(f"\nStep 1: Ensuring coverage of at least {min_coverage} items per variable...")
-    coverage_df = ensure_coverage(df_shuffled, min_coverage)
+    # Get all unique persona IDs and shuffle them
+    unique_personas = df['persona_id'].unique()
+    np.random.shuffle(unique_personas)
+    print(f"Total unique personas: {len(unique_personas)}")
     
-    # Step 2: Sample additional rows to reach target benchmark size
-    print(f"\nStep 2: Sampling additional rows to reach benchmark size of {benchmark_size}...")
-    additional_df = stratified_sample_remaining(df_shuffled, benchmark_size, coverage_df)
+    # Try different benchmark persona counts to find one that gives us enough data
+    benchmark_personas_needed = None
+    benchmark_df = None
     
-    # Combine coverage and additional samples for benchmark set
-    if len(additional_df) > 0:
-        benchmark_df = pd.concat([coverage_df, additional_df]).drop_duplicates()
+    # Start with a reasonable estimate and adjust
+    for num_benchmark_personas in range(50, min(200, len(unique_personas)), 10):
+        benchmark_persona_ids = unique_personas[:num_benchmark_personas]
+        candidate_benchmark_df = df[df['persona_id'].isin(benchmark_persona_ids)]
+        
+        print(f"  Trying {num_benchmark_personas} personas: {len(candidate_benchmark_df)} rows available")
+        
+        if len(candidate_benchmark_df) >= benchmark_size:
+            benchmark_personas_needed = num_benchmark_personas
+            benchmark_df = candidate_benchmark_df
+            break
+    
+    if benchmark_df is None:
+        # If we can't get enough data, use all available personas for benchmark
+        print(f"  Warning: Cannot reach target size {benchmark_size} with available personas")
+        benchmark_persona_ids = unique_personas
+        benchmark_df = df[df['persona_id'].isin(benchmark_persona_ids)]
+        benchmark_personas_needed = len(unique_personas)
     else:
-        benchmark_df = coverage_df
+        benchmark_persona_ids = unique_personas[:benchmark_personas_needed]
     
-    # Trim to exact target size if needed
-    if len(benchmark_df) > benchmark_size:
-        benchmark_df = benchmark_df.sample(n=benchmark_size, random_state=random_seed)
+    print(f"Selected {benchmark_personas_needed} personas for benchmark set")
+    print(f"Benchmark persona IDs range: {min(benchmark_persona_ids)} to {max(benchmark_persona_ids)}")
     
-    print(f"Final benchmark set size: {len(benchmark_df)}")
+    # Step 2: Sample from benchmark personas to get target size with coverage
+    print(f"\nStep 2: Sampling {benchmark_size} rows from benchmark personas...")
     
-    # Step 3: Split remaining data into train and validation
-    remaining_df = df_shuffled.drop(benchmark_df.index)
+    # Ensure coverage for key variables within the benchmark persona set
+    benchmark_coverage_df = ensure_coverage(benchmark_df, min_coverage)
+    
+    # If coverage selection is already enough, trim to target size
+    if len(benchmark_coverage_df) >= benchmark_size:
+        final_benchmark_df = benchmark_coverage_df.sample(n=benchmark_size, random_state=random_seed)
+    else:
+        # Sample additional rows to reach target size
+        additional_needed = benchmark_size - len(benchmark_coverage_df)
+        remaining_benchmark = benchmark_df.drop(benchmark_coverage_df.index)
+        
+        if len(remaining_benchmark) >= additional_needed:
+            additional_df = remaining_benchmark.sample(n=additional_needed, random_state=random_seed)
+            final_benchmark_df = pd.concat([benchmark_coverage_df, additional_df])
+        else:
+            # Take all available
+            final_benchmark_df = benchmark_df
+    
+    print(f"Final benchmark set size: {len(final_benchmark_df)}")
+    print(f"Benchmark uses {len(final_benchmark_df['persona_id'].unique())} unique personas")
+    
+    # Step 3: Use remaining personas for train/val split
+    remaining_persona_ids = unique_personas[benchmark_personas_needed:]
+    train_val_df = df[df['persona_id'].isin(remaining_persona_ids)]
+    
+    print(f"\nStep 3: Splitting remaining {len(train_val_df)} rows from {len(remaining_persona_ids)} personas into train/val...")
     
     # Calculate train/val sizes
-    train_size = int(len(remaining_df) * train_val_split)
-    val_size = len(remaining_df) - train_size
+    train_size = int(len(train_val_df) * train_val_split)
+    val_size = len(train_val_df) - train_size
     
-    print(f"\nStep 3: Splitting remaining {len(remaining_df)} rows into train/val...")
     print(f"Train size: {train_size} ({train_val_split:.1%})")
     print(f"Validation size: {val_size} ({1-train_val_split:.1%})")
     
-    # Shuffle remaining data and split
-    remaining_shuffled = remaining_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
-    train_df = remaining_shuffled.iloc[:train_size]
-    val_df = remaining_shuffled.iloc[train_size:]
+    # Shuffle and split train/val data
+    train_val_shuffled = train_val_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
+    train_df = train_val_shuffled.iloc[:train_size]
+    val_df = train_val_shuffled.iloc[train_size:]
+    
+    # Verify no persona ID overlap
+    benchmark_persona_set = set(final_benchmark_df['persona_id'].unique())
+    train_persona_set = set(train_df['persona_id'].unique())
+    val_persona_set = set(val_df['persona_id'].unique())
+    
+    overlap_benchmark_train = benchmark_persona_set.intersection(train_persona_set)
+    overlap_benchmark_val = benchmark_persona_set.intersection(val_persona_set)
+    overlap_train_val = train_persona_set.intersection(val_persona_set)
+    
+    print(f"\nPersona ID verification:")
+    print(f"  Benchmark personas: {len(benchmark_persona_set)}")
+    print(f"  Train personas: {len(train_persona_set)}")
+    print(f"  Val personas: {len(val_persona_set)}")
+    print(f"  Benchmark-Train overlap: {len(overlap_benchmark_train)} (should be 0)")
+    print(f"  Benchmark-Val overlap: {len(overlap_benchmark_val)} (should be 0)")
+    print(f"  Train-Val overlap: {len(overlap_train_val)} (expected: some)")
+    
+    if len(overlap_benchmark_train) > 0 or len(overlap_benchmark_val) > 0:
+        print("  WARNING: Benchmark set shares persona IDs with train/val sets!")
+    else:
+        print("  ✓ Benchmark set has completely separate persona IDs from train/val")
     
     # Generate output filenames
     input_path = Path(input_file)
@@ -732,14 +841,14 @@ def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_
     print(f"\nSaving splits...")
     train_df.to_csv(train_file, index=False)
     val_df.to_csv(val_file, index=False)
-    benchmark_df.to_csv(benchmark_file, index=False)
+    final_benchmark_df.to_csv(benchmark_file, index=False)
     
     print(f"Train set saved to: {train_file}")
     print(f"Validation set saved to: {val_file}")
     print(f"Benchmark set saved to: {benchmark_file}")
     
     # Generate summary statistics
-    print_split_summary_statistics(train_df, val_df, benchmark_df)
+    print_split_summary_statistics(train_df, val_df, final_benchmark_df)
 
 
 def main():

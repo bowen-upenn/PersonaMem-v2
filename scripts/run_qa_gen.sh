@@ -8,7 +8,6 @@ python main.py \
   --persona_start_idx 0 \
   --persona_end_idx -1 \
   --validate_qa \
-  --add_more_minority \
   --rate_limit_per_min 10 \
   --parallel \
 

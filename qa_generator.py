@@ -149,15 +149,9 @@ def generate_qa_for_each_element(llm, element, persona, conv_list=None, ask_to_f
 
     if who == 'self':
         incorrect = []
-        if ask_to_forget:
+        if prev_correct:    # only happen with who == self
             element['correct_answer'] = answers.get('generic')
-            for key in ('random', 'stereotypical', 'correct'):
-                if key in answers:
-                    incorrect.append(answers[key])
-            incorrect.append(prev_correct)
-        elif prev_correct:    # only happen with who == self
-            element['correct_answer'] = answers.get('correct')
-            for key in ('random', 'stereotypical'):
+            for key in ('correct1', 'correct2'):
                 if key in answers:
                     incorrect.append(answers[key])
             incorrect.append(prev_correct)
@@ -251,7 +245,7 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
     try:
         # Query the model without any conversation history
         llm.reset_history()  # Make sure no history is used
-        response = llm.query_llm(validation_prompt, use_history=False, verbose=verbose)
+        response = llm.query_llm(validation_prompt, use_history=False, verbose=False)
         
         if not response:
             multiple_choice_valid = True  # If no response, assume the pair is valid
@@ -295,7 +289,7 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
             # Validation 2: Check if user query leaks groundtruth preference
             llm.reset_history()
             leakage_prompt = prompts.validate_preference_leakage_in_query(user_query, groundtruth_preference)
-            leakage_response = llm.query_llm(leakage_prompt, use_history=False, verbose=verbose)
+            leakage_response = llm.query_llm(leakage_prompt, use_history=False, verbose=False)
             
             # Extract yes/no from boxed format
             leakage_match = re.search(r'\\boxed\{(yes|no)\}', leakage_response, re.IGNORECASE)
@@ -321,7 +315,7 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
                 # Validation 3: Check if correct answer is crafted from groundtruth preference
                 llm.reset_history()
                 alignment_prompt = prompts.validate_correct_answer_alignment(groundtruth_preference, correct_answer)
-                alignment_response = llm.query_llm(alignment_prompt, use_history=False, verbose=verbose)
+                alignment_response = llm.query_llm(alignment_prompt, use_history=False, verbose=False)
                 
                 # Extract yes/no from boxed format
                 alignment_match = re.search(r'\\boxed\{(yes|no)\}', alignment_response, re.IGNORECASE)
@@ -348,7 +342,7 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
                     llm.reset_history()
                     incorrect_answers_str = str(incorrect_answers)
                     contamination_prompt = prompts.validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str)
-                    contamination_response = llm.query_llm(contamination_prompt, use_history=False, verbose=verbose)
+                    contamination_response = llm.query_llm(contamination_prompt, use_history=False, verbose=False)
                     
                     # Extract yes/no from boxed format
                     contamination_match = re.search(r'\\boxed\{(yes|no)\}', contamination_response, re.IGNORECASE)
@@ -374,7 +368,7 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
                         # Validation 5: Check if answers contain formatting artifacts or meta-commentary
                         llm.reset_history()
                         format_prompt = prompts.validate_answer_format_cleanliness(correct_answer, incorrect_answers_str)
-                        format_response = llm.query_llm(format_prompt, use_history=False, verbose=verbose)
+                        format_response = llm.query_llm(format_prompt, use_history=False, verbose=False)
                         
                         # Extract yes/no from boxed format
                         format_match = re.search(r'\\boxed\{(yes|no)\}', format_response, re.IGNORECASE)
@@ -808,12 +802,12 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                 try:
                     preference = conv_elem.get('preference')
                     who = conv_elem.get('who')
-                    updated = conv_elem.get('updated', False)
+                    updated = conv_elem.get('updated')
                     user_query = conv_elem.get('user_query')
 
                     file_total_preferences_processed += 1
 
-                    if conv_type == 'knowledge_query' and who != 'self':
+                    if conv_type == 'knowledge_query':
                         continue
                     
                     # Skip if preference already has user_query
@@ -826,7 +820,7 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                     # Check for the two MINORITY cases (underrepresented in dataset)
                     # MINORITY Case 1: Preferences from OTHER PEOPLE (who != 'self')
                     # These are rare because most preferences are self-reported
-                    case1_match = (who != 'self')
+                    case1_match = False #(who != 'self')
                     
                     # MINORITY Case 2: UPDATED preferences (updated == True)
                     # These are rare because most preferences are initial, not modifications
@@ -862,7 +856,7 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                     
                     # Use while loop to generate Q&A pairs with different max attempts based on case
                     # Give more attempts for MINORITY Case 1 (who != 'self') since it's rarer
-                    max_attempts = 6 if who != 'self' else 3
+                    max_attempts = 5
                     attempt = 0
                     qa_generated = False
                     
@@ -871,46 +865,30 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                         if verbose:
                             print(f"        Attempting Q&A generation for '{preference}' (attempt {attempt}/{max_attempts})")
                         
-                        try:
-                            # Generate QA fields
-                            qa_fields = None
-                            if "sensitive_info" in conv_elem:
-                                qa_fields = generate_qa_for_sensitive_info(llm, conv_elem.copy(), curr_persona, global_topics, verbose=verbose)
-                            else:
-                                ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
-                                qa_fields = generate_qa_for_each_element(llm, conv_elem.copy(), curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                        # Generate QA fields
+                        qa_fields = None
+                        if "sensitive_info" in conv_elem:
+                            qa_fields = generate_qa_for_sensitive_info(llm, conv_elem.copy(), curr_persona, global_topics, verbose=verbose)
+                        else:
+                            ask_to_forget = conv_elem.get('pref_type') == "ask_to_forget"
+                            qa_fields = generate_qa_for_each_element(llm, conv_elem.copy(), curr_persona, conv_list, ask_to_forget=ask_to_forget, global_topics=global_topics, verbose=verbose)
+                        
+                        # Check if QA generation was successful
+                        if qa_fields is None:
+                            if verbose:
+                                print(f"          QA generation failed for attempt {attempt}")
+                            continue  # Try again
+                        
+                        user_query_generated = qa_fields.get("user_query")
+                        correct_answer = qa_fields.get("correct_answer")
+                        incorrect_answers = qa_fields.get("incorrect_answers")
+                        
+                        # Validate the QA pair only if validate_qa is enabled
+                        if validate_qa:
+                            is_valid = validate_qa_pair(llm, groundtruth_preference, user_query_generated, correct_answer, incorrect_answers, verbose=verbose)
                             
-                            # Check if QA generation was successful
-                            if qa_fields is None:
-                                if verbose:
-                                    print(f"          QA generation failed for attempt {attempt}")
-                                continue  # Try again
-                            
-                            user_query_generated = qa_fields.get("user_query")
-                            correct_answer = qa_fields.get("correct_answer")
-                            incorrect_answers = qa_fields.get("incorrect_answers")
-                            
-                            # Validate the QA pair only if validate_qa is enabled
-                            if validate_qa:
-                                is_valid = validate_qa_pair(llm, groundtruth_preference, user_query_generated, correct_answer, incorrect_answers, verbose=verbose)
-                                
-                                if is_valid:
-                                    # Only add to the conversation list if validation passes
-                                    conv_elem.update({
-                                        "user_query": user_query_generated,
-                                        "correct_answer": correct_answer,
-                                        "incorrect_answers": incorrect_answers,
-                                    })
-                                    file_new_qa_pairs += 1
-                                    qa_generated = True
-                                    file_modified = True
-                                    if verbose:
-                                        print(f"          ✓ QA pair VALID on attempt {attempt} - Added to dataset")
-                                else:
-                                    if verbose:
-                                        print(f"          ✗ QA pair INVALID on attempt {attempt} - Retrying")
-                            else:
-                                # Skip validation, accept the first successful generation
+                            if is_valid:
+                                # Only add to the conversation list if validation passes
                                 conv_elem.update({
                                     "user_query": user_query_generated,
                                     "correct_answer": correct_answer,
@@ -920,13 +898,23 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                                 qa_generated = True
                                 file_modified = True
                                 if verbose:
-                                    print(f"          ✓ QA pair generated on attempt {attempt} (validation disabled)")
-                            
-                        except Exception as e:
+                                    print(f"          ✓ QA pair VALID on attempt {attempt} - Added to dataset")
+                            else:
+                                if verbose:
+                                    print(f"          ✗ QA pair INVALID on attempt {attempt} - Retrying")
+                        else:
+                            # Skip validation, accept the first successful generation
+                            conv_elem.update({
+                                "user_query": user_query_generated,
+                                "correct_answer": correct_answer,
+                                "incorrect_answers": incorrect_answers,
+                            })
+                            file_new_qa_pairs += 1
+                            qa_generated = True
+                            file_modified = True
                             if verbose:
-                                print(f"          Error on attempt {attempt}: {e}")
-                            continue  # Try again
-                    
+                                print(f"          ✓ QA pair generated on attempt {attempt} (validation disabled)")
+                            
                     # If we couldn't generate a valid Q&A pair after all attempts
                     if not qa_generated:
                         file_failed_qa_pairs += 1
@@ -1228,6 +1216,9 @@ def count_minority_cases_in_file(data):
         
         for conv_type, conv_list in conversations_by_type.items():
             for conv_elem in conv_list:
+                if conv_type == 'knowledge_query':
+                    continue
+
                 who = conv_elem.get('who')
                 updated = conv_elem.get('updated', False)
                 user_query = conv_elem.get('user_query')
