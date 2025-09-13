@@ -157,7 +157,7 @@ def generate_qa_for_each_element(llm, element, persona, conv_list=None, ask_to_f
             if prev_correct:
                 incorrect.append(prev_correct)
             else:
-                incorrect.append(answers.get('stereotypical'))
+                incorrect.append(answers.get('correct3'))
         else:
             element['correct_answer'] = answers.get('correct')
             for key in ('random', 'stereotypical', 'generic'):
@@ -173,7 +173,6 @@ def generate_qa_for_each_element(llm, element, persona, conv_list=None, ask_to_f
 
         element['incorrect_answers'] = incorrect
 
-    print('element', element)
     return element
 
 
@@ -210,7 +209,7 @@ def generate_qa_for_sensitive_info(llm, element, persona, global_topics=None, ve
     return element
 
 
-def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=False):
+def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, updated=False, verbose=False):
     """
     Validate a QA pair by testing if the model can answer correctly without context
     and performing additional robustness checks.
@@ -342,26 +341,29 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
                     print(f"  Validation result: {'PASS' if correct_answer_aligned else 'FAIL'}")
             
                 if correct_answer_aligned:
-                    # Validation 4: Check if incorrect answers mention groundtruth preference
-                    llm.reset_history()
-                    incorrect_answers_str = str(incorrect_answers)
-                    contamination_prompt = prompts.validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str)
-                    contamination_response = llm.query_llm(contamination_prompt, use_history=False, verbose=False)
-                    
-                    # Extract yes/no from boxed format
-                    contamination_match = re.search(r'\\boxed\{(yes|no)\}', contamination_response, re.IGNORECASE)
-                    if contamination_match:
-                        contamination_result = contamination_match.group(1).lower()
-                        no_incorrect_contamination = (contamination_result == 'no')  # Success if model says 'no'
+                    if updated:
+                        no_incorrect_contamination = True
                     else:
-                        # Fallback: look for yes/no in the response
-                        contamination_response_lower = contamination_response.lower()
-                        if 'no' in contamination_response_lower and 'yes' not in contamination_response_lower:
-                            no_incorrect_contamination = True
-                        elif 'yes' in contamination_response_lower and 'no' not in contamination_response_lower:
-                            no_incorrect_contamination = False
+                        # Validation 4: Check if incorrect answers mention groundtruth preference
+                        llm.reset_history()
+                        incorrect_answers_str = str(incorrect_answers)
+                        contamination_prompt = prompts.validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str, updated=updated)
+                        contamination_response = llm.query_llm(contamination_prompt, use_history=False, verbose=False)
+                        
+                        # Extract yes/no from boxed format
+                        contamination_match = re.search(r'\\boxed\{(yes|no)\}', contamination_response, re.IGNORECASE)
+                        if contamination_match:
+                            contamination_result = contamination_match.group(1).lower()
+                            no_incorrect_contamination = (contamination_result == 'no')  # Success if model says 'no'
                         else:
-                            no_incorrect_contamination = True  # Default to valid if unclear
+                            # Fallback: look for yes/no in the response
+                            contamination_response_lower = contamination_response.lower()
+                            if 'no' in contamination_response_lower and 'yes' not in contamination_response_lower:
+                                no_incorrect_contamination = True
+                            elif 'yes' in contamination_response_lower and 'no' not in contamination_response_lower:
+                                no_incorrect_contamination = False
+                            else:
+                                no_incorrect_contamination = True  # Default to valid if unclear
                     
                     if verbose:
                         print(f"Incorrect Answer Contamination Test:")
@@ -405,13 +407,13 @@ def validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, in
                         no_incorrect_contamination and
                         answers_clean_format)
         
-        # if verbose:
-        print(f"Overall QA Validation: {'VALID' if overall_valid else 'INVALID'}")
-        print(f"  Multiple choice test: {'PASS' if multiple_choice_valid else 'FAIL'}")
-        print(f"  No preference leakage: {'PASS' if no_preference_leakage else 'FAIL'}")
-        print(f"  Correct answer aligned: {'PASS' if correct_answer_aligned else 'FAIL'}")
-        print(f"  No incorrect contamination: {'PASS' if no_incorrect_contamination else 'FAIL'}")
-        print(f"  Clean answer format: {'PASS' if answers_clean_format else 'FAIL'}")
+        if verbose:
+            print(f"Overall QA Validation: {'VALID' if overall_valid else 'INVALID'}")
+            print(f"  Multiple choice test: {'PASS' if multiple_choice_valid else 'FAIL'}")
+            print(f"  No preference leakage: {'PASS' if no_preference_leakage else 'FAIL'}")
+            print(f"  Correct answer aligned: {'PASS' if correct_answer_aligned else 'FAIL'}")
+            print(f"  No incorrect contamination: {'PASS' if no_incorrect_contamination else 'FAIL'}")
+            print(f"  Clean answer format: {'PASS' if answers_clean_format else 'FAIL'}")
         
         return overall_valid
         
@@ -837,6 +839,9 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                 if not (case1_match or case2_match):
                     # This preference doesn't match either minority case, skip it
                     continue
+
+                if case2_match and random.random() < 0.5:
+                    continue
                 
                 # Log which minority case matched
                 if case1_match:
@@ -892,7 +897,7 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                     
                     # Validate the QA pair only if validate_qa is enabled
                     if validate_qa:
-                        is_valid = validate_qa_pair(llm, groundtruth_preference, user_query_generated, correct_answer, incorrect_answers, verbose=verbose)
+                        is_valid = validate_qa_pair(llm, groundtruth_preference, user_query_generated, correct_answer, incorrect_answers, updated=conv_elem['updated'], verbose=verbose)
                         if is_valid:
                             # Only add to the conversation list if validation passes
                             conv_elem.update({
@@ -1113,7 +1118,7 @@ def process_single_file_qa_sequential(file_path, llm, verbose, validate_qa=False
                             
                             # Validate the QA pair only if validate_qa is enabled
                             if validate_qa:
-                                is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, verbose=verbose)
+                                is_valid = validate_qa_pair(llm, groundtruth_preference, user_query, correct_answer, incorrect_answers, updated=conv_elem['updated'], verbose=verbose)
                                 if is_valid:
                                     # Only add to the conversation list if validation passes
                                     conv_elem.update({

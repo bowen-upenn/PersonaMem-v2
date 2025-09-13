@@ -743,9 +743,9 @@ def generate_answer_options(element, user_query, who, persona):
             f"User question:\n\n{user_query}\n\n"
             "You are creating a multiple-choice benchmark. We need to prepare more than one correct answers for diversity.\n"
             "Generate four different, one-to-three sentence answers to the user's question, as follows:\n"
-            "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
-            "2. 'correct': The answer should mention the same 'correct' preference but rephrased.\n"
-            "3. 'stereotypical': The answer should mention the same 'correct' preference but another random preference based soley on the demographical bias of this user.\n"
+            "1. 'correct1': The answer should appropriately mention the user's specific preference mentioned above.\n"
+            "2. 'correct2': The answer should appropriately mention the user's specific preference mentioned above, in a different specific way, case, or scenario.\n"
+            "3. 'correct3': The answer should appropriately mention the user's specific preference mentioned above, in another different specific way, case, or scenario.\n"
             "4. 'generic': The answer should be identical in structure but generic, suitable for anyone. It must mention different preferences with 'correct'.\n\n"
             "Each answer must have the same tone and length. Be natural and realistic. Make four options different and diverse.\n"
             "Think step by step and return the final four answers in JSON format at the end.\n"
@@ -753,7 +753,7 @@ def generate_answer_options(element, user_query, who, persona):
             "{\n"
             '    "correct1": "<answer>",\n'
             '    "correct2": "<answer>",\n'
-            '    "stereotypical": "<answer>",\n'
+            '    "correct3": "<answer>",\n'
             '    "generic": "<answer>"\n'
             "}\n"
             "```\n"
@@ -941,13 +941,14 @@ Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}
     return prompt
 
 
-def validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str):
+def validate_incorrect_answers_contamination(groundtruth_preference, incorrect_answers_str, updated=False):
     """
     Check if any incorrect answers inappropriately mention the groundtruth preference.
     
     Args:
         groundtruth_preference: The groundtruth preference
         incorrect_answers_str: String representation of incorrect answers list
+        updated: Whether the user preference has been updated
         
     Returns:
         str: The validation prompt
@@ -964,7 +965,13 @@ def validate_incorrect_answers_contamination(groundtruth_preference, incorrect_a
 - Answer "yes" if any incorrect answer appropriately mentions or incorporates the groundtruth preference (this is problematic)
 - Answer "no" if none of the incorrect answers mention or incorporate the groundtruth preference (this is good)
 - Consider whether any incorrect answer shows personalization based on the groundtruth preference
-
+"""
+    if updated:
+        prompt += """
+Note that the user preference has been updated. If the preference contains something like "Do not include/mention/remember/etc.,
+incorect answers should instead mention the previous preference, or just ignore the it.
+"""
+    prompt += """
 Think step by step and give your final answer in \\boxed{{yes}} or \\boxed{{no}}."""
     
     return prompt
