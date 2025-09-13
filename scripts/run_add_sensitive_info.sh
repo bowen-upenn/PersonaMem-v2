@@ -14,10 +14,10 @@
 
 # Basic usage - process all personas
 python main.py \
-  --model o3-mini \
+  --model gpt-5-chat \
   --step add_sensitive_info \
   --conv_output_dir data/raw_data/ \
-  --persona_start_idx 590 \
+  --persona_start_idx 0 \
   --persona_end_idx -1 \
   --rate_limit_per_min 10 \
   --parallel \

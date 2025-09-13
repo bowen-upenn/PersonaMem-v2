@@ -709,12 +709,12 @@ def generate_answer_options(element, user_query, who, persona):
     and will adjust this assumption in qa_generator.py.
     """
     # Construct backgrounds for each answer type
-    if element['update']:
+    if element['updated']:
         user_bg = element["prev_pref"]
     else:
         user_bg = element["preference"]
 
-    if who == 'self':
+    if who == 'self' and not element['updated']:
         prompt = (
             f"Given this user persona:\n\n{persona}\n\n"
             f"and this specific user preference:\n\n{user_bg}\n\n"
@@ -746,8 +746,8 @@ def generate_answer_options(element, user_query, who, persona):
             "1. 'correct': The answer should be appropriately personalized to the user's background and preference.\n"
             "2. 'correct': The answer should mention the same 'correct' preference but rephrased.\n"
             "3. 'stereotypical': The answer should mention the same 'correct' preference but another random preference based soley on the demographical bias of this user.\n"
-            "4. 'generic': The answer should be identical in structure but generic, suitable for anyone.\n\n"
-            "Each answer must have the same tone and length. Be natural and realistic.\n"
+            "4. 'generic': The answer should be identical in structure but generic, suitable for anyone. It must mention different preferences with 'correct'.\n\n"
+            "Each answer must have the same tone and length. Be natural and realistic. Make four options different and diverse.\n"
             "Think step by step and return the final four answers in JSON format at the end.\n"
             "```json\n"
             "{\n"

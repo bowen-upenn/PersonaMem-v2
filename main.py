@@ -8,7 +8,7 @@ from contexts_builder import build_context
 from qa_generator import generate_qa, fill_category_topics
 from utils import save_json, save_csv
 from conv_generator import generate_interactions_from_persona
-from conv_update import process_existing_files_for_others_preferences, process_existing_files_for_sensitive_info
+from conv_update import process_existing_files_for_others_preferences
 from query_llm import QueryLLM
 from image_matcher import ImageMatcher
 import utils
@@ -25,7 +25,7 @@ def main():
     # Command-line argument parsing
     parser = argparse.ArgumentParser(description='Command line arguments')
     parser.add_argument('--model', type=str, default="gpt-5-chat", help='Set LLM model. Only applicable for OpenAI. For Microsoft Azure, set the model in .env file.')
-    parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, fill_category, add_pref_others, add_sensitive_info, or run_eval.')
+    parser.add_argument('--step', type=str, default='generate_convo', help='Choose generate_convo, generate_qa, categorize_topics, build_context, update_conv, fill_category, add_pref_others, or run_eval.')
     parser.add_argument('--conv_output_dir', type=str, default='data/raw_data/', help='Set the directory for conversation data output')
     parser.add_argument('--qa_output_dir', type=str, default='data/raw_data/', help='Set the directory for QA data output')
     parser.add_argument('--result_path', type=str, default='results/', help='Set the path to the output directory')
@@ -172,29 +172,6 @@ def main():
         
         # Process existing JSON files to add "others" preferences
         process_existing_files_for_others_preferences(
-            llm, 
-            persona_files=persona_files,
-            parallel=args['inference']['parallel'],
-            verbose=args['inference']['verbose']
-        )
-    
-    elif args['inference']['step'] == 'add_sensitive_info':
-        # Get persona files within the specified range
-        persona_files = utils.get_persona_files_in_range(
-            args['data']['conv_output_dir'],
-            'raw_data',
-            args['data']['persona_start_idx'],
-            args['data']['persona_end_idx']
-        )
-        
-        if not persona_files:
-            print("No persona files found in the specified range.")
-            return
-        
-        print(f"Found {len(persona_files)} persona files to process for add_sensitive_info")
-        
-        # Process existing JSON files to add sensitive information conversations
-        process_existing_files_for_sensitive_info(
             llm, 
             persona_files=persona_files,
             parallel=args['inference']['parallel'],
