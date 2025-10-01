@@ -115,6 +115,12 @@ actor_rollout_ref:
     # Used to override model's original configurations, mainly dropout
     override_config: {}
 
+    # Model data type for Flash Attention 2.0 compatibility
+    torch_dtype: bfloat16
+
+    # Attention implementation for Flash Attention 2.0
+    attn_implementation: flash_attention_2
+
     # Enable gradient checkpointing for actor
     enable_gradient_checkpointing: true
 
@@ -635,6 +641,12 @@ critic:
 
     # External model implementation (optional)
     external_lib: ${actor_rollout_ref.model.external_lib}
+
+    # Model data type for Flash Attention 2.0 compatibility
+    torch_dtype: bfloat16
+
+    # Attention implementation for Flash Attention 2.0
+    attn_implementation: flash_attention_2
 
     # Enable gradient checkpointing to save memory
     enable_gradient_checkpointing: True

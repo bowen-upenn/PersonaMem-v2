@@ -24,6 +24,10 @@ import pytz
 from verl_custom.ray_trainer import RayPPOTrainer
 from verl_custom import load_reward_manager
 
+from pprint import pprint
+from omegaconf import OmegaConf
+from verl.utils.fs import copy_to_local
+
 
 @hydra.main(config_path=".", config_name="ppo_trainer", version_base=None)
 def main(config):
@@ -87,14 +91,6 @@ def run_ppo(config) -> None:
 class TaskRunner:
     def run(self, config):
         # Print the initial configuration. `resolve=True` will evaluate symbolic values.
-        from pprint import pprint
-
-        from omegaconf import OmegaConf
-
-        from verl.utils.fs import copy_to_local
-
-        print(f"TaskRunner hostname: {socket.gethostname()}, PID: {os.getpid()}")
-
         pprint(OmegaConf.to_container(config, resolve=True))
 
         OmegaConf.resolve(config)
@@ -202,7 +198,15 @@ class TaskRunner:
 
         # Create training and validation datasets.
         train_dataset = create_rl_dataset(config.data.train_files, config.data, tokenizer, processor)
+        
+        # Create two validation datasets: one for embedding similarity, one for MCQ
         val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor)
+        
+        # Create MCQ validation dataset using the MCQ parquet files
+        val_mcq_files = config.data.val_files.replace('.parquet', '_mcq.parquet')
+        print(f"val files: {config.data.val_files}, {val_mcq_files}")
+        val_dataset_mcq = create_rl_dataset(val_mcq_files, config.data, tokenizer, processor)
+        
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
         # Initialize the PPO trainer.
@@ -217,6 +221,7 @@ class TaskRunner:
             val_reward_fn=val_reward_fn,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
+            val_dataset_mcq=val_dataset_mcq,
             collate_fn=collate_fn,
             train_sampler=train_sampler,
             device_name=config.trainer.device,

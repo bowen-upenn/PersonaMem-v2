@@ -13,6 +13,7 @@ import torch
 from omegaconf import DictConfig, ListConfig
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, ProcessorMixin
+import json
 
 import verl.utils.torch_functional as verl_F
 from verl.utils.model import compute_position_id_with_mask
@@ -92,7 +93,8 @@ class RLHFDataset(Dataset):
         self.return_raw_chat = config.get("return_raw_chat", False)
         self.return_full_prompt = config.get("return_full_prompt", False)
         self.truncation = config.get("truncation", "error")
-        self.filter_overlong_prompts = config.get("filter_overlong_prompts", True)
+        # Always set filter_overlong_prompts to False since filtering is now done during preprocessing
+        self.filter_overlong_prompts = False
 
         self.num_workers = config.get("filter_overlong_prompts_workers", max(1, os.cpu_count() // 4))
         self.num_workers = min(self.num_workers, os.cpu_count())
@@ -123,6 +125,9 @@ class RLHFDataset(Dataset):
         print(f"dataset len: {len(self.dataframe)}")
 
         # filter out too long prompts
+        # Note: This filtering is now disabled and should be done during preprocessing 
+        # to avoid filtering overhead during training
+        self.filter_overlong_prompts = False
         if self.filter_overlong_prompts:
             tokenizer = self.tokenizer
             processor = self.processor
@@ -155,10 +160,12 @@ class RLHFDataset(Dataset):
             else:
 
                 def doc2len(doc) -> int:
+                    # Handle serialized prompt data (JSON string -> list of messages)
+                    prompt_data = doc[prompt_key]
                     if self.chat_template_func is not None:
-                        return len(self.chat_template_func(doc[prompt_key], add_generation_prompt=True))
+                        return len(self.chat_template_func(prompt_data, add_generation_prompt=True))
                     else:
-                        return len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True, enable_thinking=self.enable_thinking))
+                        return len(tokenizer.apply_chat_template(prompt_data, add_generation_prompt=True, enable_thinking=self.enable_thinking))
 
             self.dataframe = self.dataframe.filter(
                 lambda doc: doc2len(doc) <= self.max_prompt_length,
@@ -181,7 +188,12 @@ class RLHFDataset(Dataset):
         return len(self.dataframe)
 
     def _build_messages(self, example: dict):
-        messages: list = example.pop(self.prompt_key)
+        messages = example.pop(self.prompt_key)
+        
+        # Handle JSON-serialized prompt data
+        if isinstance(messages, str):
+            import json
+            messages = json.loads(messages)
 
         if self.image_key in example or self.video_key in example:
             for message in messages:
@@ -208,6 +220,9 @@ class RLHFDataset(Dataset):
         row_dict: dict = self.dataframe[item]
         messages = self._build_messages(row_dict)
         model_inputs = {}
+
+        if isinstance(row_dict.get("reward_model"), str):
+            row_dict["reward_model"] = json.loads(row_dict["reward_model"])
 
         if self.processor is not None:
             from verl.utils.dataset.vision_utils import process_image, process_video
@@ -303,6 +318,10 @@ class RLHFDataset(Dataset):
         # get prompts with chat template
         if self.return_full_prompt:
             row_dict["full_prompts"] = raw_prompt  # array of strings
+
+        # if extra_info is a string, load it as a dictionary
+        if isinstance(row_dict.get("extra_info"), str):
+            row_dict["extra_info"] = json.loads(row_dict["extra_info"])
 
         # add index for each prompt
         index = row_dict.get("extra_info", {}).get("index", 0)

@@ -301,6 +301,7 @@ class RayPPOTrainer:
         val_reward_fn=None,
         train_dataset: Optional[Dataset] = None,
         val_dataset: Optional[Dataset] = None,
+        val_dataset_mcq: Optional[Dataset] = None,
         collate_fn=None,
         train_sampler: Optional[Sampler] = None,
         device_name="cuda",
@@ -319,7 +320,8 @@ class RayPPOTrainer:
             reward_fn: Function for computing rewards during training.
             val_reward_fn: Function for computing rewards during validation.
             train_dataset (Optional[Dataset], optional): Training dataset. Defaults to None.
-            val_dataset (Optional[Dataset], optional): Validation dataset. Defaults to None.
+            val_dataset (Optional[Dataset], optional): Validation dataset for embedding similarity. Defaults to None.
+            val_dataset_mcq (Optional[Dataset], optional): Validation dataset for MCQ accuracy. Defaults to None.
             collate_fn: Function to collate data samples into batches.
             train_sampler (Optional[Sampler], optional): Sampler for the training dataset. Defaults to None.
             device_name (str, optional): Device name for training (e.g., "cuda", "cpu"). Defaults to "cuda".
@@ -370,7 +372,7 @@ class RayPPOTrainer:
             raise NotImplementedError
 
         self._validate_config()
-        self._create_dataloader(train_dataset, val_dataset, collate_fn, train_sampler)
+        self._create_dataloader(train_dataset, val_dataset, val_dataset_mcq, collate_fn, train_sampler)
 
     def _validate_config(self):
         config = self.config
@@ -539,9 +541,9 @@ class RayPPOTrainer:
 
         print("[validate_config] All configuration checks passed successfully!")
 
-    def _create_dataloader(self, train_dataset, val_dataset, collate_fn, train_sampler):
+    def _create_dataloader(self, train_dataset, val_dataset, val_dataset_mcq, collate_fn, train_sampler):
         """
-        Creates the train and validation dataloaders.
+        Creates the train and validation dataloaders (both embedding similarity and MCQ versions).
         """
         # TODO: we have to make sure the batch size is divisible by the dp size
         from verl.trainer.main_ppo import create_rl_dataset, create_rl_sampler
@@ -554,7 +556,31 @@ class RayPPOTrainer:
             val_dataset = create_rl_dataset(
                 self.config.data.val_files, self.config.data, self.tokenizer, self.processor
             )
-        self.train_dataset, self.val_dataset = train_dataset, val_dataset
+        
+        # Create MCQ validation dataset if not provided
+        if val_dataset_mcq is None:
+            # Create MCQ validation files by modifying the file paths
+            val_mcq_files = []
+            val_files = self.config.data.val_files
+            if isinstance(val_files, str):
+                val_files = [val_files]
+            
+            for val_file in val_files:
+                # Clean the path and handle MCQ file creation properly
+                val_file_clean = val_file.rstrip('/')  # Remove any trailing slashes
+                if val_file_clean.endswith('.parquet'):
+                    # Replace .parquet with _mcq.parquet
+                    mcq_file = val_file_clean.replace('.parquet', '_mcq.parquet')
+                else:
+                    # If not a parquet file, append _mcq
+                    mcq_file = val_file_clean + '_mcq'
+                val_mcq_files.append(mcq_file)
+            
+            val_dataset_mcq = create_rl_dataset(
+                val_mcq_files, self.config.data, self.tokenizer, self.processor
+            )
+        
+        self.train_dataset, self.val_dataset, self.val_dataset_mcq = train_dataset, val_dataset, val_dataset_mcq
 
         if train_sampler is None:
             train_sampler = create_rl_sampler(self.config.data, self.train_dataset)
@@ -576,6 +602,7 @@ class RayPPOTrainer:
         if val_batch_size is None:
             val_batch_size = len(self.val_dataset)
 
+        # Embedding similarity validation dataloader
         self.val_dataloader = StatefulDataLoader(
             dataset=self.val_dataset,
             batch_size=val_batch_size,
@@ -584,13 +611,28 @@ class RayPPOTrainer:
             drop_last=False,
             collate_fn=collate_fn,
         )
+        
+        # MCQ validation dataloader
+        val_mcq_batch_size = val_batch_size
+        if val_mcq_batch_size is None:
+            val_mcq_batch_size = len(self.val_dataset_mcq)
+            
+        self.val_dataloader_mcq = StatefulDataLoader(
+            dataset=self.val_dataset_mcq,
+            batch_size=val_mcq_batch_size,
+            num_workers=self.config.data.get("dataloader_num_workers", 8),
+            shuffle=self.config.data.get("validation_shuffle", True),
+            drop_last=False,
+            collate_fn=collate_fn,
+        )
 
         assert len(self.train_dataloader) >= 1, "Train dataloader is empty!"
         assert len(self.val_dataloader) >= 1, "Validation dataloader is empty!"
+        assert len(self.val_dataloader_mcq) >= 1, "MCQ validation dataloader is empty!"
 
         print(
             f"Size of train dataloader: {len(self.train_dataloader)}, Size of val dataloader: "
-            f"{len(self.val_dataloader)}"
+            f"{len(self.val_dataloader)}, Size of MCQ val dataloader: {len(self.val_dataloader_mcq)}"
         )
 
         total_training_steps = len(self.train_dataloader) * self.config.trainer.total_epochs
@@ -697,140 +739,6 @@ class RayPPOTrainer:
         # Log to each configured logger
         self.validation_generations_logger.log(self.config.trainer.logger, samples, self.global_steps)
 
-    def _evaluate_mcq_performance(self, test_batch_data):
-        """
-        Evaluate multiple choice question performance using LLM query.
-        
-        Args:
-            test_batch_data: List of test data batches containing extra_info with all_answers
-            
-        Returns:
-            tuple: (mcq_accuracies, embedding_similarities)
-        """
-        mcq_accuracies = []
-        embedding_similarities = []
-        
-        # Initialize LLM query engine for MCQ evaluation
-        llm_engine = LLMQueryEngine(use_embeddings=False)
-        
-        for batch in test_batch_data:
-            extra_infos = batch.get('extra_info', [])
-            
-            for extra_info in extra_infos:
-                if not isinstance(extra_info, dict):
-                    continue
-                    
-                # Extract data needed for MCQ evaluation
-                question = extra_info.get('question', '')
-                all_answers = extra_info.get('all_answers', [])
-                correct_answer = extra_info.get('correct_answer', '')
-                context_file_path = extra_info.get('context_file_path', '')
-                
-                # Skip if we don't have enough data
-                if not question or not all_answers or not correct_answer:
-                    mcq_accuracies.append(0.0)
-                    embedding_similarities.append(0.0)
-                    continue
-                
-                # Load conversation context if available
-                conversations = []
-                if context_file_path and os.path.exists(context_file_path):
-                    try:
-                        with open(context_file_path, 'r', encoding='utf-8') as f:
-                            context_data = json.load(f)
-                        if isinstance(context_data, dict) and 'messages' in context_data:
-                            conversations = context_data['messages']
-                        elif isinstance(context_data, list):
-                            conversations = context_data
-                    except (FileNotFoundError, json.JSONDecodeError):
-                        pass
-                
-                # Prepare MCQ prompt
-                mcq_question = question.replace(" Think step by step using <think> and </think> tokens, then provide your final answer.", "")
-                mcq_prompt = f"{mcq_question}\n\nOptions:\n"
-                
-                # Format all answers as multiple choice options
-                for i, answer in enumerate(all_answers):
-                    mcq_prompt += f"{chr(65 + i)}. {answer}\n"
-                
-                mcq_prompt += "\nPlease think step by step using <think> and </think> tokens, then provide your final answer."
-                
-                # Create full message context for MCQ
-                messages = []
-                
-                # Add system prompt
-                messages.append({
-                    "role": "system", 
-                    "content": "You are a helpful assistant that provides personalized responses based on the user's preferences in conversation history."
-                })
-                
-                # Add conversation history
-                if conversations:
-                    messages.extend(conversations)
-                
-                # Add MCQ question
-                messages.append({
-                    "role": "user",
-                    "content": mcq_prompt
-                })
-                
-                try:
-                    # Convert messages to a single prompt string for the LLM
-                    full_prompt = ""
-                    for msg in messages:
-                        if msg["role"] == "system":
-                            full_prompt += f"System: {msg['content']}\n\n"
-                        elif msg["role"] == "user":
-                            full_prompt += f"User: {msg['content']}\n\n"
-                        elif msg["role"] == "assistant":
-                            full_prompt += f"Assistant: {msg['content']}\n\n"
-                    
-                    full_prompt += "Assistant:"
-                    
-                    # Query LLM for MCQ response
-                    response = llm_engine.query_llm(
-                        action="mcq_evaluation",
-                        prompt=full_prompt
-                    )
-                    
-                    # Extract final answer from response
-                    extracted_answer = extract_solution(response)
-                    
-                    # Check if MCQ answer is correct
-                    mcq_correct = 0.0
-                    if extracted_answer:
-                        # Normalize extracted answer for comparison
-                        extracted_normalized = extracted_answer.strip().lower()
-                        correct_normalized = correct_answer.strip().lower()
-                        
-                        # Check if the extracted answer matches the correct answer
-                        if correct_normalized in extracted_normalized or extracted_normalized in correct_normalized:
-                            mcq_correct = 1.0
-                        else:
-                            # Also check if the extracted answer refers to the correct option letter
-                            for i, answer in enumerate(all_answers):
-                                if answer.strip().lower() == correct_normalized:
-                                    option_letter = chr(65 + i).lower()
-                                    if option_letter in extracted_normalized:
-                                        mcq_correct = 1.0
-                                        break
-                    
-                    mcq_accuracies.append(mcq_correct)
-                    
-                    # Calculate embedding similarity between extracted answer and correct answer
-                    if extracted_answer and correct_answer:
-                        similarity = compute_answer_similarity(extracted_answer, correct_answer)
-                        embedding_similarities.append(similarity)
-                    else:
-                        embedding_similarities.append(0.0)
-                        
-                except Exception as e:
-                    print(f"Error in MCQ evaluation: {e}")
-                    mcq_accuracies.append(0.0)
-                    embedding_similarities.append(0.0)
-        
-        return mcq_accuracies, embedding_similarities
-
     def _validate(self):
         data_source_lst = []
         reward_extra_infos_dict: dict[str, list] = defaultdict(list)
@@ -841,194 +749,199 @@ class RayPPOTrainer:
         sample_scores = []
         sample_turns = []
         
-        # Collect test batch data for MCQ evaluation
-        test_batch_data = []
-
-        for test_data in self.val_dataloader:
-            test_batch = DataProto.from_single_dict(test_data)
-
-            # repeat test batch
-            test_batch = test_batch.repeat(
-                repeat_times=self.config.actor_rollout_ref.rollout.val_kwargs.n, interleave=True
-            )
-
-            # we only do validation on rule-based rm
-            if self.config.reward_model.enable and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
-                return {}
-
-            # Store original inputs
-            input_ids = test_batch.batch["input_ids"]
-            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
-            sample_inputs.extend(input_texts)
-
-            batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
-            non_tensor_batch_keys_to_pop = ["raw_prompt_ids"]
-            if "multi_modal_data" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("multi_modal_data")
-            if "raw_prompt" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("raw_prompt")
-            if "tools_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("tools_kwargs")
-            if "interaction_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("interaction_kwargs")
-            if "agent_name" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("agent_name")
-            test_gen_batch = test_batch.pop(
-                batch_keys=batch_keys_to_pop,
-                non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
-            )
-
-            test_gen_batch.meta_info = {
-                "eos_token_id": self.tokenizer.eos_token_id,
-                "pad_token_id": self.tokenizer.pad_token_id,
-                "recompute_log_prob": False,
-                "do_sample": self.config.actor_rollout_ref.rollout.val_kwargs.do_sample,
-                "validate": True,
-            }
-            print(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
-
-            # pad to be divisible by dp_size
-            size_divisor = (
-                self.actor_rollout_wg.world_size
-                if not self.async_rollout_mode
-                else self.config.actor_rollout_ref.rollout.agent.num_workers
-            )
-            test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, size_divisor)
-            if not self.async_rollout_mode:
-                test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
-            else:
-                test_output_gen_batch_padded = self.async_rollout_manager.generate_sequences(test_gen_batch_padded)
-
-            # unpad
-            test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
-
-            print("validation generation end")
-
-            # Store generated outputs
-            output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
-            sample_outputs.extend(output_texts)
-
-            test_batch = test_batch.union(test_output_gen_batch)
-            test_batch.meta_info["validate"] = True
-
-            # evaluate using reward_function
-            result = self.val_reward_fn(test_batch, return_dict=True)
-            reward_tensor = result["reward_tensor"]
-            scores = reward_tensor.sum(-1).cpu().tolist()
-            sample_scores.extend(scores)
-
-            reward_extra_infos_dict["reward"].extend(scores)
-            print(f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}")
-            if "reward_extra_info" in result:
-                for key, lst in result["reward_extra_info"].items():
-                    reward_extra_infos_dict[key].extend(lst)
-                    print(f"Keys in reward_extra_infos_dict: {key}, length: {len(lst)}")
-
-            # collect num_turns of each prompt
-            if "__num_turns__" in test_batch.non_tensor_batch:
-                sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
-
-            data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
+        def run_validation_pass(description, mcq_mode=False, use_mcq_dataloader=False):
+            """
+            Inner function to run a single validation pass.
             
-            # Collect test data for MCQ evaluation
-            test_batch_data.append(test_data)
+            Args:
+                description: Description for the validation pass
+                mcq_mode: If True, use MCQ scoring (MCQ prompts already in data)
+                use_mcq_dataloader: If True, use MCQ dataloader, otherwise use regular dataloader
+                
+            Returns:
+                tuple: (inputs, outputs, scores, turns, extra_infos, data_sources)
+            """
+            pass_inputs = []
+            pass_outputs = []
+            pass_scores = []
+            pass_turns = []
+            pass_extra_infos = defaultdict(list)
+            pass_data_sources = []
+            
+            # Choose the appropriate dataloader
+            dataloader = self.val_dataloader_mcq if use_mcq_dataloader else self.val_dataloader
+            
+            print(f"Starting {description}...")
+            for test_data_id, test_data in tqdm(enumerate(dataloader), desc=description):
+                test_batch = DataProto.from_single_dict(test_data)
+
+                # repeat test batch
+                test_batch = test_batch.repeat(
+                    repeat_times=self.config.actor_rollout_ref.rollout.val_kwargs.n, interleave=True
+                )
+
+                # we only do validation on rule-based rm
+                if self.config.reward_model.enable and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
+                    return [], [], [], [], defaultdict(list), []
+
+                # Store original inputs
+                input_ids = test_batch.batch["input_ids"]
+                input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
+                
+                # # Debug: Print first input to understand format (only for first pass)
+                # if test_data_id == 0 and len(input_texts) > 0 and description == "regular validation":
+                #     print(f"DEBUG: First input format:\n{input_texts[0]}")
+                
+                # Use original inputs since MCQ prompts are already added during preprocessing
+                pass_inputs.extend(input_texts)
+
+                # Always pop the same keys, but ensure test_gen_batch has the right input_ids
+                batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
+                non_tensor_batch_keys_to_pop = ["raw_prompt_ids"]
+                if "multi_modal_data" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("multi_modal_data")
+                if "raw_prompt" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("raw_prompt")
+                if "tools_kwargs" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("tools_kwargs")
+                if "interaction_kwargs" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("interaction_kwargs")
+                if "agent_name" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("agent_name")
+                test_gen_batch = test_batch.pop(
+                    batch_keys=batch_keys_to_pop,
+                    non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
+                )
+
+                test_gen_batch.meta_info = {
+                    "eos_token_id": self.tokenizer.eos_token_id,
+                    "pad_token_id": self.tokenizer.pad_token_id,
+                    "recompute_log_prob": False,
+                    "do_sample": self.config.actor_rollout_ref.rollout.val_kwargs.do_sample,
+                    "validate": True,
+                }
+
+                # pad to be divisible by dp_size
+                size_divisor = (
+                    self.actor_rollout_wg.world_size
+                    if not self.async_rollout_mode
+                    else self.config.actor_rollout_ref.rollout.agent.num_workers
+                )
+                test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, size_divisor)
+                if not self.async_rollout_mode:
+                    test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
+                else:
+                    test_output_gen_batch_padded = self.async_rollout_manager.generate_sequences(test_gen_batch_padded)
+
+                # unpad
+                test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
+
+                print(f"{description} generation end")
+
+                # Store generated outputs
+                output_ids = test_output_gen_batch.batch["responses"]
+                output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+                pass_outputs.extend(output_texts)
+
+                test_batch = test_batch.union(test_output_gen_batch)
+                test_batch.meta_info["validate"] = True
+
+                # evaluate using reward_function
+                val_reward_fn_extra_info = {'mcq': True}
+                if mcq_mode:
+                    result = self.val_reward_fn(test_batch, return_dict=True, extra_info=val_reward_fn_extra_info)
+                else:
+                    result = self.val_reward_fn(test_batch, return_dict=True)
+                reward_tensor = result["reward_tensor"]
+                scores = reward_tensor.sum(-1).cpu().tolist()
+                pass_scores.extend(scores)
+
+                pass_extra_infos["reward"].extend(scores)
+                print(f"len pass_extra_infos['reward']: {len(pass_extra_infos['reward'])}")
+                if "reward_extra_info" in result:
+                    for key, lst in result["reward_extra_info"].items():
+                        pass_extra_infos[key].extend(lst)
+                        print(f"Keys in pass_extra_infos: {key}, length: {len(lst)}")
+
+                # collect num_turns of each prompt
+                if "__num_turns__" in test_batch.non_tensor_batch:
+                    pass_turns.append(test_batch.non_tensor_batch["__num_turns__"])
+
+                pass_data_sources.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
+
+            return pass_inputs, pass_outputs, pass_scores, pass_turns, pass_extra_infos, pass_data_sources
+        
+        # Run regular validation (uses regular validation dataloader without MCQ prompts)
+        regular_inputs, regular_outputs, regular_scores, regular_turns, regular_extra_infos, regular_data_sources = run_validation_pass(
+            "Regular validation", 
+            mcq_mode=False,
+            use_mcq_dataloader=False
+        )
+        
+        # Run MCQ validation (uses MCQ dataloader with MCQ prompts)
+        mcq_inputs, mcq_outputs, mcq_scores, mcq_turns, mcq_extra_infos, mcq_data_sources = run_validation_pass(
+            "MCQ validation", 
+            mcq_mode=True,
+            use_mcq_dataloader=True
+        )
+        
+        # Use regular validation results for logging (consistent with training rewards)
+        sample_inputs.extend(regular_inputs)
+        sample_outputs.extend(regular_outputs) 
+        sample_scores.extend(regular_scores)
+        sample_turns.extend(regular_turns)
+        
+        # Add extra infos from regular validation (consistent with training)
+        for key, values in regular_extra_infos.items():
+            reward_extra_infos_dict[key].extend(values)
+        
+        data_source_lst.extend(regular_data_sources)
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
-
-        # Evaluate MCQ performance using LLM query
-        print("Starting MCQ evaluation...")
-        mcq_accuracies, mcq_embedding_similarities = self._evaluate_mcq_performance(test_batch_data)
-        print(f"MCQ evaluation completed. Processed {len(mcq_accuracies)} samples.")
-
-        # Calculate goal accuracy between predicted and groundtruth goals
-        goal_accuracy = 0.0
         
-        # Extract predicted goals from outputs using extract_solution function
-        predicted_goals = []
-        for output in sample_outputs:
-            predicted_goal = extract_solution(output)
-            predicted_goals.append(predicted_goal)
-
-        # Extract groundtruth goals from reward_extra_infos_dict
-        groundtruth_goals = reward_extra_infos_dict.get('groundtruth_goals', [])
-
-        correct_predictions = 0
-        individual_goal_accuracies = []
-        if len(predicted_goals) == len(groundtruth_goals):
-            for pred, gt in zip(predicted_goals, groundtruth_goals):
-                # Normalize strings for comparison (strip whitespace, lowercase)
-                pred_normalized = str(pred).strip().lower()
-                gt_normalized = str(gt).strip().lower()
-                if pred_normalized == gt_normalized:
-                    correct_predictions += 1
-                    individual_goal_accuracies.append(1.0)
-                else:
-                    individual_goal_accuracies.append(0.0)
-
-        goal_accuracy = correct_predictions / len(predicted_goals) if predicted_goals else 0.0
-        print(f"Goal Accuracy: {goal_accuracy:.4f} ({correct_predictions}/{len(predicted_goals)})")
-
-        # Calculate sentence similarity for each sample
-        # sentence_similarity = (sample_score - 0.7) / 0.3
-        # Only calculate for samples with score > 0
-        sentence_similarity = []
-        valid_similarities = []  # For calculating average of non-zero scores
-        
-        for i in range(len(sample_scores)):
-            if sample_scores[i] > 0:
-                similarity = (sample_scores[i] - 0.7) / 0.3
-                sentence_similarity.append(similarity)
-                valid_similarities.append(similarity)
+        # Calculate regular validation scores (same as training rewards)
+        regular_reward_scores = []
+        print("Len of regular_scores:", len(regular_scores))
+        for i in range(len(regular_scores)):
+            if regular_scores[i] < 0:
+                regular_reward_scores.append(0.0)
+            elif regular_scores[i] > 1:
+                regular_reward_scores.append(1.0)
             else:
-                sentence_similarity.append(0.0)  # Placeholder for scores = 0
+                regular_reward_scores.append(regular_scores[i])
         
-        # Trick: fill zero placeholders with average of valid similarities to maintain length while not affecting statistical calculations
-        if valid_similarities:
-            avg_similarity = np.mean(valid_similarities)
-            for i in range(len(sentence_similarity)):
-                if sentence_similarity[i] == 0.0 and sample_scores[i] == 0:
-                    sentence_similarity[i] = avg_similarity
-        
-        # Print statistics for valid similarities only
-        if valid_similarities:
-            print(f"Sentence Similarity (valid scores > 0): mean={np.mean(valid_similarities):.4f}, "
-                  f"min={np.min(valid_similarities):.4f}, max={np.max(valid_similarities):.4f}, "
-                  f"count={len(valid_similarities)}/{len(sample_scores)}")
+        # Print statistics for regular validation rewards
+        if regular_reward_scores:
+            print(f"Regular Validation Reward: mean={np.mean(regular_reward_scores):.4f}, "
+                  f"min={np.min(regular_reward_scores):.4f}, max={np.max(regular_reward_scores):.4f}")
         else:
-            print("Sentence Similarity: No valid scores > 0 found")
-
-        # Add both overall and individual goal accuracy to reward_extra_infos_dict for metric processing
-        reward_extra_infos_dict["goal_accuracy"] = individual_goal_accuracies
-        reward_extra_infos_dict["sentence_similarity"] = sentence_similarity
+            print("Regular Validation Reward: No valid scores found")
         
-        # Add MCQ metrics - pad or truncate to match sample size if necessary
-        if mcq_accuracies:
-            # Ensure MCQ metrics have same length as other metrics
-            target_length = len(sample_scores)
-            if len(mcq_accuracies) != target_length:
-                print(f"Warning: MCQ metrics length ({len(mcq_accuracies)}) doesn't match sample size ({target_length})")
-                # Pad with zeros or truncate as needed
-                if len(mcq_accuracies) < target_length:
-                    mcq_accuracies.extend([0.0] * (target_length - len(mcq_accuracies)))
-                    mcq_embedding_similarities.extend([0.0] * (target_length - len(mcq_embedding_similarities)))
-                else:
-                    mcq_accuracies = mcq_accuracies[:target_length]
-                    mcq_embedding_similarities = mcq_embedding_similarities[:target_length]
-            
-            reward_extra_infos_dict["mcq_accuracy"] = mcq_accuracies
-            reward_extra_infos_dict["mcq_embedding_similarity"] = mcq_embedding_similarities
-            
-            # Print MCQ statistics
-            mcq_mean = np.mean(mcq_accuracies) if mcq_accuracies else 0.0
-            embedding_mean = np.mean(mcq_embedding_similarities) if mcq_embedding_similarities else 0.0
-            print(f"MCQ Accuracy: {mcq_mean:.4f} ({sum(mcq_accuracies)}/{len(mcq_accuracies)})")
-            print(f"MCQ Embedding Similarity: {embedding_mean:.4f}")
+        # Calculate MCQ accuracy (from MCQ validation)
+        mcq_accuracy = []
+        print("Len of mcq_scores:", len(mcq_scores))
+        for i in range(len(mcq_scores)):
+            if mcq_scores[i] < 0:
+                mcq_accuracy.append(0.0)
+            elif mcq_scores[i] > 1:
+                mcq_accuracy.append(1.0)
+            else:
+                mcq_accuracy.append(mcq_scores[i])
+        
+        # Print statistics for MCQ accuracy
+        if mcq_accuracy:
+            print(f"MCQ Accuracy: mean={np.mean(mcq_accuracy):.4f}, "
+                  f"min={np.min(mcq_accuracy):.4f}, max={np.max(mcq_accuracy)}")
         else:
-            print("Warning: No MCQ metrics generated")
-            reward_extra_infos_dict["mcq_accuracy"] = [0.0] * len(sample_scores)
-            reward_extra_infos_dict["mcq_embedding_similarity"] = [0.0] * len(sample_scores)
+            print("MCQ Accuracy: No valid scores found")
 
+        # Add regular reward scores to reward_extra_infos_dict for metric processing
+        # Note: Only add metrics that have the same length as sample_scores (regular validation)
+        reward_extra_infos_dict["regular_reward"] = regular_reward_scores
+        
+        # Store MCQ accuracy separately since it may have different length
+        # We'll add it to metrics processing later with proper handling
+        
         # dump generations
         val_data_dir = self.config.trainer.get("validation_data_dir", None)
         if val_data_dir:
@@ -1040,8 +953,11 @@ class RayPPOTrainer:
                 dump_path=val_data_dir,
             )
 
+        # Check length consistency for reward_extra_infos_dict items
+        # Only check items that should match sample_scores length (regular validation results)
         for key_info, lst in reward_extra_infos_dict.items():
-            assert len(lst) == 0 or len(lst) == len(sample_scores), f"{key_info}: {len(lst)=}, {len(sample_scores)=}"
+            if key_info != "mcq_accuracy":  # Skip MCQ accuracy since it's from separate validation
+                assert len(lst) == 0 or len(lst) == len(sample_scores), f"{key_info}: {len(lst)=}, {len(sample_scores)=}"
 
         data_sources = np.concatenate(data_source_lst, axis=0)
 
@@ -1061,10 +977,8 @@ class RayPPOTrainer:
         
         metric_dict = {}
         for data_source, var2metric2val in data_src2var2metric2val.items():
-            # Focus on two core metrics as requested:
-            # 1. mcq_embedding_similarity: embedding similarity between model response and correct answer
-            # 2. mcq_accuracy: multiple choice accuracy - whether model picks correct option from all choices
-            core_var = ["mcq_embedding_similarity", "mcq_accuracy"]
+            # Focus on embedding similarity as core metric from regular validation
+            core_var = ["embedding_similarity", "regular_reward"]
             for var_name, metric2val in var2metric2val.items():
                 n_max = max([int(name.split("@")[-1].split("/")[0]) for name in metric2val.keys()])
                 for metric_name, metric_val in metric2val.items():
@@ -1078,6 +992,12 @@ class RayPPOTrainer:
                         metric_sec = "val-aux"
                     pfx = f"{metric_sec}/{data_source}/{var_name}/{metric_name}"
                     metric_dict[pfx] = metric_val
+        
+        # Add MCQ accuracy as a separate core metric
+        if len(mcq_accuracy) > 0:
+            metric_dict["val-core/implicit_persona/mcq_accuracy/mean@1/1"] = np.mean(mcq_accuracy)
+            metric_dict["val-aux/implicit_persona/mcq_accuracy/min@1/1"] = np.min(mcq_accuracy) 
+            metric_dict["val-aux/implicit_persona/mcq_accuracy/max@1/1"] = np.max(mcq_accuracy)
 
         if len(sample_turns) > 0:
             sample_turns = np.concatenate(sample_turns)
@@ -1697,6 +1617,30 @@ class RayPPOTrainer:
                 # collect metrics
                 metrics.update(compute_data_metrics(batch=batch, use_critic=self.use_critic))
                 metrics.update(compute_timing_metrics(batch=batch, timing_raw=timing_raw))
+                
+                # Add reward distribution metrics
+                if "token_level_scores" in batch.batch:
+                    reward_scores = batch.batch["token_level_scores"]
+                    response_mask = batch.batch.get("response_mask", torch.ones_like(reward_scores))
+                    
+                    # Get final rewards (sum over response length for each sample)
+                    final_rewards = torch.sum(reward_scores * response_mask, dim=-1)  # (batch_size,)
+                    
+                    # Calculate reward distribution percentages
+                    total_samples = final_rewards.numel()
+                    if total_samples > 0:
+                        low_rewards = (final_rewards < 0.33).sum().item()
+                        mid_rewards = ((final_rewards >= 0.33) & (final_rewards <= 0.67)).sum().item()
+                        high_rewards = (final_rewards > 0.67).sum().item()
+                        
+                        metrics.update({
+                            "training/reward_dist_low_pct": (low_rewards / total_samples) * 100,
+                            "training/reward_dist_mid_pct": (mid_rewards / total_samples) * 100,  
+                            "training/reward_dist_high_pct": (high_rewards / total_samples) * 100,
+                            "training/reward_mean": final_rewards.mean().item(),
+                            "training/reward_std": final_rewards.std().item(),
+                        })
+                
                 # TODO: implement actual tflpo and theoretical tflpo
                 n_gpus = self.resource_pool_manager.get_n_gpus()
                 metrics.update(compute_throughout_metrics(batch=batch, timing_raw=timing_raw, n_gpus=n_gpus))
