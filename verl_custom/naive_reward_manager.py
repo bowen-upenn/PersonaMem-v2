@@ -41,14 +41,14 @@ class CustomNaiveRewardManager:
                 "data_source".
         """
         self.tokenizer = tokenizer  # Store the tokenizer for decoding token IDs
-        self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
+        self.num_examine = 1  # the number of batches of decoded responses to print to the console
         self.compute_score = compute_score or default_compute_score
         self.reward_fn_key = reward_fn_key  # Store the key for accessing the data source
         self.eval_method = eval_method  # Default evaluation method
 
 
     # In naive_reward_manager.py, modify the __call__ method
-    def __call__(self, data: DataProto, return_dict=False):
+    def __call__(self, data: DataProto, return_dict=False, extra_info=None):
         """We will expand this function gradually based on the available datasets"""
         # If there is rm score, we directly return rm score. Otherwise, we compute via rm_score_fn
         if "rm_scores" in data.batch.keys():
@@ -103,23 +103,27 @@ class CustomNaiveRewardManager:
             groundtruth = data_item.non_tensor_batch["reward_model"]["ground_truth"]
             groundtruth_preference = groundtruth.get("groundtruth_preference", "")
             correct_answer = groundtruth.get("correct_answer", "")
+            pref_type = groundtruth.get("pref_type", "")
 
             data_source = data_item.non_tensor_batch[self.reward_fn_key]
-            extra_info = data_item.non_tensor_batch.get("extra_info", {})
+            item_extra_info = data_item.non_tensor_batch.get("extra_info", {})
             num_turns = data_item.non_tensor_batch.get("__num_turns__", None)
-            extra_info["num_turns"] = num_turns
+            item_extra_info["num_turns"] = num_turns
+            
+            # Merge extra_info from the method call with item-specific extra_info
+            merged_extra_info = item_extra_info.copy()
+            if extra_info is not None:
+                merged_extra_info.update(extra_info)
             
             # Extract ImplicitPersona specific information
-            persona_id = extra_info.get('persona_id', '')
-            question = extra_info.get('question', '')
-            persona = extra_info.get('persona', {})
-            preference_type = extra_info.get('preference_type', '')
+            persona_id = merged_extra_info.get('persona_id', '')
+            question = merged_extra_info.get('question', '')
 
             score = self.compute_score(
                 data_source=data_source,
                 solution_str=response_str,
                 ground_truth=groundtruth,
-                extra_info=extra_info,
+                extra_info=merged_extra_info,
                 eval_method=self.eval_method,
             )
 
@@ -133,9 +137,8 @@ class CustomNaiveRewardManager:
 
             # Add ImplicitPersona specific information to reward_extra_info
             reward_extra_info["persona_ids"].append(persona_id)
-            reward_extra_info["groundtruth_preferences"].append(groundtruth_preference)
+            reward_extra_info["preference"].append(groundtruth_preference)
             reward_extra_info["correct_answers"].append(correct_answer)
-            reward_extra_info["preference_types"].append(preference_type)
 
             reward_tensor[i, valid_response_length - 1] = reward
 
@@ -147,13 +150,13 @@ class CustomNaiveRewardManager:
             if should_print:
                 # Extract the clean solution for display
                 solution_clean = extract_solution(response_str)
-                
-                print(f'\033[92m[persona]:\033[0m {persona}')
+
                 print(f'\033[92m[question]:\033[0m {question}')
-                print(f'\033[92m[correct_answer]:\033[0m {correct_answer}')
-                print(f'\033[92m[groundtruth_preference]:\033[0m {groundtruth_preference}')
+                print(f'\033[92m[target_answer]:\033[0m {correct_answer}')
+                print(f'\033[92m[preference]:\033[0m {groundtruth_preference}')
                 print(f'\033[92m[model_final_response]:\033[0m {solution_clean}')
                 print(f'\033[92m[eval_method]:\033[0m {self.eval_method}')
+                print(f'\033[92m[pref_type]:\033[0m {pref_type}')
                 if isinstance(reward, dict):
                     for key, value in reward.items():
                         print(f'\033[92m[{key}]:\033[0m {value}')

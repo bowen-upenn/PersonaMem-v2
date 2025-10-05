@@ -45,7 +45,7 @@ def default_compute_score(
     if data_source == "implicit_persona":
         from . import reward_score
 
-        res = reward_score.compute_score(solution_str, ground_truth, method=eval_method)
+        res = reward_score.compute_score(solution_str, ground_truth, method=eval_method, extra_info=extra_info)
     elif data_source == "openai/gsm8k":
         from . import gsm8k
 
