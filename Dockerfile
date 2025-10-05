@@ -32,6 +32,7 @@ RUN pip install scikit-learn
 RUN pip install json_repair
 RUN pip install timeout_decorator
 RUN pip install pytz
+RUN pip install google-generativeai
 
 
 # Option 2: If you are using AzureML jobs, you can uncomment the following part of this Dockerfile as your environment's context.
