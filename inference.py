@@ -24,7 +24,7 @@ class PersonaBenchmarkEvaluator:
         self.config = self._load_config(config_path)
         
         # Override model name if specified
-        if model_name:
+        if model_name and model_name in self._map_model_name(model_name):
             self.config['models']['llm_model'] = self._map_model_name(model_name)
         
         self.query_llm = QueryLLM(self.config)
@@ -51,7 +51,11 @@ class PersonaBenchmarkEvaluator:
             'o1': 'o1',
             'o1-mini': 'o1-mini',
             'o3-mini': 'o3-mini',
-            'o4-mini': 'o4-mini'
+            'o4-mini': 'o4-mini',
+            'gemini-2.5-pro': 'gemini-2.5-pro',
+            'gemini-2.5-flash': 'gemini-2.5-flash',
+            'gemini-pro': 'gemini-2.5-pro',
+            'gemini-flash': 'gemini-2.5-flash'
         }
         
         return model_mapping.get(model_name, model_name)
@@ -230,14 +234,24 @@ class PersonaBenchmarkEvaluator:
         if not response:
             return ""
         
-        # Look for "Final Answer: [Letter]" pattern
+        # Look for various answer patterns
         import re
         patterns = [
+            # Gemini LaTeX format: $\boxed{B}$ or \boxed{B}
+            r'\$\\boxed\{([A-Z])\}\$',
+            r'\\boxed\{([A-Z])\}',
+            # Standard formats
             r'Final Answer:\s*([A-Z])',
             r'final answer:\s*([A-Z])',
             r'Answer:\s*([A-Z])',
             r'answer:\s*([A-Z])',
-            r'\b([A-Z])\.\s*$'  # Single letter at end
+            # The final answer is [Letter]
+            r'final answer is\s*\$?\\boxed\{([A-Z])\}\$?',
+            r'final answer is\s*([A-Z])',
+            r'the answer is\s*\$?\\boxed\{([A-Z])\}\$?',
+            r'the answer is\s*([A-Z])',
+            # Single letter at end
+            r'\b([A-Z])\.\s*$'
         ]
         
         for pattern in patterns:
@@ -260,7 +274,7 @@ class PersonaBenchmarkEvaluator:
     
 
     def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
-                      use_multimodal: bool = False, max_items: int = None) -> str:
+                      use_multimodal: bool = False, max_items: int = None, size: str = '32k') -> str:
         """Run evaluation on the benchmark dataset."""
         # Auto-select benchmark file if not specified
         if benchmark_file is None:
@@ -430,10 +444,13 @@ if __name__ == "__main__":
                        help='Path to configuration file')
     # Supported models: gpt-4.1, gpt-4.1-mini, gpt-4o,  gpt-4o-mini, 
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini
+    # gemini-2.5-pro, gemini-2.5-flash, gemini-pro, gemini-flash
     parser.add_argument('--model_name', type=str, default='gpt-5-chat',
                        help='Model name to use for evaluation (overrides config file)')
     parser.add_argument('--result_path', type=str, default='results/',
                        help='Directory to save evaluation results (default: results/)')
+    parser.add_argument('--size', type=str, default='32k',
+                       help='Size of evaluation benchmark to be used')
     
     args = parser.parse_args()
     
@@ -445,7 +462,8 @@ if __name__ == "__main__":
         args.benchmark_file,
         args.eval_mode,
         args.use_multimodal,
-        args.max_items
+        args.max_items,
+        args.size
     )
     
     print(f"\nEvaluation completed. Results saved to: {output_file}")
