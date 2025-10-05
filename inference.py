@@ -124,7 +124,7 @@ class PersonaBenchmarkEvaluator:
     
     
     def evaluate_row(self, row: Dict[str, Any], eval_mode: str = "mcq", 
-                    use_multimodal: bool = False) -> Dict[str, Any]:
+                    use_multimodal: bool = False, size: str = '32k') -> Dict[str, Any]:
         """Evaluate a single row from the benchmark."""
         # Parse user query from JSON/Python dict string and append to chat history
         try:
@@ -144,24 +144,20 @@ class PersonaBenchmarkEvaluator:
                     "content": str(row['user_query']).strip('"').strip("'")
                 }
         
-        # Load appropriate chat history
+        # Load appropriate chat history based on size parameter
         try:
-            if use_multimodal:
-                # Try the correct column name first, then fallback to old format
-                if 'chat_history_32k_link' in row:
-                    chat_history_path = row['chat_history_32k_link']
-                elif 'chat_history_link' in row:
-                    chat_history_path = row['chat_history_link']
-                else:
-                    raise KeyError("chat_history_32k_link")
+            # Construct column name based on size (e.g., 'chat_history_32k_link' or 'chat_history_128k_link')
+            size_column = f'chat_history_{size}_link'
+            
+            # Try to get the chat history path
+            if size_column in row:
+                chat_history_path = row[size_column]
+            # Fallback to generic 'chat_history_link' if size-specific column not found
+            elif 'chat_history_link' in row:
+                chat_history_path = row['chat_history_link']
+                print(f"  Warning: {size_column} not found, using generic chat_history_link")
             else:
-                # Use 32k chat history by default (could also use 128k)
-                if 'chat_history_32k_link' in row:
-                    chat_history_path = row['chat_history_32k_link']
-                elif 'chat_history_link' in row:
-                    chat_history_path = row['chat_history_link']
-                else:
-                    raise KeyError("chat_history_32k_link")
+                raise KeyError(f"chat_history_{size}_link or chat_history_link")
         except KeyError as e:
             # Handle missing column error
             available_columns = list(row.keys())
@@ -307,7 +303,7 @@ class PersonaBenchmarkEvaluator:
         
         # Create individual results directory for this run
         run_timestamp = int(time.time())
-        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}"
+        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}"
         individual_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Process each row and save individually
@@ -333,7 +329,7 @@ class PersonaBenchmarkEvaluator:
                 continue
             
             try:
-                result = self.evaluate_row(row, eval_mode, use_multimodal)
+                result = self.evaluate_row(row, eval_mode, use_multimodal, size)
                 results.append(result)
                 processed_count += 1
                 
@@ -361,7 +357,7 @@ class PersonaBenchmarkEvaluator:
                 print(f"  Error result saved to {individual_file}")
         
         # Save aggregated results
-        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}.json"
+        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.json"
         
         evaluation_data = {
             'metadata': {
@@ -369,6 +365,7 @@ class PersonaBenchmarkEvaluator:
                 'model_name': self.config['models']['llm_model'],
                 'eval_mode': eval_mode,
                 'use_multimodal': use_multimodal,
+                'chat_history_size': size,
                 'total_rows': len(rows),
                 'processed_rows': processed_count,
                 'max_items': max_items,
@@ -457,7 +454,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', type=str, default='results/',
                        help='Directory to save evaluation results (default: results/)')
     parser.add_argument('--size', type=str, default='32k',
-                       help='Size of evaluation benchmark to be used')
+                       help='Chat history size to use (one of 32k, 128k). Uses chat_history_{size}_link column from benchmark CSV')
     
     args = parser.parse_args()
     
