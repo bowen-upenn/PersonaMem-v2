@@ -274,7 +274,7 @@ class PersonaBenchmarkEvaluator:
     
 
     def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
-                      use_multimodal: bool = False, max_items: int = None) -> str:
+                      use_multimodal: bool = False, max_items: int = None, size: str = '32k') -> str:
         """Run evaluation on the benchmark dataset."""
         # Auto-select benchmark file if not specified
         if benchmark_file is None:
