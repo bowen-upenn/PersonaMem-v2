@@ -55,7 +55,13 @@ class PersonaBenchmarkEvaluator:
             'gemini-2.5-pro': 'gemini-2.5-pro',
             'gemini-2.5-flash': 'gemini-2.5-flash',
             'gemini-pro': 'gemini-2.5-pro',
-            'gemini-flash': 'gemini-2.5-flash'
+            'gemini-flash': 'gemini-2.5-flash',
+            'claude-3-5-sonnet': 'claude-3-5-sonnet-20241022',
+            'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
+            'claude-3-5-haiku': 'claude-3-5-haiku-20241022',
+            'claude-3-5-haiku-20241022': 'claude-3-5-haiku-20241022',
+            'claude-sonnet': 'claude-3-5-sonnet-20241022',
+            'claude-haiku': 'claude-3-5-haiku-20241022'
         }
         
         return model_mapping.get(model_name, model_name)
@@ -445,6 +451,7 @@ if __name__ == "__main__":
     # Supported models: gpt-4.1, gpt-4.1-mini, gpt-4o,  gpt-4o-mini, 
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini
     # gemini-2.5-pro, gemini-2.5-flash, gemini-pro, gemini-flash
+    # claude-3-5-sonnet, claude-3-5-haiku, claude-sonnet, claude-haiku
     parser.add_argument('--model_name', type=str, default='gpt-5-chat',
                        help='Model name to use for evaluation (overrides config file)')
     parser.add_argument('--result_path', type=str, default='results/',
