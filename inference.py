@@ -8,6 +8,7 @@ import csv
 import json
 import os
 import argparse
+import ast
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 import yaml
@@ -28,7 +29,7 @@ class PersonaBenchmarkEvaluator:
         
         self.query_llm = QueryLLM(self.config)
         self.results_dir = Path(result_path)
-        self.results_dir.mkdir(exist_ok=True)
+        self.results_dir.mkdir(parents=True, exist_ok=True)
         
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -115,11 +116,47 @@ class PersonaBenchmarkEvaluator:
     def evaluate_row(self, row: Dict[str, Any], eval_mode: str = "mcq", 
                     use_multimodal: bool = False) -> Dict[str, Any]:
         """Evaluate a single row from the benchmark."""
-        # Parse user query from JSON string and append to chat history
-        user_query_dict = json.loads(row['user_query'])
+        # Parse user query from JSON/Python dict string and append to chat history
+        try:
+            # First try JSON parsing (in case it's proper JSON)
+            user_query_dict = json.loads(row['user_query'])
+        except json.JSONDecodeError:
+            try:
+                # The CSV contains Python dict literals with single quotes, not JSON
+                # Use ast.literal_eval to safely parse Python dictionary literals
+                user_query_dict = ast.literal_eval(row['user_query'])
+            except (ValueError, SyntaxError) as e:
+                print(f"Error parsing user_query for persona {row['persona_id']}: {e}")
+                print(f"Raw user_query content: {row['user_query'][:100]}...")
+                # Create a fallback user query dict
+                user_query_dict = {
+                    "role": "user", 
+                    "content": str(row['user_query']).strip('"').strip("'")
+                }
         
         # Load appropriate chat history
-        chat_history_path = row['chat_history_multimodal_link'] if use_multimodal else row['chat_history_link']
+        try:
+            if use_multimodal:
+                # Try the correct column name first, then fallback to old format
+                if 'chat_history_32k_link' in row:
+                    chat_history_path = row['chat_history_32k_link']
+                elif 'chat_history_link' in row:
+                    chat_history_path = row['chat_history_link']
+                else:
+                    raise KeyError("chat_history_32k_link")
+            else:
+                # Use 32k chat history by default (could also use 128k)
+                if 'chat_history_32k_link' in row:
+                    chat_history_path = row['chat_history_32k_link']
+                elif 'chat_history_link' in row:
+                    chat_history_path = row['chat_history_link']
+                else:
+                    raise KeyError("chat_history_32k_link")
+        except KeyError as e:
+            # Handle missing column error
+            available_columns = list(row.keys())
+            raise KeyError(f"Missing required column '{e}'. Available columns: {available_columns}")
+        
         chat_history = self.load_chat_history(chat_history_path)
         
         # Append user query to chat history
@@ -228,9 +265,9 @@ class PersonaBenchmarkEvaluator:
         # Auto-select benchmark file if not specified
         if benchmark_file is None:
             if use_multimodal:
-                benchmark_file = "data/benchmark_multimodal.csv"
+                benchmark_file = "benchmark/multimodal/benchmark.csv"
             else:
-                benchmark_file = "data/benchmark.csv"
+                benchmark_file = "benchmark/text/benchmark.csv"
         
         print(f"Starting evaluation...")
         print(f"Benchmark file: {benchmark_file}")
@@ -248,25 +285,63 @@ class PersonaBenchmarkEvaluator:
         
         print(f"Loaded {len(rows)} rows from benchmark")
         
-        # Process each row
+        # Create individual results directory for this run
+        run_timestamp = int(time.time())
+        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}"
+        individual_results_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Process each row and save individually
         results = []
+        processed_count = 0
+        
         for i, row in enumerate(rows):
             print(f"Processing row {i+1}/{len(rows)} (Persona {row['persona_id']})")
+            
+            # Create individual result file path
+            individual_file = individual_results_dir / f"result_persona_{row['persona_id']}_row_{i+1}.json"
+            
+            # Skip if already processed (for resuming interrupted runs)
+            if individual_file.exists():
+                print(f"  Skipping row {i+1} - already processed")
+                try:
+                    with open(individual_file, 'r', encoding='utf-8') as f:
+                        existing_result = json.load(f)
+                        results.append(existing_result)
+                        processed_count += 1
+                except Exception as e:
+                    print(f"  Error loading existing result: {e}")
+                continue
             
             try:
                 result = self.evaluate_row(row, eval_mode, use_multimodal)
                 results.append(result)
+                processed_count += 1
+                
+                # Save individual result immediately
+                with open(individual_file, 'w', encoding='utf-8') as f:
+                    json.dump(result, f, indent=2, ensure_ascii=False)
+                
+                print(f"  Result saved to {individual_file}")
+                
             except Exception as e:
                 print(f"Error processing row {i+1}: {e}")
                 # Add error result
-                results.append({
+                error_result = {
                     'persona_id': row['persona_id'],
+                    'row_number': i+1,
                     'error': str(e),
                     'timestamp': time.time()
-                })
+                }
+                results.append(error_result)
+                
+                # Save error result individually
+                with open(individual_file, 'w', encoding='utf-8') as f:
+                    json.dump(error_result, f, indent=2, ensure_ascii=False)
+                
+                print(f"  Error result saved to {individual_file}")
         
-        # Save results
-        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{int(time.time())}.json"
+        # Save aggregated results
+        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}.json"
         
         evaluation_data = {
             'metadata': {
@@ -275,9 +350,10 @@ class PersonaBenchmarkEvaluator:
                 'eval_mode': eval_mode,
                 'use_multimodal': use_multimodal,
                 'total_rows': len(rows),
-                'processed_rows': len(results),
+                'processed_rows': processed_count,
                 'max_items': max_items,
-                'timestamp': time.time()
+                'timestamp': run_timestamp,
+                'individual_results_dir': str(individual_results_dir)
             },
             'results': results
         }
@@ -285,7 +361,8 @@ class PersonaBenchmarkEvaluator:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(evaluation_data, f, indent=2, ensure_ascii=False)
         
-        print(f"Results saved to {output_file}")
+        print(f"Aggregated results saved to {output_file}")
+        print(f"Individual results saved in {individual_results_dir}")
         
         # Print evaluation statistics
         self.print_evaluation_stats(results, eval_mode)

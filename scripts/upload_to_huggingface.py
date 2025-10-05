@@ -61,10 +61,10 @@ api = HfApi()
 # # Upload specific folders with proper folder structure preservation using upload_large_folder
 # folders_to_upload = [
 #     "data/raw_data",
-#     "data/chat_history_32k", 
-#     "data/chat_history_128k",
-#     "data/chat_history_multimodal_32k",
-#     "data/chat_history_multimodal_128k",
+#     # "data/chat_history_32k", 
+#     # "data/chat_history_128k",
+#     # "data/chat_history_multimodal_32k",
+#     # "data/chat_history_multimodal_128k",
 # ]
 
 # # Create a temporary directory to stage the upload with proper structure

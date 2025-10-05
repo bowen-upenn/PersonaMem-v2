@@ -117,41 +117,46 @@ class QueryLLM:
             thread_id = threading.get_ident()
         
         # Prepare messages for the API call
-        if image:
-            base64_image = image
-        elif image_path:
-            try:
-                with open(image_path, "rb") as image_file:
-                    base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-            except Exception as e:
+        if use_history and isinstance(prompt, list):
+            # If use_history=True and prompt is already a list of messages, use it directly
+            messages = prompt
+        else:
+            # Handle single prompt case
+            if image:
+                base64_image = image
+            elif image_path:
+                try:
+                    with open(image_path, "rb") as image_file:
+                        base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                except Exception as e:
+                    base64_image = None
+                    print(f"Error reading image file {image_path}: {e}")
+            else:
                 base64_image = None
-                print(f"Error reading image file {image_path}: {e}")
-        else:
-            base64_image = None
 
-        if base64_image:
-            curr_message=[
-                    {
-                        "role": "user",
-                        "content": [
-                            { "type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}",
+            if base64_image:
+                curr_message=[
+                        {
+                            "role": "user",
+                            "content": [
+                                { "type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}",
+                                    },
                                 },
-                            },
-                        ],
-                    }
-                ]
-        else:
-            curr_message = [{"role": "user", "content": prompt}]
+                            ],
+                        }
+                    ]
+            else:
+                curr_message = [{"role": "user", "content": prompt}]
 
-        if use_history:
-            self.thread_histories[thread_id].extend(curr_message)
-            messages = self.thread_histories[thread_id].copy()
-        else:
-            messages = curr_message
+            if use_history:
+                self.thread_histories[thread_id].extend(curr_message)
+                messages = self.thread_histories[thread_id].copy()
+            else:
+                messages = curr_message
 
         # Call the Chat Completions API
         response = self.client.chat.completions.create(
@@ -167,7 +172,12 @@ class QueryLLM:
             content = None
 
         if use_history:
-            self.thread_histories[thread_id].append({"role": "assistant", "content": content})
+            if isinstance(prompt, list):
+                # If prompt was a list of messages, update the entire history
+                self.thread_histories[thread_id] = messages + [{"role": "assistant", "content": content}]
+            else:
+                # If prompt was a single message, just append the assistant response
+                self.thread_histories[thread_id].append({"role": "assistant", "content": content})
 
         if verbose:
             print(f'{utils.Colors.OKGREEN}Model Response:{utils.Colors.ENDC} {content}')

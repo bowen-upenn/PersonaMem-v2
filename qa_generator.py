@@ -830,7 +830,7 @@ def process_single_file_qa_minority_sequential(file_path, llm, verbose, validate
                 # Check for the two MINORITY cases (underrepresented in dataset)
                 # MINORITY Case 1: Preferences from OTHER PEOPLE (who != 'self')
                 # These are rare because most preferences are self-reported
-                case1_match = False #(who != 'self')
+                case1_match = (who != 'self')
                 
                 # MINORITY Case 2: UPDATED preferences (updated == True)
                 # These are rare because most preferences are initial, not modifications
@@ -1502,12 +1502,25 @@ def process_single_file_fill_category_sequential(file_path, llm, verbose):
                 # Each conversation type contains a list of conversation dicts
                 for conv_dict in conversations:
                     # Check if this dict has user_query but not topic_query
+                    need_to_fill, need_to_fill_user_query, need_to_fill_preference = False, False, False
+                    if 'topic_query' in conv_dict and ":" in conv_dict['topic_query']:
+                        conv_dict['topic_query'] = conv_dict['topic_query'].replace(" ",  "").replace(":",  "")
+                    if 'topic_preference' in conv_dict and ":" in conv_dict['topic_preference']:
+                        conv_dict['topic_preference'] = conv_dict['topic_preference'].replace(" ",  "").replace(":",  "")
+
                     if 'user_query' in conv_dict and 'topic_query' not in conv_dict:
                         user_query = conv_dict['user_query']
+                        need_to_fill_user_query = True
                         
                         if verbose:
                             print(f"  [{file_name}] Found user_query without topic_query: {user_query[:100]}...")
+
+                    if 'preference' in conv_dict and 'topic_query' not in conv_dict:
+                        user_query = conv_dict['preference']
+                        need_to_fill_preference = True
                         
+                    need_to_fill = need_to_fill_user_query or need_to_fill_preference
+                    if need_to_fill:
                         # Try to categorize with retry mechanism (max 5 attempts)
                         topic = None
                         for attempt in range(5):
@@ -1522,7 +1535,13 @@ def process_single_file_fill_category_sequential(file_path, llm, verbose):
                         
                         # If we got a valid topic, save it
                         if topic and topic.strip():
-                            conv_dict['topic_query'] = topic.strip()
+                            topic = topic.strip()
+                            topic = topic.replace(" ",  "").replace(":",  "")
+
+                            if need_to_fill_user_query:
+                                conv_dict['topic_query'] = topic
+                            else:
+                                conv_dict['preference'] = topic
                             file_filled += 1
                             modified = True
                             

@@ -283,6 +283,9 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
             for scenario_name, scenario_items in conversations_data.items():
                 if not isinstance(scenario_items, list):
                     continue
+                # For text-only benchmark, skip multimodal conversations entirely
+                if not use_multimodal and scenario_name == "multimodal":
+                    continue
                 
                 # Special handling for knowledge_query: filter by highest idx_repeat per preference
                 if scenario_name == "knowledge_query":
@@ -300,7 +303,14 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                     }
                     
                     # Extract all required fields
-                    preference = item.get("preference", "sensitive_info")
+                    # Handle both 'preference' and 'sensitive_info' keys
+                    if "sensitive_info" in item:
+                        preference = item.get("sensitive_info", "")
+                        sensitive_info = True
+                    else:
+                        preference = item.get("preference", "")
+                        sensitive_info = False
+                    
                     pref_type = item.get("pref_type", "")
                     topic_preference = item.get("topic_preference", "")
                     topic_query = item.get("topic_query", "")
@@ -309,10 +319,18 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                     who = item.get("who", "")
                     updated = item.get("updated", False)
                     prev_pref = item.get("prev_pref", "")
-                    sensitive_info = True if "sensitive_info" in item else False
                     
                     # Keep conversations as properly formatted JSON string
                     conversations = item.get("conversations", [])
+                    # For ask_to_forget, only keep items whose last turn is assistant
+                    if pref_type == "ask_to_forget":
+                        last_turn_is_assistant = False
+                        if isinstance(conversations, list) and len(conversations) > 0:
+                            last_message = conversations[-1]
+                            if isinstance(last_message, dict):
+                                last_turn_is_assistant = last_message.get("role") == "assistant"
+                        if not last_turn_is_assistant:
+                            continue
                     conversations_json = json.dumps(conversations, ensure_ascii=False) if conversations else ""
                     
                     # Get total tokens from both chat history versions
@@ -335,7 +353,8 @@ def process_persona_file(file_path: str, persona_number: int, use_multimodal: bo
                     ) if active_128k_link else None
                     
                     # Skip this row if either distance_from_related_snippet_to_query is 0
-                    if tokens_to_snippet_32k == 0 or tokens_to_snippet_128k == 0:
+                    # (but only for non-sensitive_info items, as sensitive_info items might have different patterns)
+                    if not sensitive_info and (tokens_to_snippet_32k == 0 or tokens_to_snippet_128k == 0):
                         continue
                     
                     # Create row for this user_query
@@ -669,7 +688,15 @@ def print_split_summary_statistics(train_df: pd.DataFrame, val_df: pd.DataFrame,
             for df in datasets.values():
                 all_values.update(df[col].unique())
             
-            for value in sorted(all_values):
+            # Sort values, handling mixed types safely
+            try:
+                # Try normal sorting first (works if all same type)
+                sorted_values = sorted(all_values)
+            except TypeError:
+                # If mixed types, convert all to strings for sorting
+                sorted_values = sorted(all_values, key=str)
+            
+            for value in sorted_values:
                 counts = []
                 for name, df in datasets.items():
                     count = len(df[df[col] == value])
@@ -706,18 +733,12 @@ def print_split_summary_statistics(train_df: pd.DataFrame, val_df: pd.DataFrame,
 
 
 def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_split: float = 0.8, 
-                        min_coverage: int = 100, random_seed: int = 42) -> None:
+                        random_seed: int = 42) -> None:
     """
-    Split benchmark data into train, validation, and benchmark sets with separate persona IDs.
-    
-    The benchmark set will use a completely separate set of persona IDs from train/val sets.
-    
-    Args:
-        input_file: Path to the input CSV file
-        benchmark_size: Size of the benchmark set (default 5000)
-        train_val_split: Ratio for train/val split of remaining data (default 0.8)
-        min_coverage: Minimum coverage per variable value (default 100)
-        random_seed: Random seed for reproducibility
+    Simplified split:
+    - Shuffle persona IDs 0..999
+    - Add rows to benchmark in shuffled order until benchmark_size is reached
+    - Split remaining rows into train/val by ratio
     """
     print(f"Loading data from {input_file}...")
     
@@ -729,105 +750,55 @@ def split_benchmark_data(input_file: str, benchmark_size: int = 5000, train_val_
     random.seed(random_seed)
     np.random.seed(random_seed)
     
-    # Step 1: Separate personas by ID for benchmark vs train/val
-    print(f"\nStep 1: Separating persona IDs for benchmark vs train/val...")
+    # Step 1: Shuffle persona IDs 0..999 and fill benchmark to target size
+    print(f"\nStep 1: Shuffling persona IDs 0..999 and filling benchmark to {benchmark_size} rows...")
+    shuffled_personas = list(range(1000))
+    np.random.shuffle(shuffled_personas)
     
-    # Get all unique persona IDs and shuffle them
-    unique_personas = df['persona_id'].unique()
-    np.random.shuffle(unique_personas)
-    print(f"Total unique personas: {len(unique_personas)}")
+    selected_benchmark_indices = []
+    rows_collected = 0
     
-    # Try different benchmark persona counts to find one that gives us enough data
-    benchmark_personas_needed = None
-    benchmark_df = None
-    
-    # Start with a reasonable estimate and adjust
-    for num_benchmark_personas in range(50, min(200, len(unique_personas)), 10):
-        benchmark_persona_ids = unique_personas[:num_benchmark_personas]
-        candidate_benchmark_df = df[df['persona_id'].isin(benchmark_persona_ids)]
-        
-        print(f"  Trying {num_benchmark_personas} personas: {len(candidate_benchmark_df)} rows available")
-        
-        if len(candidate_benchmark_df) >= benchmark_size:
-            benchmark_personas_needed = num_benchmark_personas
-            benchmark_df = candidate_benchmark_df
+    for persona_id in shuffled_personas:
+        if rows_collected >= benchmark_size:
+            break
+        persona_rows = df[df['persona_id'] == persona_id]
+        if len(persona_rows) == 0:
+            continue
+        remaining_needed = benchmark_size - rows_collected
+        if len(persona_rows) <= remaining_needed:
+            selected_benchmark_indices.extend(persona_rows.index.tolist())
+            rows_collected += len(persona_rows)
+        else:
+            sampled_indices = persona_rows.sample(n=remaining_needed, random_state=random_seed).index.tolist()
+            selected_benchmark_indices.extend(sampled_indices)
+            rows_collected += remaining_needed
             break
     
-    if benchmark_df is None:
-        # If we can't get enough data, use all available personas for benchmark
-        print(f"  Warning: Cannot reach target size {benchmark_size} with available personas")
-        benchmark_persona_ids = unique_personas
-        benchmark_df = df[df['persona_id'].isin(benchmark_persona_ids)]
-        benchmark_personas_needed = len(unique_personas)
-    else:
-        benchmark_persona_ids = unique_personas[:benchmark_personas_needed]
-    
-    print(f"Selected {benchmark_personas_needed} personas for benchmark set")
-    print(f"Benchmark persona IDs range: {min(benchmark_persona_ids)} to {max(benchmark_persona_ids)}")
-    
-    # Step 2: Sample from benchmark personas to get target size with coverage
-    print(f"\nStep 2: Sampling {benchmark_size} rows from benchmark personas...")
-    
-    # Ensure coverage for key variables within the benchmark persona set
-    benchmark_coverage_df = ensure_coverage(benchmark_df, min_coverage)
-    
-    # If coverage selection is already enough, trim to target size
-    if len(benchmark_coverage_df) >= benchmark_size:
-        final_benchmark_df = benchmark_coverage_df.sample(n=benchmark_size, random_state=random_seed)
-    else:
-        # Sample additional rows to reach target size
-        additional_needed = benchmark_size - len(benchmark_coverage_df)
-        remaining_benchmark = benchmark_df.drop(benchmark_coverage_df.index)
-        
-        if len(remaining_benchmark) >= additional_needed:
-            additional_df = remaining_benchmark.sample(n=additional_needed, random_state=random_seed)
-            final_benchmark_df = pd.concat([benchmark_coverage_df, additional_df])
-        else:
-            # Take all available
-            final_benchmark_df = benchmark_df
-    
+    final_benchmark_df = df.loc[selected_benchmark_indices]
     print(f"Final benchmark set size: {len(final_benchmark_df)}")
     print(f"Benchmark uses {len(final_benchmark_df['persona_id'].unique())} unique personas")
     
-    # Step 3: Use remaining personas for train/val split
-    remaining_persona_ids = unique_personas[benchmark_personas_needed:]
-    train_val_df = df[df['persona_id'].isin(remaining_persona_ids)]
-    
-    print(f"\nStep 3: Splitting remaining {len(train_val_df)} rows from {len(remaining_persona_ids)} personas into train/val...")
+    # Step 2: Use remaining rows for train/val split
+    remaining_df = df.drop(index=selected_benchmark_indices)
+    print(f"\nStep 2: Splitting remaining {len(remaining_df)} rows into train/val...")
     
     # Calculate train/val sizes
-    train_size = int(len(train_val_df) * train_val_split)
-    val_size = len(train_val_df) - train_size
+    train_size = int(len(remaining_df) * train_val_split)
+    val_size = len(remaining_df) - train_size
     
     print(f"Train size: {train_size} ({train_val_split:.1%})")
     print(f"Validation size: {val_size} ({1-train_val_split:.1%})")
     
     # Shuffle and split train/val data
-    train_val_shuffled = train_val_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
+    train_val_shuffled = remaining_df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
     train_df = train_val_shuffled.iloc[:train_size]
     val_df = train_val_shuffled.iloc[train_size:]
     
-    # Verify no persona ID overlap
-    benchmark_persona_set = set(final_benchmark_df['persona_id'].unique())
-    train_persona_set = set(train_df['persona_id'].unique())
-    val_persona_set = set(val_df['persona_id'].unique())
-    
-    overlap_benchmark_train = benchmark_persona_set.intersection(train_persona_set)
-    overlap_benchmark_val = benchmark_persona_set.intersection(val_persona_set)
-    overlap_train_val = train_persona_set.intersection(val_persona_set)
-    
+    # Summary counts
     print(f"\nPersona ID verification:")
-    print(f"  Benchmark personas: {len(benchmark_persona_set)}")
-    print(f"  Train personas: {len(train_persona_set)}")
-    print(f"  Val personas: {len(val_persona_set)}")
-    print(f"  Benchmark-Train overlap: {len(overlap_benchmark_train)} (should be 0)")
-    print(f"  Benchmark-Val overlap: {len(overlap_benchmark_val)} (should be 0)")
-    print(f"  Train-Val overlap: {len(overlap_train_val)} (expected: some)")
-    
-    if len(overlap_benchmark_train) > 0 or len(overlap_benchmark_val) > 0:
-        print("  WARNING: Benchmark set shares persona IDs with train/val sets!")
-    else:
-        print("  ✓ Benchmark set has completely separate persona IDs from train/val")
+    print(f"  Benchmark personas: {len(set(final_benchmark_df['persona_id'].unique()))}")
+    print(f"  Train personas: {len(set(train_df['persona_id'].unique()))}")
+    print(f"  Val personas: {len(set(val_df['persona_id'].unique()))}")
     
     # Generate output filenames
     input_path = Path(input_file)
@@ -864,10 +835,9 @@ def main():
                        help="Split the generated benchmark files into train/val/benchmark sets")
     parser.add_argument("--benchmark-size", type=int, default=5000,
                        help="Size of benchmark set when splitting (default: 5000)")
-    parser.add_argument("--train-val-split", type=float, default=0.8,
-                       help="Train/validation split ratio when splitting (default: 0.8)")
-    parser.add_argument("--min-coverage", type=int, default=100,
-                       help="Minimum coverage per variable value when splitting (default: 100)")
+    parser.add_argument("--train-val-split", type=float, default=0.9,
+                       help="Train/validation split ratio when splitting (default: 0.9)")
+    
     parser.add_argument("--random-seed", type=int, default=42,
                        help="Random seed for reproducibility when splitting (default: 42)")
     
@@ -897,7 +867,7 @@ def main():
         print(f"Split parameters:")
         print(f"  Benchmark size: {args.benchmark_size}")
         print(f"  Train/val split: {args.train_val_split:.1%}/{1-args.train_val_split:.1%}")
-        print(f"  Minimum coverage: {args.min_coverage}")
+        
         print(f"  Random seed: {args.random_seed}")
         
         # Split text benchmark
@@ -909,7 +879,6 @@ def main():
                 args.output_text,
                 args.benchmark_size,
                 args.train_val_split,
-                args.min_coverage,
                 args.random_seed
             )
         
@@ -922,7 +891,6 @@ def main():
                 args.output_multimodal,
                 args.benchmark_size,
                 args.train_val_split,
-                args.min_coverage,
                 args.random_seed
             )
         
