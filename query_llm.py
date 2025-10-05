@@ -276,29 +276,38 @@ class QueryLLM:
                 print(utils.Colors.WARNING + f'Error getting Gemini response: {e}' + utils.Colors.ENDC)
                 content = None
         elif self.is_claude:
-            # Call Claude API - uses similar format to OpenAI but different client
+            # Call Claude API
             try:
-                # Claude expects messages in OpenAI format but needs system messages separated
-                system_messages = [msg['content'] for msg in messages if msg.get('role') == 'system']
-                non_system_messages = [msg for msg in messages if msg.get('role') != 'system']
+                # Claude requires separating system messages from the conversation
+                # Convert all messages to user/assistant format (Claude doesn't accept 'system' role in messages)
+                claude_messages = []
+                for msg in messages:
+                    role = msg.get('role')
+                    content_text = msg.get('content', '')
+                    
+                    # Handle content that might be a list (for multimodal messages)
+                    if isinstance(content_text, list):
+                        text_parts = [item.get("text", "") for item in content_text if item.get("type") == "text"]
+                        content_text = " ".join(text_parts)
+                    
+                    # Convert system messages to user messages for Claude
+                    if role == 'system':
+                        role = 'user'
+                    
+                    # Only keep user and assistant messages
+                    if role in ['user', 'assistant'] and content_text:
+                        claude_messages.append({
+                            'role': role,
+                            'content': content_text
+                        })
                 
-                # Combine system messages if multiple exist
-                system_content = "\n\n".join(system_messages) if system_messages else None
-                
-                # Call Claude API
-                if system_content:
-                    response = self.client.messages.create(
-                        model=self.model,
-                        max_tokens=4096,
-                        system=system_content,
-                        messages=non_system_messages
-                    )
-                else:
-                    response = self.client.messages.create(
-                        model=self.model,
-                        max_tokens=4096,
-                        messages=non_system_messages
-                    )
+                # Call Claude API with a simple system prompt
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=4096,
+                    system="You are a helpful assistant.",
+                    messages=claude_messages
+                )
                 
                 content = response.content[0].text
             except Exception as e:
