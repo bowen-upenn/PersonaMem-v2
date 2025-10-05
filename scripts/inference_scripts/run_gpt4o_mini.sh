@@ -20,6 +20,7 @@ DEFAULT_ARGS=(
     --eval_mode mcq
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
+    --size 32k
 )
 
 # Run inference with default args plus any additional args passed to script
