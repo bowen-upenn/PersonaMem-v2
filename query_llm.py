@@ -18,6 +18,23 @@ from collections import defaultdict
 from dotenv import load_dotenv
 
 
+# Import Gemini-related libraries
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("Warning: google-generativeai not installed. Gemini models will not be available.")
+
+# Import Claude/Anthropic libraries
+try:
+    import anthropic
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+    print("Warning: anthropic not installed. Claude models will not be available.")
+
+
 class QueryLLM:
     def __init__(self, args, rate_limit_per_min=50):
         self.args = args
@@ -32,7 +49,50 @@ class QueryLLM:
 
 
     def _setup_client(self):
-        """Setup OpenAI or Azure OpenAI client based on environment variables."""
+        """Setup OpenAI, Azure OpenAI, Gemini, or Claude client based on environment variables."""
+        model_name = self.args['models']['llm_model']
+        
+        # Check if this is a Gemini model
+        if re.search(r'gemini', model_name, re.IGNORECASE):
+            if not GEMINI_AVAILABLE:
+                raise ValueError("google-generativeai package is not installed. Please install it with: pip install google-generativeai")
+            
+            gemini_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            if not gemini_api_key:
+                raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable not set")
+            
+            print(f"Using Google Gemini configuration for model: {model_name}")
+            genai.configure(api_key=gemini_api_key)
+            self.client = genai
+            # Add 'models/' prefix if not already present
+            if not model_name.startswith('models/'):
+                self.model = f"models/{model_name}"
+            else:
+                self.model = model_name
+            self.is_gemini = True
+            self.is_claude = False
+            return
+        
+        # Check if this is a Claude model
+        if re.search(r'claude', model_name, re.IGNORECASE):
+            if not CLAUDE_AVAILABLE:
+                raise ValueError("anthropic package is not installed. Please install it with: pip install anthropic")
+            
+            claude_api_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
+            if not claude_api_key:
+                raise ValueError("ANTHROPIC_API_KEY or CLAUDE_API_KEY environment variable not set")
+            
+            print(f"Using Anthropic Claude configuration for model: {model_name}")
+            self.client = anthropic.Anthropic(api_key=claude_api_key)
+            self.model = model_name
+            self.is_gemini = False
+            self.is_claude = True
+            return
+        
+        # Original OpenAI/Azure setup
+        self.is_gemini = False
+        self.is_claude = False
+        
         # Check for Azure OpenAI configuration first
         azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         azure_key = os.getenv("AZURE_OPENAI_KEY")
@@ -64,7 +124,9 @@ class QueryLLM:
                 raise ValueError(
                     "No valid LLM configuration found. Please set either:\n"
                     "Microsoft Azure with AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME, and AZURE_OPENAI_API_VERSION\n"
-                    "or OpenAI with OPENAI_KEY."
+                    "or OpenAI with OPENAI_KEY\n"
+                    "or Google Gemini with GOOGLE_API_KEY or GEMINI_API_KEY\n"
+                    "or Anthropic Claude with ANTHROPIC_API_KEY or CLAUDE_API_KEY."
                 )
 
 
@@ -74,6 +136,48 @@ class QueryLLM:
             thread_id = threading.get_ident()
         
         self.thread_histories[thread_id] = []
+
+
+    def _openai_to_gemini_history(self, openai_messages):
+        """
+        Convert OpenAI-style messages to Gemini chat history format.
+
+        Args:
+            openai_messages (list of dict): Each dict has "role" and "content".
+
+        Returns:
+            list: Gemini-style history (list of dicts with 'role' and 'parts').
+        """
+        gemini_history = []
+
+        for msg in openai_messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+
+            # Handle content that might be a list (for multimodal messages)
+            if isinstance(content, list):
+                # Extract text from multimodal content
+                text_parts = [item.get("text", "") for item in content if item.get("type") == "text"]
+                content = " ".join(text_parts)
+
+            if not content:
+                continue  # Skip empty content
+
+            # Map OpenAI roles to Gemini roles
+            # Gemini uses 'user' and 'model' (not 'assistant')
+            if role == "user" or role == "system":
+                gemini_role = "user"
+            elif role == "assistant":
+                gemini_role = "model"
+            else:
+                continue  # Skip unsupported roles
+
+            gemini_history.append({
+                "role": gemini_role,
+                "parts": [{"text": content}]
+            })
+
+        return gemini_history
 
 
     def search_images(self, pref: str):
@@ -158,18 +262,70 @@ class QueryLLM:
             else:
                 messages = curr_message
 
-        # Call the Chat Completions API
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-        )
+        # Call the appropriate API based on model type
+        if self.is_gemini:
+            # Convert OpenAI-style messages to Gemini format
+            gemini_messages = self._openai_to_gemini_history(messages)
+            
+            try:
+                # Create GenerativeModel instance and call generate_content
+                model = self.client.GenerativeModel(self.model)
+                response = model.generate_content(gemini_messages)
+                content = response.text
+            except Exception as e:
+                print(utils.Colors.WARNING + f'Error getting Gemini response: {e}' + utils.Colors.ENDC)
+                content = None
+        elif self.is_claude:
+            # Call Claude API
+            try:
+                # Claude requires separating system messages from the conversation
+                # Convert all messages to user/assistant format (Claude doesn't accept 'system' role in messages)
+                claude_messages = []
+                for msg in messages:
+                    role = msg.get('role')
+                    content_text = msg.get('content', '')
+                    
+                    # Handle content that might be a list (for multimodal messages)
+                    if isinstance(content_text, list):
+                        text_parts = [item.get("text", "") for item in content_text if item.get("type") == "text"]
+                        content_text = " ".join(text_parts)
+                    
+                    # Convert system messages to user messages for Claude
+                    if role == 'system':
+                        role = 'user'
+                    
+                    # Only keep user and assistant messages
+                    if role in ['user', 'assistant'] and content_text:
+                        claude_messages.append({
+                            'role': role,
+                            'content': content_text
+                        })
+                
+                # Call Claude API with a simple system prompt
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=4096,
+                    system="You are a helpful assistant.",
+                    messages=claude_messages
+                )
+                
+                content = response.content[0].text
+            except Exception as e:
+                print(utils.Colors.WARNING + f'Error getting Claude response: {e}' + utils.Colors.ENDC)
+                content = None
+        else:
+            # Call OpenAI/Azure OpenAI Chat Completions API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+            )
 
-        # Extract content
-        try:
-            content = response.choices[0].message.content
-        except Exception as e:
-            print(utils.Colors.WARNING + f'Error getting response: {e}' + utils.Colors.ENDC)
-            content = None
+            # Extract content
+            try:
+                content = response.choices[0].message.content
+            except Exception as e:
+                print(utils.Colors.WARNING + f'Error getting response: {e}' + utils.Colors.ENDC)
+                content = None
 
         if use_history:
             if isinstance(prompt, list):

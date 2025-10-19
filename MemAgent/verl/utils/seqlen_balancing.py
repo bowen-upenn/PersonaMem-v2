@@ -218,8 +218,8 @@ def rearrange_micro_batches(batch: TensorDict, max_token_len, dp_group=None):
     and the number of valid tokens in each micro batch is well balanced.
     """
     # this is per local micro_bsz
-    max_seq_len = batch["attention_mask"].shape[-1]
-    assert max_token_len >= max_seq_len, f"max_token_len must be greater than the sequence length. Got {max_token_len=} and {max_seq_len=}"
+    # max_seq_len = batch["attention_mask"].shape[-1]
+    # assert max_token_len >= max_seq_len, f"max_token_len must be greater than the sequence length. Got {max_token_len=} and {max_seq_len=}"
 
     seq_len_effective: torch.Tensor = batch["attention_mask"].sum(dim=1)
     total_seqlen = seq_len_effective.sum().item()
@@ -230,55 +230,21 @@ def rearrange_micro_batches(batch: TensorDict, max_token_len, dp_group=None):
         num_micro_batches = num_micro_batches.cpu().item()
 
     seq_len_effective = seq_len_effective.tolist()
-    
-    # Ensure seq_len_effective is a flat list of integers
-    if isinstance(seq_len_effective, list) and len(seq_len_effective) > 0:
-        if isinstance(seq_len_effective[0], list):
-            # Flatten if it's a nested list
-            seq_len_effective = [item for sublist in seq_len_effective for item in sublist]
-        # Ensure all items are integers
-        seq_len_effective = [int(x) for x in seq_len_effective]
-    
-    max_partitions = len(seq_len_effective)
-    assert max_partitions > 0, "Attempting to split an empty tensor batch"
-    if num_micro_batches > max_partitions:
-        rank_info = ""
-        if dist.is_initialized():
-            try:
-                rank_info = f"[rank {dist.get_rank()}] "
-            except RuntimeError:
-                rank_info = ""
-        print(f"{rank_info}Clamping micro batch count from {num_micro_batches} to {max_partitions} (limited by available samples)")
-        num_micro_batches = max_partitions
+    assert num_micro_batches <= len(seq_len_effective)
 
     micro_bsz_idx = get_seqlen_balanced_partitions(seq_len_effective, num_micro_batches, equal_size=False)
 
     micro_batches = []
-    filtered_partitions = []
 
     for partition in micro_bsz_idx:
         curr_micro_batch = []
         for idx in partition:
             curr_micro_batch.append(batch[idx : idx + 1])
-        if not curr_micro_batch:
-            continue
-
         curr_micro_batch = torch.cat(curr_micro_batch)
 
-        # Skip partitions that collapse to an empty tensor/tensordict (can happen when global sync inflates chunk count)
-        numel = curr_micro_batch.numel() if hasattr(curr_micro_batch, "numel") else None
-        if numel is None and hasattr(curr_micro_batch, "batch_size"):
-            try:
-                numel = int(torch.prod(torch.tensor(curr_micro_batch.batch_size)))
-            except Exception:
-                numel = None
-        if numel == 0:
-            continue
-
         micro_batches.append(curr_micro_batch)
-        filtered_partitions.append(partition)
 
-    return micro_batches, filtered_partitions
+    return micro_batches, micro_bsz_idx
 
 
 def get_reverse_idx(idx_map):

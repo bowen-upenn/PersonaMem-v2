@@ -1,10 +1,10 @@
 #!/bin/bash
-# Inference script for GPT-5-mini model
-# Usage: ./run_gpt5_mini.sh [additional_args]
+# Inference script for Claude 3.5 Sonnet model
+# Usage: ./run_claude_sonnet.sh [additional_args]
 
 set -e
 
-MODEL_NAME="gpt-5-mini"
+MODEL_NAME="claude-3-5-sonnet-20241022"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -28,15 +28,3 @@ python inference.py "${DEFAULT_ARGS[@]}" "$@"
 
 echo "Inference completed for ${MODEL_NAME} with multimodal mode"
 
-
-# # Default arguments
-# DEFAULT_ARGS=(
-#     --model_name "${MODEL_NAME}"
-#     --eval_mode mcq
-#     --result_path "results/${MODEL_NAME}/"
-# )
-
-# # Run inference with default args plus any additional args passed to script
-# python inference.py "${DEFAULT_ARGS[@]}" "$@"
-
-# echo "Inference completed for ${MODEL_NAME}"

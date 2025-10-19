@@ -18,6 +18,7 @@ This trainer supports model-agonistic model initialization with huggingface
 
 import json
 import os
+import time
 import uuid
 from collections import defaultdict
 from contextlib import contextmanager
@@ -988,8 +989,10 @@ class RayPPOTrainer:
             if self.config.trainer.get("val_only", False):
                 return
 
-        # add tqdm
-        progress_bar = tqdm(total=self.total_training_steps, initial=self.global_steps, desc="Training Progress")
+        # add tqdm with yellow color
+        progress_bar = tqdm(total=self.total_training_steps, initial=self.global_steps, 
+                           desc="\033[93mTraining Progress\033[0m", 
+                           bar_format='\033[93m{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]\033[0m')
 
         # we start from step 1
         self.global_steps += 1
@@ -998,19 +1001,25 @@ class RayPPOTrainer:
         # Calculate total batches per epoch for progress tracking
         total_batches_per_epoch = len(self.train_dataloader)
         total_epochs = self.config.trainer.total_epochs
+        
+        # Initialize timing variables for ETA calculation
+        training_start_time = time.time()
+        epoch_start_time = time.time()
+        batch_times = []  # Keep track of recent batch times for better estimation
 
         for epoch in range(total_epochs):
             # Create epoch-level progress bar with colored output
             epoch_desc = f"\033[93mEpoch {epoch+1}/{total_epochs}\033[0m"  # Yellow color
-            epoch_progress = tqdm(total=total_batches_per_epoch, desc=epoch_desc, leave=False)
+            epoch_progress = tqdm(total=total_batches_per_epoch, desc=epoch_desc, leave=False,
+                                bar_format='\033[93m{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]\033[0m')
             
+            # Reset epoch timing
+            epoch_start_time = time.time()
             batch_idx = 0
-            for batch_dict in tqdm(self.train_dataloader):
+            
+            for batch_dict in self.train_dataloader:
+                batch_start_time = time.time()
                 batch_idx += 1
-                
-                # Print colored progress information
-                progress_info = f"\033[93mEpoch {epoch+1}/{total_epochs} | Batch {batch_idx}/{total_batches_per_epoch}\033[0m"
-                print(progress_info)
                 metrics = {}
                 timing_raw = {}
 
@@ -1346,6 +1355,45 @@ class RayPPOTrainer:
 
                 # TODO: make a canonical logger that supports various backend
                 logger.log(data=metrics, step=self.global_steps)
+
+                # Calculate timing and ETA
+                batch_end_time = time.time()
+                batch_duration = batch_end_time - batch_start_time
+                batch_times.append(batch_duration)
+                
+                # Keep only the last 10 batch times for better estimation
+                if len(batch_times) > 10:
+                    batch_times.pop(0)
+                
+                # Calculate average batch time
+                avg_batch_time = sum(batch_times) / len(batch_times)
+                
+                # Calculate ETA for current epoch
+                remaining_batches_epoch = total_batches_per_epoch - batch_idx
+                eta_epoch_seconds = remaining_batches_epoch * avg_batch_time
+                
+                # Calculate ETA for entire training
+                remaining_batches_total = (total_epochs - epoch - 1) * total_batches_per_epoch + remaining_batches_epoch
+                eta_total_seconds = remaining_batches_total * avg_batch_time
+                
+                # Calculate elapsed time
+                elapsed_total = batch_end_time - training_start_time
+                elapsed_epoch = batch_end_time - epoch_start_time
+                
+                # Format time strings
+                def format_time(seconds):
+                    if seconds < 60:
+                        return f"{seconds:.1f}s"
+                    elif seconds < 3600:
+                        return f"{seconds//60:.0f}m{seconds%60:.0f}s"
+                    else:
+                        return f"{seconds//3600:.0f}h{(seconds%3600)//60:.0f}m{seconds%60:.0f}s"
+                
+                # Print enhanced progress information with timing
+                progress_info = (f"\033[93mEpoch {epoch+1}/{total_epochs} | Batch {batch_idx}/{total_batches_per_epoch} | "
+                               f"Elapsed: {format_time(elapsed_total)} | ETA Epoch: {format_time(eta_epoch_seconds)} | "
+                               f"ETA Total: {format_time(eta_total_seconds)} | Rate: {1/avg_batch_time:.2f}it/s\033[0m")
+                print(progress_info)
 
                 if is_last_step:
                     pprint(f"Final validation metrics: {last_val_metrics}")

@@ -24,7 +24,7 @@ class PersonaBenchmarkEvaluator:
         self.config = self._load_config(config_path)
         
         # Override model name if specified
-        if model_name:
+        if model_name and model_name in self._map_model_name(model_name):
             self.config['models']['llm_model'] = self._map_model_name(model_name)
         
         self.query_llm = QueryLLM(self.config)
@@ -51,7 +51,17 @@ class PersonaBenchmarkEvaluator:
             'o1': 'o1',
             'o1-mini': 'o1-mini',
             'o3-mini': 'o3-mini',
-            'o4-mini': 'o4-mini'
+            'o4-mini': 'o4-mini',
+            'gemini-2.5-pro': 'gemini-2.5-pro',
+            'gemini-2.5-flash': 'gemini-2.5-flash',
+            'gemini-pro': 'gemini-2.5-pro',
+            'gemini-flash': 'gemini-2.5-flash',
+            'claude-3-5-sonnet': 'claude-3-5-sonnet-20241022',
+            'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
+            'claude-3-5-haiku': 'claude-3-5-haiku-20241022',
+            'claude-3-5-haiku-20241022': 'claude-3-5-haiku-20241022',
+            'claude-sonnet': 'claude-3-5-sonnet-20241022',
+            'claude-haiku': 'claude-3-5-haiku-20241022'
         }
         
         return model_mapping.get(model_name, model_name)
@@ -114,7 +124,7 @@ class PersonaBenchmarkEvaluator:
     
     
     def evaluate_row(self, row: Dict[str, Any], eval_mode: str = "mcq", 
-                    use_multimodal: bool = False) -> Dict[str, Any]:
+                    use_multimodal: bool = False, size: str = '32k') -> Dict[str, Any]:
         """Evaluate a single row from the benchmark."""
         # Parse user query from JSON/Python dict string and append to chat history
         try:
@@ -134,24 +144,20 @@ class PersonaBenchmarkEvaluator:
                     "content": str(row['user_query']).strip('"').strip("'")
                 }
         
-        # Load appropriate chat history
+        # Load appropriate chat history based on size parameter
         try:
-            if use_multimodal:
-                # Try the correct column name first, then fallback to old format
-                if 'chat_history_32k_link' in row:
-                    chat_history_path = row['chat_history_32k_link']
-                elif 'chat_history_link' in row:
-                    chat_history_path = row['chat_history_link']
-                else:
-                    raise KeyError("chat_history_32k_link")
+            # Construct column name based on size (e.g., 'chat_history_32k_link' or 'chat_history_128k_link')
+            size_column = f'chat_history_{size}_link'
+            
+            # Try to get the chat history path
+            if size_column in row:
+                chat_history_path = row[size_column]
+            # Fallback to generic 'chat_history_link' if size-specific column not found
+            elif 'chat_history_link' in row:
+                chat_history_path = row['chat_history_link']
+                print(f"  Warning: {size_column} not found, using generic chat_history_link")
             else:
-                # Use 32k chat history by default (could also use 128k)
-                if 'chat_history_32k_link' in row:
-                    chat_history_path = row['chat_history_32k_link']
-                elif 'chat_history_link' in row:
-                    chat_history_path = row['chat_history_link']
-                else:
-                    raise KeyError("chat_history_32k_link")
+                raise KeyError(f"chat_history_{size}_link or chat_history_link")
         except KeyError as e:
             # Handle missing column error
             available_columns = list(row.keys())
@@ -230,14 +236,24 @@ class PersonaBenchmarkEvaluator:
         if not response:
             return ""
         
-        # Look for "Final Answer: [Letter]" pattern
+        # Look for various answer patterns
         import re
         patterns = [
+            # Gemini LaTeX format: $\boxed{B}$ or \boxed{B}
+            r'\$\\boxed\{([A-Z])\}\$',
+            r'\\boxed\{([A-Z])\}',
+            # Standard formats
             r'Final Answer:\s*([A-Z])',
             r'final answer:\s*([A-Z])',
             r'Answer:\s*([A-Z])',
             r'answer:\s*([A-Z])',
-            r'\b([A-Z])\.\s*$'  # Single letter at end
+            # The final answer is [Letter]
+            r'final answer is\s*\$?\\boxed\{([A-Z])\}\$?',
+            r'final answer is\s*([A-Z])',
+            r'the answer is\s*\$?\\boxed\{([A-Z])\}\$?',
+            r'the answer is\s*([A-Z])',
+            # Single letter at end
+            r'\b([A-Z])\.\s*$'
         ]
         
         for pattern in patterns:
@@ -260,7 +276,7 @@ class PersonaBenchmarkEvaluator:
     
 
     def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
-                      use_multimodal: bool = False, max_items: int = None) -> str:
+                      use_multimodal: bool = False, max_items: int = None, size: str = '32k') -> str:
         """Run evaluation on the benchmark dataset."""
         # Auto-select benchmark file if not specified
         if benchmark_file is None:
@@ -287,7 +303,7 @@ class PersonaBenchmarkEvaluator:
         
         # Create individual results directory for this run
         run_timestamp = int(time.time())
-        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}"
+        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}"
         individual_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Process each row and save individually
@@ -313,7 +329,7 @@ class PersonaBenchmarkEvaluator:
                 continue
             
             try:
-                result = self.evaluate_row(row, eval_mode, use_multimodal)
+                result = self.evaluate_row(row, eval_mode, use_multimodal, size)
                 results.append(result)
                 processed_count += 1
                 
@@ -341,7 +357,7 @@ class PersonaBenchmarkEvaluator:
                 print(f"  Error result saved to {individual_file}")
         
         # Save aggregated results
-        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}.json"
+        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.json"
         
         evaluation_data = {
             'metadata': {
@@ -349,6 +365,7 @@ class PersonaBenchmarkEvaluator:
                 'model_name': self.config['models']['llm_model'],
                 'eval_mode': eval_mode,
                 'use_multimodal': use_multimodal,
+                'chat_history_size': size,
                 'total_rows': len(rows),
                 'processed_rows': processed_count,
                 'max_items': max_items,
@@ -430,10 +447,14 @@ if __name__ == "__main__":
                        help='Path to configuration file')
     # Supported models: gpt-4.1, gpt-4.1-mini, gpt-4o,  gpt-4o-mini, 
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini
+    # gemini-2.5-pro, gemini-2.5-flash, gemini-pro, gemini-flash
+    # claude-3-5-sonnet, claude-3-5-haiku, claude-sonnet, claude-haiku
     parser.add_argument('--model_name', type=str, default='gpt-5-chat',
                        help='Model name to use for evaluation (overrides config file)')
     parser.add_argument('--result_path', type=str, default='results/',
                        help='Directory to save evaluation results (default: results/)')
+    parser.add_argument('--size', type=str, default='32k',
+                       help='Chat history size to use (one of 32k, 128k). Uses chat_history_{size}_link column from benchmark CSV')
     
     args = parser.parse_args()
     
@@ -445,7 +466,8 @@ if __name__ == "__main__":
         args.benchmark_file,
         args.eval_mode,
         args.use_multimodal,
-        args.max_items
+        args.max_items,
+        args.size
     )
     
     print(f"\nEvaluation completed. Results saved to: {output_file}")

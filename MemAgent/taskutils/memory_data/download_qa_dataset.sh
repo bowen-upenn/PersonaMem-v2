@@ -5,6 +5,8 @@ fi
 echo "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json  
     out=squad.json
 http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_distractor_v1.json  
-    out=hotpotqa_dev.json" > __download.txt
+    out=hotpotqa_dev.json
+http://curtis.ml.cmu.edu/datasets/hotpot/hotpot_train_v1.1.json  
+    out=hotpotqa_train.json" > __download.txt
 aria2c -x 10 -s 10 -j 2 -i __download.txt
 rm __download.txt

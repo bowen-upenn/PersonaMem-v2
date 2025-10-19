@@ -156,4 +156,14 @@ class LLMGenerationManager:
         assert len(sample_index) == sum(active_num_list)
         assert sum(final_mask) == len(gen_batch)
         logger.info(f"ACTIVE_TRAJ_NUM: {active_num_list}")
-        return DataProto.concat(gen_output_list), final_mask, sample_index # pyright: ignore
+        
+        # Log input_ids shapes before concatenation
+        for turn_idx, gen_output in enumerate(gen_output_list):
+            if 'input_ids' in gen_output.batch:
+                input_shape = gen_output.batch['input_ids'].shape
+                logger.info(f"[GEN_MANAGER] Turn {turn_idx}: input_ids shape = {input_shape}")
+        
+        concatenated_output = DataProto.concat(gen_output_list)
+        logger.info(f"[GEN_MANAGER] After concatenation: input_ids shape = {concatenated_output.batch['input_ids'].shape}")
+        
+        return concatenated_output, final_mask, sample_index # pyright: ignore
