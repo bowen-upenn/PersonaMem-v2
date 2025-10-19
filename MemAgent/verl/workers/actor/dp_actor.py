@@ -82,9 +82,13 @@ class DataParallelPPOActor(BasePPOActor):
                 attn_sum = attention_mask[i].sum().item()
                 
                 if resp_sum > 0 and attn_sum == 0:
-                    print(f'[FORWARD] 🚨 CRITICAL: Sample {i} has {resp_sum} response tokens but ZERO attention!')
+                    rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+                    if rank == 0:
+                        print(f'[FORWARD] 🚨 CRITICAL: Sample {i} has {resp_sum} response tokens but ZERO attention!')
                 elif resp_sum == 0:
-                    print(f'[FORWARD] ℹ️  Sample {i}: padded sample (no response tokens), attention_sum={attn_sum}')
+                    rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+                    if rank == 0:
+                        print(f'[FORWARD] ℹ️  Sample {i}: padded sample (no response tokens), attention_sum={attn_sum}')
         
         multi_modal_inputs = {}
         if "multi_modal_inputs" in micro_batch:
@@ -245,11 +249,13 @@ class DataParallelPPOActor(BasePPOActor):
             return result
         except TimeoutError as e:
             rank = torch.distributed.get_rank()
-            print(f'[POLICY Worker {rank}] TIMEOUT: {e}')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] TIMEOUT: {e}')
             return None
         except Exception as e:
             rank = torch.distributed.get_rank()
-            print(f'[POLICY Worker {rank}] ERROR in {operation_name}: {e}')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] ERROR in {operation_name}: {e}')
             return None
         finally:
             signal.signal(signal.SIGALRM, old_handler)
@@ -320,7 +326,10 @@ class DataParallelPPOActor(BasePPOActor):
 
         log_probs_lst = []
         entropy_lst = []
-        for micro_batch_idx, micro_batch in enumerate(micro_batches):
+        
+        # Add progress bar for micro-batch processing
+        from tqdm import tqdm
+        for micro_batch_idx, micro_batch in enumerate(tqdm(micro_batches, desc="Computing log probs", leave=False)):
             if isinstance(micro_batch, DataProto):
                 micro_batch = {**micro_batch.batch, **micro_batch.non_tensor_batch}
             with torch.no_grad():
@@ -363,9 +372,10 @@ class DataParallelPPOActor(BasePPOActor):
 
         # make sure we are in training mode
         self.actor_module.train()
-        print(f'[POLICY Worker {rank}] data in update_policy', len(data))
-        print(f'[POLICY Worker {rank}] update_policy: This worker received {len(data)} samples (distributed from trainer)')
-        print(f'{BLUE}[POLICY Worker {rank}] ORIGINAL BATCH INFO: Starting update_policy with total data size={len(data)} samples{RESET}')
+        if rank == 0:
+            print(f'[POLICY Worker {rank}] data in update_policy', len(data))
+            print(f'[POLICY Worker {rank}] update_policy: This worker received {len(data)} samples (distributed from trainer)')
+            print(f'{BLUE}[POLICY Worker {rank}] ORIGINAL BATCH INFO: Starting update_policy with total data size={len(data)} samples{RESET}')
 
         temperature = data.meta_info["temperature"]  # temperature must be in the data.meta_info to avoid slient error
         ######
@@ -379,7 +389,8 @@ class DataParallelPPOActor(BasePPOActor):
         # ADD: check multirun padding mask
         ######
         padded = 'no_padding_mask' in data.batch
-        print(f'[POLICY Worker {rank}] update_policy: padded={padded}')
+        if rank == 0:
+            print(f'[POLICY Worker {rank}] update_policy: padded={padded}')
         if padded:
             # Include no_padding_mask in selection for later filtering
             select_keys.append('no_padding_mask')
@@ -387,8 +398,6 @@ class DataParallelPPOActor(BasePPOActor):
         else:
             batch = data.select(batch_keys=select_keys).batch
         has_multi_modal_inputs = 'multi_modal_inputs' in data.non_tensor_batch.keys()
-
-    # Note: cross-rank dummy padding removed; we rely on per-mini-batch padding below
 
         # Split to make minibatch iterator for updating the actor
         # See PPO paper for details. https://arxiv.org/abs/1707.06347
@@ -406,35 +415,42 @@ class DataParallelPPOActor(BasePPOActor):
             # For padded data, bypass td_split and create a simple single-batch dataloader
             # since td_split seems to have issues with padded TensorDict structures
             num_mini_batches = max(1, self.config.train_batch_size // self.config.ppo_mini_batch_size)
-            print(f'[POLICY Worker {rank}] update_policy: calculated num_mini_batches={num_mini_batches}')
-            
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] update_policy: calculated num_mini_batches={num_mini_batches}')
+
             if self.config.ppo_mini_batch_size == 1:
                 # Single batch case - just use the whole batch
                 dataloader = [batch]
-                print(f'[POLICY Worker {rank}] update_policy: using single batch approach, batch len={len(batch)}')
+                if rank == 0:
+                    print(f'[POLICY Worker {rank}] update_policy: using single batch approach, batch len={len(batch)}')
             else:
                 # Multiple batches - use regular split
                 dataloader = batch.split(self.config.ppo_mini_batch_size)
-                print(f'[POLICY Worker {rank}] update_policy: using regular split with {len(dataloader)} batches')
+                if rank == 0:
+                    print(f'[POLICY Worker {rank}] update_policy: using regular split with {len(dataloader)} batches')
         else:
             dataloader = batch.split(self.config.ppo_mini_batch_size)
-            print(f'[POLICY Worker {rank}] update_policy: created normal dataloader with {len(dataloader)} batches')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] update_policy: created normal dataloader with {len(dataloader)} batches')
 
         metrics = {}
         total_valid_mini_batches = 0
         total_skipped_mini_batches = 0
         
         for epoch in range(self.config.ppo_epochs):
-            print(f'[POLICY Worker {rank}] Starting epoch {epoch}/{self.config.ppo_epochs}')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] Starting epoch {epoch}/{self.config.ppo_epochs}')
 
             for batch_idx, data in enumerate(dataloader):
                 # split batch into micro_batches
                 mini_batch = data
-                print(f'[POLICY Worker {rank}] mini_batch', len(mini_batch), 'batch_idx', batch_idx, 'len(dataloader)', len(dataloader))
+                if rank == 0:
+                    print(f'[POLICY Worker {rank}] mini_batch', len(mini_batch), 'batch_idx', batch_idx, 'len(dataloader)', len(dataloader))
 
                 # Skip empty mini-batches early
                 if len(mini_batch) == 0:
-                    print(f'[POLICY Worker {rank}] Skipping completely empty mini-batch {batch_idx}')
+                    if rank == 0:
+                        print(f'[POLICY Worker {rank}] Skipping completely empty mini-batch {batch_idx}')
                     total_skipped_mini_batches += 1
                     continue
 
@@ -442,8 +458,9 @@ class DataParallelPPOActor(BasePPOActor):
                 # Keeping dummy rows ensures identical micro-batch counts across ranks and avoids collective hangs.
                 if padded and 'no_padding_mask' in mini_batch:
                     no_padding_mask = mini_batch['no_padding_mask']
-                    print(f'[POLICY Worker {rank}] Padded mode: keeping all {len(mini_batch)} samples (real={int(no_padding_mask.sum().item())}) for cross-rank alignment')
-                
+                    if rank == 0:
+                        print(f'[POLICY Worker {rank}] Padded mode: keeping all {len(mini_batch)} samples (real={int(no_padding_mask.sum().item())}) for cross-rank alignment')
+
                 # Early validation: Check attention masks for all samples before any processing
                 # In distributed padded mode, trust the distribution logic and use response_mask for validation
                 # The ray_trainer ensures padded samples have minimal attention_mask (first token only) to prevent tensor errors
@@ -463,23 +480,28 @@ class DataParallelPPOActor(BasePPOActor):
                             print(f'[POLICY Worker {rank}] Sample {i} has no valid response tokens (response_mask sum = 0), skipping')
 
                     if len(valid_samples) == 0:
-                        print(f'[POLICY Worker {rank}] All samples in mini-batch have invalid response masks, skipping mini-batch {batch_idx}')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] All samples in mini-batch have invalid response masks, skipping mini-batch {batch_idx}')
                         total_skipped_mini_batches += 1
                         continue
                     elif len(valid_samples) < actual_batch_size:
-                        print(f'[POLICY Worker {rank}] Early filtering mini-batch from {actual_batch_size} to {len(valid_samples)} valid samples')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Early filtering mini-batch from {actual_batch_size} to {len(valid_samples)} valid samples')
                         # Create a new mini_batch with only valid samples
                         valid_indices = torch.tensor(valid_samples, device=response_mask.device)
                         mini_batch = mini_batch[valid_indices]
-                        print(f'[POLICY Worker {rank}] After early response mask filtering: new len={len(mini_batch)}')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] After early response mask filtering: new len={len(mini_batch)}')
                     else:
-                        print(f'[POLICY Worker {rank}] All {len(valid_samples)} samples in mini-batch are valid')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] All {len(valid_samples)} samples in mini-batch are valid')
                 elif padded:
                     # In distributed padded mode, samples were already carefully distributed by ray_trainer
                     # Some samples may have zero response masks as intentional padding - this is expected
                     # The attention masks are kept minimal (first token only) to prevent tensor errors
                     # Trust the distribution and process all samples
-                    print(f'[POLICY Worker {rank}] Distributed padded mode: processing all {len(mini_batch)} samples (some may be intentionally padded)')
+                    if rank == 0:
+                        print(f'[POLICY Worker {rank}] Distributed padded mode: processing all {len(mini_batch)} samples (some may be intentionally padded)')
 
                     # Quick validation: Check for any samples with zero attention but non-zero response
                     if 'attention_mask' in mini_batch and 'response_mask' in mini_batch:
@@ -501,7 +523,8 @@ class DataParallelPPOActor(BasePPOActor):
                             # elif resp_sum > 0 and attn_sum > 0:
                             #     print(f'[POLICY Worker {rank}] ✓ Sample {i}: valid sample ({resp_sum} response, {attn_sum} attention tokens)')
                 else:
-                    print(f'[POLICY Worker {rank}] No response mask validation needed for {len(mini_batch)} samples')
+                    if rank == 0:
+                        print(f'[POLICY Worker {rank}] No response mask validation needed for {len(mini_batch)} samples')
 
                 # Count this as a valid mini-batch that will be processed
                 total_valid_mini_batches += 1
@@ -515,22 +538,26 @@ class DataParallelPPOActor(BasePPOActor):
                 if isinstance(self.actor_module, FSDP) and torch.distributed.is_initialized():
                     # Increase micro-batch size to reduce NCCL collective operation frequency
                     effective_micro_batch_size = max(self.config.ppo_micro_batch_size_per_gpu, 2)
-                    print(f'[POLICY Worker {rank}] FSDP detected: using effective_micro_batch_size={effective_micro_batch_size} to reduce collective ops')
+                    if rank == 0:
+                        print(f'[POLICY Worker {rank}] FSDP detected: using effective_micro_batch_size={effective_micro_batch_size} to reduce collective ops')
                 else:
                     effective_micro_batch_size = self.config.ppo_micro_batch_size_per_gpu
                 
                 if use_fixed_micro_batch_size:
                     if effective_micro_batch_size == 1:
-                        print(f'{GREEN}[POLICY Worker {rank}] effective_micro_batch_size=1, processing entire mini_batch directly (len={len(mini_batch)}){RESET}')
+                        if rank == 0:
+                            print(f'{GREEN}[POLICY Worker {rank}] effective_micro_batch_size=1, processing entire mini_batch directly (len={len(mini_batch)}){RESET}')
                         micro_batches = [mini_batch]
-                        print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)}{RESET}')
+                        if rank == 0:
+                            print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)}{RESET}')
                     else:
                         # Use fixed micro-batch sizes
                         if has_multi_modal_inputs:
                             self.gradient_accumulation = max(1, self.config.ppo_mini_batch_size // effective_micro_batch_size)
                             num_micro_batches = mini_batch.batch.batch_size[0] // effective_micro_batch_size
                             micro_batches = data.select(select_keys, non_tensor_select_keys).chunk(num_micro_batches)
-                            print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={mini_batch.batch.batch_size[0]} (multi-modal){RESET}')
+                            if rank == 0:
+                                print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={mini_batch.batch.batch_size[0]} (multi-modal){RESET}')
                         elif padded:
                             # For padded batches, ensure mini_batch length is a multiple of effective_micro_batch_size
                             # by padding with dummy samples that yield zero loss. This prevents a smaller last micro-batch
@@ -539,7 +566,8 @@ class DataParallelPPOActor(BasePPOActor):
                             if remainder != 0:
                                 pad_count = effective_micro_batch_size - remainder
                                 pad_token_id = getattr(self.config, 'pad_token_id', 0)
-                                print(f'{GREEN}[POLICY Worker {rank}] Padding mini-batch from {len(mini_batch)} to {len(mini_batch)+pad_count} to align micro-batch size {effective_micro_batch_size}{RESET}')
+                                if rank == 0:
+                                    print(f'{GREEN}[POLICY Worker {rank}] Padding mini-batch from {len(mini_batch)} to {len(mini_batch)+pad_count} to align micro-batch size {effective_micro_batch_size}{RESET}')
 
                                 # Build padded tensors per key using first row as template
                                 new_tensors = {}
@@ -588,19 +616,22 @@ class DataParallelPPOActor(BasePPOActor):
                                     else:
                                         mini_batch = new_tensors
                                 except Exception as rewrap_err:
-                                    print(f'[POLICY Worker {rank}] Warning: Failed to rewrap padded mini-batch ({rewrap_err}); using dict')
+                                    if rank == 0:
+                                        print(f'[POLICY Worker {rank}] Warning: Failed to rewrap padded mini-batch ({rewrap_err}); using dict')
                                     mini_batch = new_tensors
 
                             # Now split into equal-sized micro-batches
                             micro_batches = [mini_batch[i:i+effective_micro_batch_size] for i in range(0, len(mini_batch), effective_micro_batch_size)]
-                            print(f'{GREEN}[POLICY Worker {rank}] Using regular split for padded batch: {len(mini_batch)} samples -> {len(micro_batches)} micro-batches of size {effective_micro_batch_size} (no samples ignored; last padded to full){RESET}')
-                            print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)} (padded){RESET}')
+                            if rank == 0:
+                                print(f'{GREEN}[POLICY Worker {rank}] Using regular split for padded batch: {len(mini_batch)} samples -> {len(micro_batches)} micro-batches of size {effective_micro_batch_size} (no samples ignored; last padded to full){RESET}')
+                                print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)} (padded){RESET}')
                         else:   
                             self.gradient_accumulation = max(1, self.config.ppo_mini_batch_size // effective_micro_batch_size)
                             # split batch into micro_batches
                             micro_batches = mini_batch.split(effective_micro_batch_size)
-                            print(f'{GREEN}[POLICY Worker {rank}] Using fixed micro-batch size with regular split: {len(mini_batch)} samples -> {len(micro_batches)} micro-batches of size {effective_micro_batch_size}{RESET}')
-                            print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)} (regular){RESET}')
+                            if rank == 0:
+                                print(f'{GREEN}[POLICY Worker {rank}] Using fixed micro-batch size with regular split: {len(mini_batch)} samples -> {len(micro_batches)} micro-batches of size {effective_micro_batch_size}{RESET}')
+                                print(f'{BLUE}[POLICY Worker {rank}] MICRO-BATCH INFO: Created {len(micro_batches)} micro-batch(es) from original mini-batch size={len(mini_batch)} (regular){RESET}')
                 # Note: Dynamic batching removed for actor updates to ensure consistent micro-batch sizes
                 # Dynamic batching is still used in compute_log_prob for memory efficiency during inference
 
@@ -618,8 +649,10 @@ class DataParallelPPOActor(BasePPOActor):
                 successful_micro_batches = 0
                 failed_micro_batches = 0
 
-                for data_idx, data in enumerate(micro_batches):
-                    print(f'[POLICY Worker {rank}] micro_batch {data_idx}/{len(micro_batches)} with micro batch size {len(data)}')
+                # Add progress bar for micro-batch processing in policy update
+                from tqdm import tqdm
+                for data_idx, data in enumerate(tqdm(micro_batches, desc=f"Policy update (worker {rank})", leave=False)):
+                    # Silent print replaced by progress bar
 
                     try:
                         # Early validation of micro-batch data
@@ -651,7 +684,7 @@ class DataParallelPPOActor(BasePPOActor):
                         # Check if this micro-batch has any valid response tokens
                         # In distributed training, we still need to do forward pass even for padded micro-batches
                         micro_batch_has_tokens = response_mask.sum().item() > 0
-                        if not micro_batch_has_tokens:
+                        if not micro_batch_has_tokens and rank == 0:
                             print(f'[POLICY Worker {rank}] Micro-batch has zero response tokens - will do forward pass but skip loss computation')
 
                         clip_ratio = self.config.clip_ratio
@@ -662,12 +695,13 @@ class DataParallelPPOActor(BasePPOActor):
                         loss_agg_mode = self.config.loss_agg_mode
 
                         # Debug tensor shapes before policy loss computation
-                        print(f'[POLICY Worker {rank}] Tensor shapes before policy loss:')
-                        print(f'[POLICY Worker {rank}]   old_log_prob shape: {old_log_prob.shape}')
-                        print(f'[POLICY Worker {rank}]   advantages shape: {advantages.shape}')
-                        print(f'[POLICY Worker {rank}]   response_mask shape: {response_mask.shape}')
-                        print(f'[POLICY Worker {rank}]   responses shape: {data["responses"].shape if "responses" in data else "N/A"}')
-                        print(f'[POLICY Worker {rank}]   input_ids shape: {data["input_ids"].shape if "input_ids" in data else "N/A"}')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Tensor shapes before policy loss:')
+                            print(f'[POLICY Worker {rank}]   old_log_prob shape: {old_log_prob.shape}')
+                            print(f'[POLICY Worker {rank}]   advantages shape: {advantages.shape}')
+                            print(f'[POLICY Worker {rank}]   response_mask shape: {response_mask.shape}')
+                            print(f'[POLICY Worker {rank}]   responses shape: {data["responses"].shape if "responses" in data else "N/A"}')
+                            print(f'[POLICY Worker {rank}]   input_ids shape: {data["input_ids"].shape if "input_ids" in data else "N/A"}')
                         
                         # all return: (bsz, response_length)
                         calculate_entropy = False
@@ -691,32 +725,38 @@ class DataParallelPPOActor(BasePPOActor):
                         
                         # Check for non-finite policy loss components early
                         if not torch.isfinite(pg_loss).all():
-                            print(f'[POLICY Worker {rank}] WARNING: Non-finite policy loss detected in micro-batch {data_idx}: pg_loss={pg_loss}')
-                            print(f'[POLICY Worker {rank}] log_prob stats: min={log_prob.min()}, max={log_prob.max()}, mean={log_prob.mean()}')
-                            print(f'[POLICY Worker {rank}] old_log_prob stats: min={old_log_prob.min()}, max={old_log_prob.max()}, mean={old_log_prob.mean()}')
-                            print(f'[POLICY Worker {rank}] advantages stats: min={advantages.min()}, max={advantages.max()}, mean={advantages.mean()}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] WARNING: Non-finite policy loss detected in micro-batch {data_idx}: pg_loss={pg_loss}')
+                                print(f'[POLICY Worker {rank}] log_prob stats: min={log_prob.min()}, max={log_prob.max()}, mean={log_prob.mean()}')
+                                print(f'[POLICY Worker {rank}] old_log_prob stats: min={old_log_prob.min()}, max={old_log_prob.max()}, mean={old_log_prob.mean()}')
+                                print(f'[POLICY Worker {rank}] advantages stats: min={advantages.min()}, max={advantages.max()}, mean={advantages.mean()}')
                             # Clip the policy loss to a reasonable range
                             max_policy_loss = self.config.get('max_policy_loss', 5.0)
                             pg_loss = torch.clamp(pg_loss, min=-max_policy_loss, max=max_policy_loss)
-                            print(f'[POLICY Worker {rank}] Clipped policy loss: {pg_loss}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Clipped policy loss: {pg_loss}')
                         
-                        print(f'[POLICY Worker {rank}] Done computing policy loss')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Done computing policy loss')
 
                         if entropy_coeff != 0:
                             entropy_loss = agg_loss(loss_mat=entropy, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
                             
                             # Check for non-finite entropy loss
                             if not torch.isfinite(entropy_loss).all():
-                                print(f'[POLICY Worker {rank}] WARNING: Non-finite entropy loss detected in micro-batch {data_idx}: entropy_loss={entropy_loss}')
-                                print(f'[POLICY Worker {rank}] entropy stats: min={entropy.min()}, max={entropy.max()}, mean={entropy.mean()}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] WARNING: Non-finite entropy loss detected in micro-batch {data_idx}: entropy_loss={entropy_loss}')
+                                    print(f'[POLICY Worker {rank}] entropy stats: min={entropy.min()}, max={entropy.max()}, mean={entropy.mean()}')
                                 # Clip the entropy loss to a reasonable range
                                 max_entropy_loss = self.config.get('max_entropy_loss', 5.0)
                                 entropy_loss = torch.clamp(entropy_loss, min=-max_entropy_loss, max=max_entropy_loss)
-                                print(f'[POLICY Worker {rank}] Clipped entropy loss: {entropy_loss}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Clipped entropy loss: {entropy_loss}')
 
                             # compute policy loss
                             policy_loss = pg_loss - entropy_loss * entropy_coeff
-                            print(f'[POLICY Worker {rank}] Done computing entropy loss')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Done computing entropy loss')
                         else:
                             policy_loss = pg_loss
 
@@ -728,18 +768,21 @@ class DataParallelPPOActor(BasePPOActor):
                             
                             # Check for non-finite KL loss
                             if not torch.isfinite(kl_loss).all():
-                                print(f'[POLICY Worker {rank}] WARNING: Non-finite KL loss detected in micro-batch {data_idx}: kl_loss={kl_loss}')
-                                print(f'[POLICY Worker {rank}] kld stats: min={kld.min()}, max={kld.max()}, mean={kld.mean()}')
-                                print(f'[POLICY Worker {rank}] ref_log_prob stats: min={ref_log_prob.min()}, max={ref_log_prob.max()}, mean={ref_log_prob.mean()}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] WARNING: Non-finite KL loss detected in micro-batch {data_idx}: kl_loss={kl_loss}')
+                                    print(f'[POLICY Worker {rank}] kld stats: min={kld.min()}, max={kld.max()}, mean={kld.mean()}')
+                                    print(f'[POLICY Worker {rank}] ref_log_prob stats: min={ref_log_prob.min()}, max={ref_log_prob.max()}, mean={ref_log_prob.mean()}')
                                 # Clip the KL loss to a reasonable range
                                 max_kl_loss = self.config.get('max_kl_loss', 5.0)
                                 kl_loss = torch.clamp(kl_loss, min=-max_kl_loss, max=max_kl_loss)
-                                print(f'[POLICY Worker {rank}] Clipped KL loss: {kl_loss}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Clipped KL loss: {kl_loss}')
 
                             policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef
                             metrics["actor/kl_loss"] = kl_loss.detach().item()
                             metrics["actor/kl_coef"] = self.config.kl_loss_coef
-                            print(f'[POLICY Worker {rank}] Done computing KL loss')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Done computing KL loss')
 
                         acc_grad_mode = grad_acc_mode(loss_agg_mode)
                         if acc_grad_mode == "seq":
@@ -749,7 +792,8 @@ class DataParallelPPOActor(BasePPOActor):
                                 real_mini = int(mini_batch['__real_sample_mask__'].sum().item())
                                 if real_mini == 0:
                                     # Zero-loss backward to keep collectives aligned across ranks
-                                    print(f'[POLICY Worker {rank}] Zero real samples in micro-batch; performing zero-loss backward for seq acc mode')
+                                    if rank == 0:
+                                        print(f'[POLICY Worker {rank}] Zero real samples in micro-batch; performing zero-loss backward for seq acc mode')
                                     (policy_loss.sum() * 0.0).backward()
                                     successful_micro_batches += 1
                                     continue
@@ -763,7 +807,8 @@ class DataParallelPPOActor(BasePPOActor):
                             mini_batch_tokens = mini_batch_token_nums.item()
                             if mini_batch_tokens == 0:
                                 # Zero-loss backward to keep collectives aligned across ranks
-                                print(f'[POLICY Worker {rank}] Zero tokens in mini-batch; performing zero-loss backward for token acc mode')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Zero tokens in mini-batch; performing zero-loss backward for token acc mode')
                                 (policy_loss.sum() * 0.0).backward()
                                 successful_micro_batches += 1
                                 continue
@@ -774,22 +819,26 @@ class DataParallelPPOActor(BasePPOActor):
                         # Apply loss clipping to prevent NaN and extreme values
                         max_loss_value = self.config.get('max_loss_value', 10.0)  # Default max loss value
                         if torch.isnan(loss).any() or torch.isinf(loss).any():
-                            print(f'[POLICY Worker {rank}] WARNING: Non-finite loss detected in micro-batch {data_idx}, clipping to finite values. Original loss: {loss}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] WARNING: Non-finite loss detected in micro-batch {data_idx}, clipping to finite values. Original loss: {loss}')
                             # Replace NaN and inf with the max loss value
                             loss = torch.where(torch.isfinite(loss), loss, torch.tensor(max_loss_value, device=loss.device, dtype=loss.dtype))
-                            print(f'[POLICY Worker {rank}] Clipped loss: {loss}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Clipped loss: {loss}')
                         
                         # Apply additional loss magnitude clipping
                         loss = torch.clamp(loss, min=-max_loss_value, max=max_loss_value)
                         
                         # Final check - if still non-finite after clipping, skip
                         if not torch.isfinite(loss).all():
-                            print(f'[POLICY Worker {rank}] WARNING: Loss still non-finite after clipping in micro-batch {data_idx}, skipping backward pass. Loss: {loss}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] WARNING: Loss still non-finite after clipping in micro-batch {data_idx}, skipping backward pass. Loss: {loss}')
                             failed_micro_batches += 1
                             continue
 
                         loss.backward()
-                        print(f'[POLICY Worker {rank}] Done loss back propagation')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Done loss back propagation')
                         successful_micro_batches += 1
 
                         data_metrics = {
@@ -801,8 +850,9 @@ class DataParallelPPOActor(BasePPOActor):
                         append_to_dict(metrics, data_metrics)
 
                     except Exception as e:
-                        print(f'[POLICY Worker {rank}] ERROR in micro-batch {data_idx}/{len(micro_batches)}: {type(e).__name__}: {e}')
-                        print(f'[POLICY Worker {rank}] Skipping problematic micro-batch {data_idx} and continuing with next one...')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] ERROR in micro-batch {data_idx}/{len(micro_batches)}: {type(e).__name__}: {e}')
+                            print(f'[POLICY Worker {rank}] Skipping problematic micro-batch {data_idx} and continuing with next one...')
                         
                         # Clear any accumulated gradients from failed micro-batch
                         try:
@@ -810,7 +860,8 @@ class DataParallelPPOActor(BasePPOActor):
                                 if param.grad is not None:
                                     param.grad.zero_()
                         except Exception as cleanup_error:
-                            print(f'[POLICY Worker {rank}] Failed to cleanup gradients after micro-batch error: {cleanup_error}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Failed to cleanup gradients after micro-batch error: {cleanup_error}')
                         
                         failed_micro_batches += 1
                         
@@ -818,11 +869,13 @@ class DataParallelPPOActor(BasePPOActor):
                         try:
                             torch.cuda.empty_cache()
                         except Exception as cuda_error:
-                            print(f'[POLICY Worker {rank}] Failed to clear CUDA cache: {cuda_error}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Failed to clear CUDA cache: {cuda_error}')
                         
                         continue
 
-                print(f'[POLICY Worker {rank}] Micro-batch processing summary: {successful_micro_batches} successful, {failed_micro_batches} failed out of {len(micro_batches)} total')
+                if rank == 0:
+                    print(f'[POLICY Worker {rank}] Micro-batch processing summary: {successful_micro_batches} successful, {failed_micro_batches} failed out of {len(micro_batches)} total')
 
                 # Coordinate optimizer steps across all workers to prevent NCCL hanging
                 # All workers must participate in the same collective operations
@@ -837,7 +890,8 @@ class DataParallelPPOActor(BasePPOActor):
                         
                         result = self._safe_distributed_operation("coordinate_successful", coordinate_successful, timeout_seconds=60)
                         if result is None:
-                            print(f'[POLICY Worker {rank}] Failed to coordinate successful micro-batches - assuming local decision')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Failed to coordinate successful micro-batches - assuming local decision')
                             any_worker_has_successful = successful_micro_batches > 0
                         else:
                             any_worker_has_successful = result > 0.5
@@ -860,21 +914,25 @@ class DataParallelPPOActor(BasePPOActor):
                         
                         result = self._safe_distributed_operation("coordinate_nan_gradients", coordinate_nan_gradients, timeout_seconds=60)
                         if result is None:
-                            print(f'[POLICY Worker {rank}] Failed to coordinate NaN gradients - assuming local decision')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Failed to coordinate NaN gradients - assuming local decision')
                             any_worker_has_nan = has_nan_grad
                         else:
                             any_worker_has_nan = result > 0.5
                         
-                        print(f'[POLICY Worker {rank}] Coordination: local_successful={successful_micro_batches > 0}, any_worker_successful={any_worker_has_successful}, local_nan={has_nan_grad}, any_worker_nan={any_worker_has_nan}')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Coordination: local_successful={successful_micro_batches > 0}, any_worker_successful={any_worker_has_successful}, local_nan={has_nan_grad}, any_worker_nan={any_worker_has_nan}')
                         
                         # Step 4: All workers make the same decision
                         if any_worker_has_successful and not any_worker_has_nan:
                             # Safe to proceed with optimizer step - all workers participate
                             if successful_micro_batches > 0:
-                                print(f'[POLICY Worker {rank}] Performing optimizer step after {successful_micro_batches} successful micro-batches')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Performing optimizer step after {successful_micro_batches} successful micro-batches')
                                 grad_norm = self._optimizer_step()
                             else:
-                                print(f'[POLICY Worker {rank}] Participating in optimizer step coordination (no local successes but others do)')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Participating in optimizer step coordination (no local successes but others do)')
                                 # Zero gradients but still participate in collective operations
                                 self.actor_optimizer.zero_grad()
                                 grad_norm = self._optimizer_step()
@@ -882,23 +940,28 @@ class DataParallelPPOActor(BasePPOActor):
                         else:
                             # Skip optimizer step - either no successes anywhere or NaN gradients detected
                             if not any_worker_has_successful:
-                                print(f'[POLICY Worker {rank}] All workers skipping optimizer step (no successful micro-batches anywhere)')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] All workers skipping optimizer step (no successful micro-batches anywhere)')
                             else:
-                                print(f'[POLICY Worker {rank}] All workers skipping optimizer step (NaN gradients detected)')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] All workers skipping optimizer step (NaN gradients detected)')
                             self.actor_optimizer.zero_grad()
                             data = {"actor/grad_norm": 0.0}
                             
                     except Exception as coordination_error:
-                        print(f'[POLICY Worker {rank}] CRITICAL: Distributed coordination failed: {coordination_error}')
-                        print(f'[POLICY Worker {rank}] Falling back to local decision to avoid hanging')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] CRITICAL: Distributed coordination failed: {coordination_error}')
+                            print(f'[POLICY Worker {rank}] Falling back to local decision to avoid hanging')
                         # Fallback: make local decision to avoid hanging the entire job
                         if successful_micro_batches > 0:
                             try:
                                 self.actor_optimizer.zero_grad()  # Clear any accumulated gradients
                                 data = {"actor/grad_norm": 0.0}
-                                print(f'[POLICY Worker {rank}] Fallback: cleared gradients due to coordination failure')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Fallback: cleared gradients due to coordination failure')
                             except Exception as fallback_error:
-                                print(f'[POLICY Worker {rank}] Fallback failed: {fallback_error}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Fallback failed: {fallback_error}')
                                 data = {"actor/grad_norm": 0.0}
                         else:
                             data = {"actor/grad_norm": 0.0}
@@ -910,19 +973,23 @@ class DataParallelPPOActor(BasePPOActor):
                             grad_norm = self._optimizer_step()
                             data = {"actor/grad_norm": grad_norm.detach().item() if hasattr(grad_norm, 'detach') else grad_norm}
                         except Exception as optimizer_error:
-                            print(f'[POLICY Worker {rank}] ERROR during optimizer step: {type(optimizer_error).__name__}: {optimizer_error}')
-                            print(f'[POLICY Worker {rank}] Clearing gradients and continuing...')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] ERROR during optimizer step: {type(optimizer_error).__name__}: {optimizer_error}')
+                                print(f'[POLICY Worker {rank}] Clearing gradients and continuing...')
                             try:
                                 self.actor_optimizer.zero_grad()
                             except Exception as cleanup_error:
-                                print(f'[POLICY Worker {rank}] Failed to clear gradients: {cleanup_error}')
+                                if rank == 0:
+                                    print(f'[POLICY Worker {rank}] Failed to clear gradients: {cleanup_error}')
                             data = {"actor/grad_norm": 0.0}
                     else:
-                        print(f'[POLICY Worker {rank}] Skipping optimizer step (no successful micro-batches)')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Skipping optimizer step (no successful micro-batches)')
                         try:
                             self.actor_optimizer.zero_grad()
                         except Exception as cleanup_error:
-                            print(f'[POLICY Worker {rank}] Failed to clear gradients: {cleanup_error}')
+                            if rank == 0:
+                                print(f'[POLICY Worker {rank}] Failed to clear gradients: {cleanup_error}')
                         data = {"actor/grad_norm": 0.0}
                     
                 append_to_dict(metrics, data)
@@ -936,16 +1003,20 @@ class DataParallelPPOActor(BasePPOActor):
                     
                     result = self._safe_distributed_operation("barrier_sync", barrier_sync, timeout_seconds=120)
                     if result is not None:
-                        print(f'[POLICY Worker {rank}] Successfully synchronized after mini-batch {batch_idx}')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] Successfully synchronized after mini-batch {batch_idx}')
                     else:
-                        print(f'[POLICY Worker {rank}] WARNING: Failed to synchronize after mini-batch {batch_idx} - continuing anyway')
+                        if rank == 0:
+                            print(f'[POLICY Worker {rank}] WARNING: Failed to synchronize after mini-batch {batch_idx} - continuing anyway')
                         # Don't try to recover here as it's complex - let subsequent operations handle the state
                 
-        print(f'[POLICY Worker {rank}] Processing summary: {total_valid_mini_batches} valid mini-batches, {total_skipped_mini_batches} skipped mini-batches')
+        if rank == 0:
+            print(f'[POLICY Worker {rank}] Processing summary: {total_valid_mini_batches} valid mini-batches, {total_skipped_mini_batches} skipped mini-batches')
 
         # Ensure we always return valid metrics even if no processing occurred
         if total_valid_mini_batches == 0:
-            print(f'[POLICY Worker {rank}] Warning: No mini-batches were successfully processed - this worker had no valid data')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] Warning: No mini-batches were successfully processed - this worker had no valid data')
             # Add default metrics to prevent downstream issues
             if "actor/pg_loss" not in metrics:
                 metrics["actor/pg_loss"] = 0.0
@@ -956,13 +1027,16 @@ class DataParallelPPOActor(BasePPOActor):
         try:
             self.actor_optimizer.zero_grad()
         except Exception as cleanup_error:
-            print(f'[POLICY Worker {rank}] Failed to clear gradients at end: {cleanup_error}')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] Failed to clear gradients at end: {cleanup_error}')
             
         # Final cleanup to prevent memory leaks
         try:
             torch.cuda.empty_cache()
         except Exception as cuda_error:
-            print(f'[POLICY Worker {rank}] Failed to clear CUDA cache at end: {cuda_error}')
+            if rank == 0:
+                print(f'[POLICY Worker {rank}] Failed to clear CUDA cache at end: {cuda_error}')
             
-        print(f'[POLICY Worker {rank}] Done update policy')
+        if rank == 0:
+            print(f'[POLICY Worker {rank}] Done update policy')
         return metrics

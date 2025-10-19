@@ -22,6 +22,16 @@ RESET = '\033[0m'
 logger = logging.getLogger(__file__)
 logger.setLevel('INFO')
 
+def _get_rank() -> int:
+    """Safely get the current process rank. Returns 0 if not in distributed mode."""
+    if torch.distributed.is_available() and torch.distributed.is_initialized():
+        return torch.distributed.get_rank()
+    return 0
+
+def _is_rank_0() -> bool:
+    """Check if current process is rank 0."""
+    return _get_rank() == 0
+
 @dataclass
 class MemoryConfig(RConfig):
     context_key: str
@@ -48,6 +58,10 @@ class MemoryConfig(RConfig):
 
     @property
     def gen_pad_to(self):
+        # NOTE: This property is DEPRECATED and should NOT be used for response padding
+        # It was originally designed for non-recurrent workflows where input_ids = prompts + responses
+        # In recurrent memory workflows, we should use max_memorization_length or max_final_response_length instead
+        # to avoid padding responses to max_prompt_length (which wastes memory)
         return max(self.max_prompt_length, self.max_final_response_length)
 
 class MemoryDataset(RDataset):
@@ -71,8 +85,9 @@ class MemoryDataset(RDataset):
         data_config.max_prompt_length = calculated_max_prompt_length
         self.context_key = recurrent_config.context_key
         
-        logger.info(f"[DATASET INIT] max_chunks={recurrent_config.max_chunks}, chunk_size={recurrent_config.chunk_size}, max_prompt_length={calculated_max_prompt_length}")
-        logger.info(f"[DATASET INIT] System message filtering enabled: will remove first system message from context for memory processing")
+        if _is_rank_0():
+            logger.info(f"[DATASET INIT] max_chunks={recurrent_config.max_chunks}, chunk_size={recurrent_config.chunk_size}, max_prompt_length={calculated_max_prompt_length}")
+            logger.info(f"[DATASET INIT] System message filtering enabled: will remove first system message from context for memory processing")
         super().__init__(
             recurrent_config=recurrent_config,
             data_files=data_files,
@@ -99,7 +114,8 @@ class MemoryDataset(RDataset):
         else:
             # Fallback: if context_key not found, use empty context
             # NOTE: All preprocessing should now provide context via context_key
-            logger.warning(f"context_key '{self.context_key}' not found in row_dict. Using empty context.")
+            if _is_rank_0():
+                logger.warning(f"context_key '{self.context_key}' not found in row_dict. Using empty context.")
             context_text = "No conversation history available."
 
         model_inputs = self.tokenizer(context_text, return_tensors="pt", add_special_tokens=False)
@@ -172,12 +188,11 @@ class MemoryDataset(RDataset):
 TEMPLATE = """You are presented with a conversation history between the current user and the chatbot. Your task is to carefully analyze this conversation history and extract information about the user's persona and preferences that are revealed or indicated explicitly or implicitly through their interactions, responses, and dialogue patterns.
 
 Focus on identifying personas and preferences of the current user, focusing on those implicitly indicated in the user-chatbot conversation histories.
-Update the memory by retaining all relevant, still up-to-date details from the previous memory while adding any new, useful persona and preference information discovered in the current conversation section. Write the memory only in English.
+Update the memory by retaining all relevant, still up-to-date details from the previous memory while adding any new, useful persona and preference information discovered in the current conversation section. 
 
-The memory should be clean and standalone, so please
+The memory should be clean, standalone, in bullet points, and in English, so please
 Do NOT include any other texts in your response.
 Do NOT record any multiple choice options or test questions.
-Do NOT record persona information from system prompts.
 
 <user_query> 
 {prompt}
@@ -221,56 +236,66 @@ class MemoryAgent(RAgent):
         try:
             # Debug the template creation process
             formatted_template = self.chat_template.format(message=TEMPLATE)
-            logger.info(f"[TEMPLATE DEBUG] Creating TokenTemplate with chat_template length: {len(formatted_template)}")
-            logger.info(f"[TEMPLATE DEBUG] Chat template preview: {formatted_template[:200]}...")
+            if _is_rank_0():
+                logger.info(f"[TEMPLATE DEBUG] Creating TokenTemplate with chat_template length: {len(formatted_template)}")
+                logger.info(f"[TEMPLATE DEBUG] Chat template preview: {formatted_template[:200]}...")
             
             self.token_message_template = TokenTemplate(formatted_template, tokenizer)
             self.token_final_message_template = TokenTemplate(self.chat_template.format(message=TEMPLATE_FINAL_BOXED), tokenizer)
         except Exception as e:
-            logger.error(f"[TEMPLATE ERROR] Failed to create TokenTemplate: {e}")
-            logger.error(f"[TEMPLATE ERROR] Chat template: {self.chat_template}")
-            logger.error(f"[TEMPLATE ERROR] TEMPLATE content: {TEMPLATE}")
+            if _is_rank_0():
+                logger.error(f"[TEMPLATE ERROR] Failed to create TokenTemplate: {e}")
+                logger.error(f"[TEMPLATE ERROR] Chat template: {self.chat_template}")
+                logger.error(f"[TEMPLATE ERROR] TEMPLATE content: {TEMPLATE}")
             raise
         # we assume that final_message template is difinately shorter than message_template
         self.max_input_length = self.config.max_raw_input_length + self.token_message_template.length 
-        logger.info(f'\n[RECURRENT] max_input_length calculation:')
-        logger.info(f'  max_prompt_length: {self.config.max_prompt_length} (dataset context limit)')
-        logger.info(f'  chunk_size: {self.config.chunk_size}')
-        logger.info(f'  max_memorization_length: {self.config.max_memorization_length}')
-        logger.info(f'  max_raw_input_length: {self.config.max_raw_input_length}')
-        logger.info(f'  message_template length: {self.token_message_template.length}')
-        logger.info(f'  TOTAL max_input_length: {self.max_input_length}')
-        logger.info(f'  Note: Actual inputs will be much smaller (~6-8k tokens per turn)\n')
+        if _is_rank_0():
+            logger.info(f'\n[RECURRENT] max_input_length calculation:')
+            logger.info(f'  max_prompt_length: {self.config.max_prompt_length} (dataset context limit)')
+            logger.info(f'  chunk_size: {self.config.chunk_size}')
+            logger.info(f'  max_memorization_length: {self.config.max_memorization_length}')
+            logger.info(f'  max_raw_input_length: {self.config.max_raw_input_length}')
+            logger.info(f'  message_template length: {self.token_message_template.length}')
+            logger.info(f'  TOTAL max_input_length: {self.max_input_length}')
+            logger.info(f'  Note: Actual inputs will be much smaller (~6-8k tokens per turn)\n')
         self.NO_MEMORY_TOKENS = tokenizer.encode("No previous memory", add_special_tokens=False)
     
     @override
     def start(self, gen_batch: DataProto, timing_raw: dict):
-        logger.info(f"[MEMORY AGENT] start() called, gen_batch keys: {list(gen_batch.batch.keys()) if hasattr(gen_batch, 'batch') else 'No batch'}")
+        if _is_rank_0():
+            logger.info(f"[MEMORY AGENT] start() called, gen_batch keys: {list(gen_batch.batch.keys()) if hasattr(gen_batch, 'batch') else 'No batch'}")
         
         self.gen_batch = gen_batch
         self.step = 0
         self.final_mask_list = [] # only the final turn will be verified, used for reward compute
         self.sample_index_list = [] # map each turn in final to the sample id in the original batch
         
-        logger.info(f"[MEMORY AGENT] Accessing context_length...")
+        if _is_rank_0():
+            logger.info(f"[MEMORY AGENT] Accessing context_length...")
         self.ctx_length = gen_batch.batch['context_length'] # processed/truncated lengths for actual processing
         
         # Check if original_context_length is available (might not be present in validation data)
-        logger.info(f"[MEMORY AGENT] Checking for original_context_length...")
+        if _is_rank_0():
+            logger.info(f"[MEMORY AGENT] Checking for original_context_length...")
         if 'original_context_length' in gen_batch.batch:
-            logger.info(f"[MEMORY AGENT] Found original_context_length in batch")
+            if _is_rank_0():
+                logger.info(f"[MEMORY AGENT] Found original_context_length in batch")
             self.original_ctx_length = gen_batch.batch['original_context_length'] # original lengths for chunk calculation
         else:
             # Fallback: use processed context length (validation might not have original lengths)
-            logger.info(f"[MEMORY AGENT] original_context_length not found, using processed lengths as fallback")
+            if _is_rank_0():
+                logger.info(f"[MEMORY AGENT] original_context_length not found, using processed lengths as fallback")
             self.original_ctx_length = self.ctx_length
             
-        logger.info(f"[MEMORY AGENT] Setting up batch size and memory...")
+        if _is_rank_0():
+            logger.info(f"[MEMORY AGENT] Setting up batch size and memory...")
         self.bsz = len(self.ctx_length)
         self.memory = np.empty(self.bsz, dtype=object)
         self.is_final = False
         
-        logger.info(f"[MEMORY AGENT] Calculating chunk statistics...")
+        if _is_rank_0():
+            logger.info(f"[MEMORY AGENT] Calculating chunk statistics...")
         # Calculate chunks based on ORIGINAL context lengths (before truncation)
         original_chunks_per_sample = [(length + self.config.chunk_size - 1) // self.config.chunk_size for length in self.original_ctx_length]
         processed_chunks_per_sample = [(length + self.config.chunk_size - 1) // self.config.chunk_size for length in self.ctx_length]
@@ -281,11 +306,12 @@ class MemoryAgent(RAgent):
         has_original_lengths = 'original_context_length' in gen_batch.batch
         using_original = has_original_lengths and not torch.equal(self.original_ctx_length, self.ctx_length)
 
-        logger.info(f"\n{'='*25}[RECURRENT] MEMORY PROCESSING INIT{'='*25}")
-        logger.info(f"[BATCH] Total samples in batch: {self.bsz}")
-        logger.info(f"[BATCH] Chunk size: {self.config.chunk_size} tokens")
-        logger.info(f"[BATCH] Context length source: {'ORIGINAL (before truncation)' if using_original else 'PROCESSED (after truncation/validation data)'}")
-        logger.info(f"{'='*50}")
+        if _is_rank_0():
+            logger.info(f"\n{'='*25}[RECURRENT] MEMORY PROCESSING INIT{'='*25}")
+            logger.info(f"[BATCH] Total samples in batch: {self.bsz}")
+            logger.info(f"[BATCH] Chunk size: {self.config.chunk_size} tokens")
+            logger.info(f"[BATCH] Context length source: {'ORIGINAL (before truncation)' if using_original else 'PROCESSED (after truncation/validation data)'}")
+            logger.info(f"{'='*50}")
     
     @override
     def action(self) -> Tuple[List[torch.Tensor], dict]:
@@ -313,19 +339,17 @@ class MemoryAgent(RAgent):
         context_active_samples = context_based_active.sum().item()
         current_token_threshold = self.step * self.config.chunk_size
         
-        logger.info(f"\n{'='*30}[RECURRENT] STEP {self.step}{'='*30}")
-        logger.info(f"[MEMORY] Active samples in this turn: {active_samples} / {self.bsz}")
-        logger.info(f"[MEMORY] Context-based active samples: {context_active_samples}")
-        logger.info(f"[MEMORY] Max chunks limit: {self.config.max_chunks}, current step: {self.step}")
-        logger.info(f"[MEMORY] Processing chunk {self.step + 1} (tokens {self.step * self.config.chunk_size} to {(self.step + 1) * self.config.chunk_size})")
-        logger.info(f"[MEMORY] Current token threshold for activity: {current_token_threshold}")
-        logger.info(f"[MEMORY] Context lengths - First 10 samples: {self.ctx_length[:10].tolist()}")
-        logger.info(f"[MEMORY] Original context lengths - First 10 samples: {self.original_ctx_length[:10].tolist()}")
-        logger.info(f"[MEMORY] Active mask - First 10 samples: {active_mask[:10].tolist()}")
-        logger.info(f"[MEMORY] Context-based active mask - First 10 samples: {context_based_active[:10].tolist()}")
-        
+        if _is_rank_0():
+            logger.info(f"\n{'='*30}[RECURRENT] STEP {self.step}{'='*30}")
+            logger.info(f"[MEMORY] Active samples in this turn: {active_samples} / {self.bsz}")
+            logger.info(f"[MEMORY] Context-based active samples: {context_active_samples}")
+            logger.info(f"[MEMORY] Max chunks limit: {self.config.max_chunks}, current step: {self.step}")
+            logger.info(f"[MEMORY] Processing chunk {self.step + 1} (tokens {self.step * self.config.chunk_size} to {(self.step + 1) * self.config.chunk_size})")
+            logger.info(f"[MEMORY] Context lengths - First 10 samples: {self.ctx_length[:10].tolist()}")
+            logger.info(f"[MEMORY] Active mask - First 10 samples: {active_mask[:10].tolist()}")
+
         # Debug why samples become inactive
-        if active_samples < self.bsz:
+        if _is_rank_0() and active_samples < self.bsz:
             inactive_samples = self.bsz - active_samples
             logger.info(f"[MEMORY] {inactive_samples} samples became inactive (context_length <= {current_token_threshold} OR step >= max_chunks)")
             # Show some examples of inactive samples
@@ -347,7 +371,7 @@ class MemoryAgent(RAgent):
             ]
             
             # Log actual token counts for the first sample in final turn
-            if len(self.messages) > 0:
+            if _is_rank_0() and len(self.messages) > 0:
                 first_prompt_len = len(gen_batch.non_tensor_batch['prompt_ids'][0])
                 first_memory_len = len(self.memory[0]) if self.memory[0] is not None else len(self.NO_MEMORY_TOKENS)
                 first_message_len = len(self.messages[0])
@@ -361,17 +385,22 @@ class MemoryAgent(RAgent):
             
             # Calculate actual maximum length in this batch instead of using theoretical maximum
             actual_max_len = max(len(msg) for msg in self.messages)
-            logger.info(f'[MEMORY] FINAL TURN: Actual max message length in batch: {actual_max_len} (vs theoretical max: {self.max_input_length})')
+            if _is_rank_0():
+                logger.info(f'[MEMORY] FINAL TURN: Actual max message length in batch: {actual_max_len} (vs theoretical max: {self.max_input_length})')
             
+            # For final turn, use max_final_response_length for response padding (1024)
+            # For prompts, use actual batch maximum
             self.meta_info = {'input_pad_to': actual_max_len,  # Use actual length, not theoretical maximum
-                         'pad_to': self.config.gen_pad_to,
+                         'pad_to': self.config.max_final_response_length,  # Pad responses to actual response limit, not prompt limit
                          'generation_kwargs': {
                           'max_tokens': self.config.gen_max_tokens_memorization,
                           'n': 1 # note that we have already repeat n times in ray_trainer
                         }}
-            logger.info(f'[MEMORY] FINAL TURN: All samples completed chunking, moving to final response generation')
-            logger.info(f'[MEMORY] Final turn will process all {self.bsz} samples for response generation')
-            logger.info(f'[MEMORY] Using actual padding length={actual_max_len} instead of max_input_length={self.max_input_length}')
+            if _is_rank_0():
+                logger.info(f'[MEMORY] FINAL TURN: All samples completed chunking, moving to final response generation')
+                logger.info(f'[MEMORY] Final turn will process all {self.bsz} samples for response generation')
+                logger.info(f'[MEMORY] Using actual padding length={actual_max_len} instead of max_input_length={self.max_input_length}')
+                logger.info(f'[MEMORY] Using response padding length={self.config.max_final_response_length} instead of gen_pad_to={self.config.gen_pad_to}')
         else:
             # 1. no need to pad prompt
             # 2. context padded for 2D indexing, elegant engineering
@@ -388,15 +417,16 @@ class MemoryAgent(RAgent):
             chunk_i = gen_batch.batch['context_ids'][active_mask, start_token:end_token]
             
             # Log chunk extraction details
-            chunk_sizes = []
-            for i, sample_idx in enumerate(torch.where(active_mask)[0]):
-                available_tokens = self.ctx_length[sample_idx]
-                chunk_end_in_available = min(end_token, available_tokens)
-                actual_chunk_size = max(0, chunk_end_in_available - start_token)
-                chunk_sizes.append(actual_chunk_size)
-            
-            logger.info(f"[MEMORY] Chunk extraction: tokens {start_token}-{end_token}")
-            logger.info(f"[MEMORY] Actual chunk sizes (non-padded tokens): {chunk_sizes[:10]}")
+            if _is_rank_0():
+                chunk_sizes = []
+                for i, sample_idx in enumerate(torch.where(active_mask)[0]):
+                    available_tokens = self.ctx_length[sample_idx]
+                    chunk_end_in_available = min(end_token, available_tokens)
+                    actual_chunk_size = max(0, chunk_end_in_available - start_token)
+                    chunk_sizes.append(actual_chunk_size)
+                
+                logger.info(f"[MEMORY] Chunk extraction: tokens {start_token}-{end_token}")
+                logger.info(f"[MEMORY] Actual chunk sizes (non-padded tokens): {chunk_sizes[:10]}")
             
             memory_i = self.memory[active_mask]
             
@@ -411,7 +441,7 @@ class MemoryAgent(RAgent):
             ]
             
             # Log actual token counts for the first active sample
-            if len(self.messages) > 0:
+            if _is_rank_0() and len(self.messages) > 0:
                 first_prompt_len = len(prompt_i[0]) if len(prompt_i) > 0 else 0
                 first_memory_len = len(memory_i[0]) if memory_i[0] is not None else len(self.NO_MEMORY_TOKENS)
                 first_chunk_len = len(chunk_i[0][chunk_i[0] != self.tokenizer.pad_token_id])
@@ -427,15 +457,20 @@ class MemoryAgent(RAgent):
             
             # Calculate actual maximum length in this batch instead of using theoretical maximum
             actual_max_len = max(len(msg) for msg in self.messages)
-            logger.info(f'[MEMORY] Step {self.step}: Actual max message length in batch: {actual_max_len} (vs theoretical max: {self.max_input_length})')
+            if _is_rank_0():
+                logger.info(f'[MEMORY] Step {self.step}: Actual max message length in batch: {actual_max_len} (vs theoretical max: {self.max_input_length})')
             
+            # For memory turns, use max_memorization_length for response padding (1024)
+            # For prompts, use actual batch maximum
             self.meta_info = {'input_pad_to': actual_max_len,  # Use actual length, not theoretical maximum
-                         'pad_to': self.config.gen_pad_to,
+                         'pad_to': self.config.max_memorization_length,  # Pad responses to memory limit, not prompt limit
                          'generation_kwargs': {
                           'max_tokens': self.config.gen_max_tokens_memorization,
                           'n': 1 # note that we have already repeat n times in ray_trainer
                         }}
-            logger.info(f'MemoryAgent.action() done')
+            if _is_rank_0():
+                logger.info(f'[MEMORY] Using response padding length={self.config.max_memorization_length} instead of gen_pad_to={self.config.gen_pad_to}')
+                logger.info(f'MemoryAgent.action() done')
         self.final_mask_list.append(final_mask)
         self.sample_index_list.append(sample_index)
         return self.messages, self.meta_info
@@ -494,55 +529,57 @@ class MemoryAgent(RAgent):
         batch_size = gen_output.batch['responses'].shape[0] if gen_output.batch['responses'].dim() > 1 else 1
         is_final = self.is_final
         
-        logger.info(f"[MEMORY] Step {self.step} completed")
-        logger.info(f"[MEMORY] Batch size for this turn: {batch_size}")
-        logger.info(f"[MEMORY] Turn type: {'FINAL (response generation)' if is_final else 'MEMORY (chunk processing)'}")
+        if _is_rank_0():
+            logger.info(f"[MEMORY] Step {self.step} completed")
+            logger.info(f"[MEMORY] Batch size for this turn: {batch_size}")
+            logger.info(f"[MEMORY] Turn type: {'FINAL (response generation)' if is_final else 'MEMORY (chunk processing)'}")
         
-        if is_final:
+        if _is_rank_0() and is_final:
             logger.info(f"[MEMORY] FINAL TURN SUMMARY:")
             logger.info(f"  - Samples processed in final turn: {batch_size} (all samples generate final responses)")
             logger.info(f"  - Total memory processing steps completed: {self.step}")
-        else:
+        elif _is_rank_0():
             active_count = self.active_mask.sum().item() if hasattr(self, 'active_mask') else batch_size
             logger.info(f"[MEMORY] MEMORY TURN SUMMARY:")
             logger.info(f"  - Active samples in this chunk: {active_count}")
             logger.info(f"  - Chunk range: tokens {self.step * self.config.chunk_size} to {(self.step + 1) * self.config.chunk_size}")
 
         # Message and Response section (show only first sample to avoid clutter)
-        if self.is_final:
-            # In final turn, show first sample (index 0) since all samples are processed
-            if len(self.messages) > 0:
-                decoded_message = self.tokenizer.decode(self.messages[0])
-                rsp = gen_output.batch['responses'][0]
-                decoded_response = self.tokenizer.decode(rsp[rsp!=self.tokenizer.pad_token_id])
+        if _is_rank_0():
+            if self.is_final:
+                # In final turn, show first sample (index 0) since all samples are processed
+                if len(self.messages) > 0:
+                    decoded_message = self.tokenizer.decode(self.messages[0])
+                    rsp = gen_output.batch['responses'][0]
+                    decoded_response = self.tokenizer.decode(rsp[rsp!=self.tokenizer.pad_token_id])
+                    
+                    # Apply color formatting to memory responses
+                    colored_response = colorize_memory_responses(decoded_response)  # Color memory responses
+
+                    logger.info(f"{' '*10}{'-'*20}response start{'-'*20}{' '*10}")
+                    logger.info(f"[RESPONSE SAMPLE 0] {colored_response}")
+                    logger.info(f"{' '*10}{'-'*20}response end{'-'*20}{' '*10}")
+                else:
+                    logger.info("MESSAGE and RESPONSE is empty - no messages available.")
+            elif hasattr(self, 'active_mask') and self.active_mask.any():
+                # Find first active sample
+                active_idx = torch.where(self.active_mask)[0][0].item()
                 
-                # Apply color formatting to memory responses
-                colored_response = colorize_memory_responses(decoded_response)  # Color memory responses
+                # Check bounds to prevent IndexError
+                if active_idx < len(self.messages):
+                    decoded_message = self.tokenizer.decode(self.messages[active_idx])
+                    rsp = gen_output.batch['responses'][active_idx]
+                    decoded_response = self.tokenizer.decode(rsp[rsp!=self.tokenizer.pad_token_id])
+                    colored_response = colorize_memory_responses(decoded_response)  # Color memory responses
 
-                logger.info(f"{' '*10}{'-'*20}response start{'-'*20}{' '*10}")
-                logger.info(f"[RESPONSE SAMPLE 0] {colored_response}")
-                logger.info(f"{' '*10}{'-'*20}response end{'-'*20}{' '*10}")
+                    logger.info(f"{' '*10}{'-'*20}response start{'-'*20}{' '*10}")
+                    logger.info(f"[RESPONSE SAMPLE {active_idx}] {colored_response}")
+                    logger.info(f"{' '*10}{'-'*20}response end{'-'*20}{' '*10}")
+                else:
+                    logger.info(f"[WARNING] Active sample index {active_idx} is out of bounds for messages list (length: {len(self.messages)})")
+                    logger.info("Skipping message/response logging for this sample.")
             else:
-                logger.info("MESSAGE and RESPONSE is empty - no messages available.")
-        elif hasattr(self, 'active_mask') and self.active_mask.any():
-            # Find first active sample
-            active_idx = torch.where(self.active_mask)[0][0].item()
-            
-            # Check bounds to prevent IndexError
-            if active_idx < len(self.messages):
-                decoded_message = self.tokenizer.decode(self.messages[active_idx])
-                rsp = gen_output.batch['responses'][active_idx]
-                decoded_response = self.tokenizer.decode(rsp[rsp!=self.tokenizer.pad_token_id])
-                colored_response = colorize_memory_responses(decoded_response)  # Color memory responses
-
-                logger.info(f"{' '*10}{'-'*20}response start{'-'*20}{' '*10}")
-                logger.info(f"[RESPONSE SAMPLE {active_idx}] {colored_response}")
-                logger.info(f"{' '*10}{'-'*20}response end{'-'*20}{' '*10}")
-            else:
-                logger.info(f"[WARNING] Active sample index {active_idx} is out of bounds for messages list (length: {len(self.messages)})")
-                logger.info("Skipping message/response logging for this sample.")
-        else:
-            logger.info("MESSAGE and RESPONSE is empty since no samples are active.")
+                logger.info("MESSAGE and RESPONSE is empty since no samples are active.")
 
 
 # Important, we will import `REGISTER` from this file to get all registered classes.

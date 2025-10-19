@@ -128,21 +128,26 @@ class LLMGenerationManager:
         meta_info = gen_batch.meta_info #  do_sample, is_validate, eos/pad are stored in here.
         pad_token_id = self.tokenizer.pad_token_id
         self.agent.start(gen_batch, timing_raw)
+        
         # Main generation loop, agent should indicate whether to stop
+        turn_idx = 0
         while not self.agent.done():
             with _timer('mt_prepare', timing_raw):
                 messages, meta_info_gen = self.agent.action()
                 meta_info_gen.update(meta_info)
+                # Use per-turn max length for now (we'll pad globally before concat)
+                turn_max_len = max(len(msg) for msg in messages)
+                
                 # [len(x) for x in messages] == [len(x[x!=pad_token_id]) for x in input_ids]
                 # torch.all(attention_masks.sum(-1) == torch.tensor([len(x[x!=pad_token_id]) for x in input_ids]))
                 input_ids = pad_tensor_list_to_length(messages, 
                                                 pad_token_id=pad_token_id,
-                                                max_length=meta_info_gen['input_pad_to'], 
+                                                max_length=turn_max_len, 
                                                 left_pad=True)
                 attention_masks = create_attention_mask(input_ids, pad_token_id=pad_token_id)
                 position_ids = create_position_ids(attention_masks)
                 active_num_list.append(len(messages))
-                logger.info(f'padding done')
+                turn_idx += 1
             with _timer('mt_gen', timing_raw):
                 gen_output = self.generate_with_graceful_padding(input_ids, attention_masks, position_ids, meta_info_gen)
                 logger.info('generation done')
@@ -157,13 +162,67 @@ class LLMGenerationManager:
         assert sum(final_mask) == len(gen_batch)
         logger.info(f"ACTIVE_TRAJ_NUM: {active_num_list}")
         
-        # Log input_ids shapes before concatenation
+        # Log shapes BEFORE padding
+        logger.info(f"[GEN_MANAGER] ===== BEFORE PADDING =====")
         for turn_idx, gen_output in enumerate(gen_output_list):
-            if 'input_ids' in gen_output.batch:
-                input_shape = gen_output.batch['input_ids'].shape
-                logger.info(f"[GEN_MANAGER] Turn {turn_idx}: input_ids shape = {input_shape}")
+            if turn_idx + 3 < len(gen_output_list):
+                continue
+            logger.info(f"[GEN_MANAGER] Turn {turn_idx}:")
+            for key, tensor in gen_output.batch.items():
+                if isinstance(tensor, torch.Tensor):
+                    logger.info(f"  {key}: {tensor.shape}")
+        
+        # Pad all turns to the same length for concatenation
+        # Collect max length for EACH tensor separately
+        tensor_max_lengths = {}
+        for gen_output in gen_output_list:
+            for key, tensor in gen_output.batch.items():
+                if isinstance(tensor, torch.Tensor) and tensor.ndim >= 2:
+                    current_len = tensor.shape[1]
+                    if key not in tensor_max_lengths:
+                        tensor_max_lengths[key] = current_len
+                    else:
+                        tensor_max_lengths[key] = max(tensor_max_lengths[key], current_len)
+        
+        logger.info(f"[GEN_MANAGER] Tensor max lengths to pad to: {tensor_max_lengths}")
+        
+        # Pad each tensor to its own max length
+        for turn_idx, gen_output in enumerate(gen_output_list):
+            for key, tensor in gen_output.batch.items():
+                if isinstance(tensor, torch.Tensor) and tensor.ndim >= 2 and key in tensor_max_lengths:
+                    current_len = tensor.shape[1]
+                    max_len = tensor_max_lengths[key]
+                    
+                    if current_len < max_len:
+                        batch_size = tensor.shape[0]
+                        padding_size = max_len - current_len
+                        
+                        # Determine padding value based on key
+                        if 'input_ids' in key or 'prompts' in key:
+                            pad_value = pad_token_id
+                        else:
+                            pad_value = 0
+                        
+                        # Create padding tensor with same shape as original except dim 1
+                        pad_shape = list(tensor.shape)
+                        pad_shape[1] = padding_size
+                        padding = torch.full(pad_shape, pad_value, dtype=tensor.dtype, device=tensor.device)
+                        
+                        # Left-pad
+                        gen_output.batch[key] = torch.cat([padding, tensor], dim=1)
+                        logger.info(f"[GEN_MANAGER] Turn {turn_idx}: Padded {key} from {current_len} to {max_len}")
+        
+        # Log shapes AFTER padding
+        logger.info(f"[GEN_MANAGER] ===== AFTER PADDING =====")
+        for turn_idx, gen_output in enumerate(gen_output_list):
+            logger.info(f"[GEN_MANAGER] Turn {turn_idx}:")
+            for key, tensor in gen_output.batch.items():
+                if isinstance(tensor, torch.Tensor):
+                    logger.info(f"  {key}: {tensor.shape}")
         
         concatenated_output = DataProto.concat(gen_output_list)
-        logger.info(f"[GEN_MANAGER] After concatenation: input_ids shape = {concatenated_output.batch['input_ids'].shape}")
+        logger.info(f"[GEN_MANAGER] Concatenation complete: {concatenated_output.batch['input_ids'].shape}")
+        logger.info(f"[GEN_MANAGER] Expected: ~6-8k tokens per sample, got: {concatenated_output.batch['input_ids'].shape[1]} tokens")
         
         return concatenated_output, final_mask, sample_index # pyright: ignore
+

@@ -12,7 +12,7 @@ MODEL_PATH=../verl_custom/ckpt_sft/global_step_400
 VAL_PATH="${DATASET_ROOT}/val_text_32k.parquet"
 TRAIN_PATH="${DATASET_ROOT}/train_text_32k.parquet"
 EXP=memagent_implicit_persona
-PROJ_DIR=${PROJ_ROOT}/${EXP}
+PROJ_DIR=checkpoints/${EXP}
 
 # Please note that recurrent framewrok will use max_length defined in task config.
 # These two values are just for vLLM to decide max_model_length.
@@ -27,7 +27,7 @@ python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     algorithm.grpo_use_adv=False \
     trainer.save_freq=100 \
-    actor_rollout_ref.rollout.n=16 \
+    actor_rollout_ref.rollout.n=4 \
     actor_rollout_ref.rollout.val_kwargs.n=1 \
     trainer.logger=['console','wandb'] \
     actor_rollout_ref.actor.optim.lr_warmup_steps=20 \
@@ -37,7 +37,7 @@ python3 -m verl.trainer.main_ppo \
     data.val_files=$VAL_PATH \
     data.shuffle=False \
     data.filter_overlong_prompts=False \
-    data.train_batch_size=32 \
+    data.train_batch_size=16 \
     data.truncation='center' \
     +data.context_key='context' \
     data.max_prompt_length=$MAXLEN \
@@ -47,8 +47,8 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.path=$MODEL_PATH  \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \
-    actor_rollout_ref.actor.ppo_mini_batch_size=32 \
-    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 \
+    actor_rollout_ref.actor.ppo_mini_batch_size=16 \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.use_dynamic_bsz=True \
     actor_rollout_ref.actor.ppo_max_token_len_per_gpu=8192 \
     actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=8192 \
@@ -78,7 +78,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.critic_warmup=0 \
     trainer.project_name=${EXP} \
     trainer.experiment_name=${EXP}_grpo \
-    trainer.val_before_train=False \
+    trainer.val_before_train=True \
     trainer.n_gpus_per_node=$NGPUS_PER_NODE \
     trainer.nnodes=$NNODES \
     trainer.test_freq=100 \
