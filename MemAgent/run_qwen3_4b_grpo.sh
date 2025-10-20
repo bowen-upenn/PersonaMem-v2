@@ -26,7 +26,7 @@ python3 -m verl.trainer.main_ppo \
     recurrent.memory.config.max_chunks=8 \
     algorithm.adv_estimator=grpo \
     algorithm.grpo_use_adv=False \
-    trainer.save_freq=100 \
+    trainer.save_freq=50 \
     actor_rollout_ref.rollout.n=4 \
     actor_rollout_ref.rollout.val_kwargs.n=1 \
     trainer.logger=['console','wandb'] \
@@ -81,7 +81,9 @@ python3 -m verl.trainer.main_ppo \
     trainer.val_before_train=True \
     trainer.n_gpus_per_node=$NGPUS_PER_NODE \
     trainer.nnodes=$NNODES \
-    trainer.test_freq=100 \
+    trainer.test_freq=50 \
     trainer.default_hdfs_dir=null \
     trainer.default_local_dir=$PROJ_DIR \
-    trainer.total_epochs=1
+    trainer.total_epochs=1 \
+    trainer.resume_mode=resume_path \
+    trainer.resume_from_path=checkpoints/memagent_implicit_persona/global_step_100 \
