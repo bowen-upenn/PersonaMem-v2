@@ -16,6 +16,10 @@ from collections import defaultdict
 import time
 
 from query_llm import QueryLLM
+from inference_utils import (
+    evaluate_narrow_judge,
+    evaluate_broad_judge
+)
 
 
 class PersonaBenchmarkEvaluator:
@@ -39,27 +43,11 @@ class PersonaBenchmarkEvaluator:
     
     def _map_model_name(self, model_name: str) -> str:
         """Map user-friendly model names to deployment names."""
+        # Only map models that need aliasing
         model_mapping = {
-            'gpt-4o': 'gpt-4o-0806',  # Route gpt-4o to specific version
-            'gpt-4.1': 'gpt-4.1',
-            'gpt-4.1-mini': 'gpt-4.1-mini',
-            'gpt-4o-0806': 'gpt-4o-0806',
-            'gpt-4o-mini': 'gpt-4o-mini',
-            'gpt-5-chat': 'gpt-5-chat',
-            'gpt-5-mini': 'gpt-5-mini',
-            'gpt-5-nano': 'gpt-5-nano',
-            'o1': 'o1',
-            'o1-mini': 'o1-mini',
-            'o3-mini': 'o3-mini',
-            'o4-mini': 'o4-mini',
-            'gemini-2.5-pro': 'gemini-2.5-pro',
-            'gemini-2.5-flash': 'gemini-2.5-flash',
+            'gpt-4o': 'gpt-4o-0806',
             'gemini-pro': 'gemini-2.5-pro',
             'gemini-flash': 'gemini-2.5-flash',
-            'claude-3-5-sonnet': 'claude-3-5-sonnet-20241022',
-            'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
-            'claude-3-5-haiku': 'claude-3-5-haiku-20241022',
-            'claude-3-5-haiku-20241022': 'claude-3-5-haiku-20241022',
             'claude-sonnet': 'claude-3-5-sonnet-20241022',
             'claude-haiku': 'claude-3-5-haiku-20241022'
         }
@@ -171,11 +159,19 @@ class PersonaBenchmarkEvaluator:
         # Create consistent seed for this row to ensure reproducible shuffling
         row_seed = hash(f"{row['persona_id']}_{user_query_dict['content']}") % 2**32
         
-        # Handle evaluation mode
-        option_mapping = None
-        start_time = time.time()
+        # Initialize result dictionary with all columns
+        result = {
+            'model_response_mcq': '',
+            'predicted_answer_mcq': '',
+            'is_correct_mcq': '',
+            'response_time_mcq': '',
+            'model_response_openended': '',
+            'is_correct_openended': '',
+            'response_time_openended': ''
+        }
         
-        if eval_mode == "mcq":
+        # Handle evaluation mode
+        if eval_mode in ["mcq", "both"]:
             # Parse incorrect answers
             try:
                 incorrect_answers = json.loads(row['incorrect_answers']) if row['incorrect_answers'] else []
@@ -191,42 +187,29 @@ class PersonaBenchmarkEvaluator:
             
             # Add MCQ instruction as system message and send full conversation
             messages_to_send = full_chat_history + [{"role": "system", "content": mcq_instruction}]
-            response = self.query_llm.query_llm(messages_to_send, use_history=True)
             
-        else:  # generative
+            start_time_mcq = time.time()
+            response_mcq = self.query_llm.query_llm(messages_to_send, use_history=True)
+            end_time_mcq = time.time()
+            
+            # Extract final answer and check correctness
+            final_answer = self.extract_final_answer(response_mcq)
+            is_correct = self.check_mcq_correctness(final_answer, row['correct_answer'], option_mapping)
+            
+            result['model_response_mcq'] = response_mcq
+            result['predicted_answer_mcq'] = final_answer
+            result['is_correct_mcq'] = str(is_correct)
+            result['response_time_mcq'] = str(end_time_mcq - start_time_mcq)
+        
+        if eval_mode in ["generative", "both"]:
             # For generative, just send the chat history as is
-            response = self.query_llm.query_llm(full_chat_history, use_history=True)
-        
-        end_time = time.time()
-        
-        # Create result record
-        result = {
-            'persona_id': row['persona_id'],
-            'conversation_scenario': row['conversation_scenario'],
-            'pref_type': row['pref_type'],
-            'updated': row['updated'],
-            'who': row['who'],
-            'user_query': row['user_query'],
-            'correct_answer': row['correct_answer'],
-            'incorrect_answers': row['incorrect_answers'],
-            'topic_preference': row['topic_preference'],
-            'preference': row['preference'],
-            'chat_history_used': chat_history_path,
-            'eval_mode': eval_mode,
-            'use_multimodal': use_multimodal,
-            'messages_sent': messages_to_send if eval_mode == "mcq" else full_chat_history,
-            'model_response': response,
-            'response_time': end_time - start_time,
-            'timestamp': time.time()
-        }
-        
-        # Add evaluation-specific fields
-        if eval_mode == "mcq":
-            # Extract final answer from response
-            final_answer = self.extract_final_answer(response)
-            result['predicted_answer'] = final_answer
-            result['option_mapping'] = option_mapping
-            result['is_correct'] = self.check_mcq_correctness(final_answer, row['correct_answer'], option_mapping)
+            start_time_openended = time.time()
+            response_openended = self.query_llm.query_llm(full_chat_history, use_history=True)
+            end_time_openended = time.time()
+            
+            result['model_response_openended'] = response_openended
+            result['response_time_openended'] = str(end_time_openended - start_time_openended)
+            # is_correct_openended left blank as requested
         
         return result
     
@@ -294,6 +277,7 @@ class PersonaBenchmarkEvaluator:
         rows = []
         with open(benchmark_file, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames
             for row in reader:
                 rows.append(row)
                 if max_items and len(rows) >= max_items:
@@ -301,135 +285,165 @@ class PersonaBenchmarkEvaluator:
         
         print(f"Loaded {len(rows)} rows from benchmark")
         
-        # Create individual results directory for this run
+        # Create output CSV file
         run_timestamp = int(time.time())
-        individual_results_dir = self.results_dir / f"individual_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}"
-        individual_results_dir.mkdir(parents=True, exist_ok=True)
+        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.csv"
         
-        # Process each row and save individually
-        results = []
+        # Add new columns to fieldnames
+        output_fieldnames = list(fieldnames) + [
+            'model_response_mcq', 
+            'predicted_answer_mcq', 
+            'is_correct_mcq', 
+            'response_time_mcq',
+            'model_response_openended', 
+            'is_correct_openended', 
+            'response_time_openended'
+        ]
+        
+        # Process each row and write to CSV incrementally
         processed_count = 0
+        correct_count = 0
         
-        for i, row in enumerate(rows):
-            print(f"Processing row {i+1}/{len(rows)} (Persona {row['persona_id']})")
+        with open(output_file, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=output_fieldnames)
+            writer.writeheader()
             
-            # Create individual result file path
-            individual_file = individual_results_dir / f"result_persona_{row['persona_id']}_row_{i+1}.json"
-            
-            # Skip if already processed (for resuming interrupted runs)
-            if individual_file.exists():
-                print(f"  Skipping row {i+1} - already processed")
+            for i, row in enumerate(rows):
+                print(f"Processing row {i+1}/{len(rows)} (Persona {row['persona_id']})")
+                
                 try:
-                    with open(individual_file, 'r', encoding='utf-8') as f:
-                        existing_result = json.load(f)
-                        results.append(existing_result)
-                        processed_count += 1
+                    result = self.evaluate_row(row, eval_mode, use_multimodal, size)
+                    processed_count += 1
+                    
+                    # Create output row with all original columns plus new ones
+                    output_row = row.copy()
+                    output_row['model_response_mcq'] = result.get('model_response_mcq', '')
+                    output_row['predicted_answer_mcq'] = result.get('predicted_answer_mcq', '')
+                    output_row['is_correct_mcq'] = result.get('is_correct_mcq', '')
+                    output_row['response_time_mcq'] = result.get('response_time_mcq', '')
+                    output_row['model_response_openended'] = result.get('model_response_openended', '')
+                    output_row['is_correct_openended'] = result.get('is_correct_openended', '')
+                    output_row['response_time_openended'] = result.get('response_time_openended', '')
+                    
+                    # Count correct answers for MCQ
+                    if result.get('is_correct_mcq', '') == 'True':
+                        correct_count += 1
+                    
+                    writer.writerow(output_row)
+                    f.flush()  # Ensure data is written immediately
+                    
+                    print(f"  Row {i+1} completed and saved")
+                    
                 except Exception as e:
-                    print(f"  Error loading existing result: {e}")
-                continue
-            
-            try:
-                result = self.evaluate_row(row, eval_mode, use_multimodal, size)
-                results.append(result)
-                processed_count += 1
-                
-                # Save individual result immediately
-                with open(individual_file, 'w', encoding='utf-8') as f:
-                    json.dump(result, f, indent=2, ensure_ascii=False)
-                
-                print(f"  Result saved to {individual_file}")
-                
-            except Exception as e:
-                print(f"Error processing row {i+1}: {e}")
-                # Add error result
-                error_result = {
-                    'persona_id': row['persona_id'],
-                    'row_number': i+1,
-                    'error': str(e),
-                    'timestamp': time.time()
-                }
-                results.append(error_result)
-                
-                # Save error result individually
-                with open(individual_file, 'w', encoding='utf-8') as f:
-                    json.dump(error_result, f, indent=2, ensure_ascii=False)
-                
-                print(f"  Error result saved to {individual_file}")
+                    print(f"Error processing row {i+1}: {e}")
+                    # Write error to CSV
+                    output_row = row.copy()
+                    output_row['model_response_mcq'] = f"ERROR: {str(e)}"
+                    output_row['predicted_answer_mcq'] = ''
+                    output_row['is_correct_mcq'] = ''
+                    output_row['response_time_mcq'] = ''
+                    output_row['model_response_openended'] = ''
+                    output_row['is_correct_openended'] = ''
+                    output_row['response_time_openended'] = ''
+                    writer.writerow(output_row)
+                    f.flush()
         
-        # Save aggregated results
-        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.json"
-        
-        evaluation_data = {
-            'metadata': {
-                'benchmark_file': benchmark_file,
-                'model_name': self.config['models']['llm_model'],
-                'eval_mode': eval_mode,
-                'use_multimodal': use_multimodal,
-                'chat_history_size': size,
-                'total_rows': len(rows),
-                'processed_rows': processed_count,
-                'max_items': max_items,
-                'timestamp': run_timestamp,
-                'individual_results_dir': str(individual_results_dir)
-            },
-            'results': results
-        }
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(evaluation_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"Aggregated results saved to {output_file}")
-        print(f"Individual results saved in {individual_results_dir}")
+        print(f"\nResults saved to {output_file}")
         
         # Print evaluation statistics
-        self.print_evaluation_stats(results, eval_mode)
+        if eval_mode in ["mcq", "both"] and processed_count > 0:
+            accuracy = correct_count / processed_count
+            print(f"\n{'='*50}")
+            print(f"EVALUATION STATISTICS")
+            print(f"{'='*50}")
+            print(f"Total processed: {processed_count}")
+            print(f"Overall MCQ Accuracy: {accuracy:.3f} ({correct_count}/{processed_count})")
         
         return str(output_file)
     
 
-    def print_evaluation_stats(self, results: List[Dict[str, Any]], eval_mode: str):
-        """Print evaluation statistics."""
-        print(f"\n{'='*50}")
-        print(f"EVALUATION STATISTICS")
-        print(f"{'='*50}")
+    def run_judge_evaluation(self, results_csv_path: str) -> str:
+        """Run judge evaluation on existing results CSV and update it in place."""
+        print(f"Starting judge evaluation on {results_csv_path}...")
         
-        total_results = len([r for r in results if 'error' not in r])
-        error_count = len([r for r in results if 'error' in r])
+        # Read existing results
+        rows = []
+        with open(results_csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            fieldnames = list(reader.fieldnames)
+            rows = list(reader)
         
-        print(f"Total processed: {total_results}")
-        print(f"Errors: {error_count}")
+        # Add new judge columns if not already present
+        new_columns = [
+            'is_correct_openended_narrow',
+            'judge_responses_narrow',
+            'is_correct_openended_broad',
+            'judge_responses_broad'
+        ]
         
-        if eval_mode == "mcq" and total_results > 0:
-            # MCQ-specific stats
-            correct_count = len([r for r in results if r.get('is_correct', False)])
-            accuracy = correct_count / total_results if total_results > 0 else 0
+        for col in new_columns:
+            if col not in fieldnames:
+                fieldnames.append(col)
+        
+        # Create temporary output file
+        temp_output = results_csv_path + '.tmp'
+        
+        # Process each row with judges
+        with open(temp_output, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
             
-            print(f"Overall Accuracy: {accuracy:.3f} ({correct_count}/{total_results})")
-            
-            # Stats by metadata
-            stats_by_field = {}
-            fields = ['conversation_scenario', 'pref_type', 'updated', 'who']
-            
-            for field in fields:
-                field_stats = defaultdict(lambda: {'total': 0, 'correct': 0})
-                for result in results:
-                    if 'error' in result:
-                        continue
-                    field_value = result.get(field, 'unknown')
-                    field_stats[field_value]['total'] += 1
-                    if result.get('is_correct', False):
-                        field_stats[field_value]['correct'] += 1
+            for i, row in enumerate(rows):
+                print(f"Processing row {i+1}/{len(rows)} (Persona {row.get('persona_id', 'unknown')})")
                 
-                print(f"\nAccuracy by {field}:")
-                for value, stats in sorted(field_stats.items()):
-                    acc = stats['correct'] / stats['total'] if stats['total'] > 0 else 0
-                    print(f"  {value}: {acc:.3f} ({stats['correct']}/{stats['total']})")
+                # Check if we have an openended response to evaluate
+                model_response_openended = row.get('model_response_openended', '').strip()
+                
+                if model_response_openended and not model_response_openended.startswith('ERROR:'):
+                    try:
+                        # Evaluate with narrow judge
+                        print(f"  Evaluating with narrow judge...")
+                        narrow_decision, narrow_responses = evaluate_narrow_judge(
+                            row, model_response_openended, 
+                            self.query_llm.query_llm, self.load_chat_history
+                        )
+                        row['is_correct_openended_narrow'] = str(narrow_decision)
+                        row['judge_responses_narrow'] = narrow_responses
+                        
+                        # Evaluate with broad judge
+                        print(f"  Evaluating with broad judge...")
+                        broad_decision, broad_responses = evaluate_broad_judge(
+                            row, model_response_openended,
+                            self.query_llm.query_llm
+                        )
+                        row['is_correct_openended_broad'] = str(broad_decision)
+                        row['judge_responses_broad'] = broad_responses
+                        
+                        print(f"  Narrow: {narrow_decision}, Broad: {broad_decision}")
+                        
+                    except Exception as e:
+                        print(f"  Error evaluating row {i+1}: {e}")
+                        row['is_correct_openended_narrow'] = ''
+                        row['judge_responses_narrow'] = f"ERROR: {str(e)}"
+                        row['is_correct_openended_broad'] = ''
+                        row['judge_responses_broad'] = f"ERROR: {str(e)}"
+                else:
+                    # No openended response to evaluate
+                    row['is_correct_openended_narrow'] = ''
+                    row['judge_responses_narrow'] = ''
+                    row['is_correct_openended_broad'] = ''
+                    row['judge_responses_broad'] = ''
+                
+                writer.writerow(row)
+                f.flush()
         
-        # Response time stats
-        response_times = [r.get('response_time', 0) for r in results if 'error' not in r and 'response_time' in r]
-        if response_times:
-            avg_time = sum(response_times) / len(response_times)
-            print(f"\nAverage response time: {avg_time:.2f} seconds")
+        # Replace original file with updated one
+        os.replace(temp_output, results_csv_path)
+        
+        print(f"\nJudge evaluation completed. Updated results saved to {results_csv_path}")
+        return results_csv_path
+    
+
 
 
 if __name__ == "__main__":
@@ -437,8 +451,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run evaluation on ImplicitPersona benchmark')
     parser.add_argument('--benchmark_file', type=str, default=None,
                        help='Path to benchmark CSV file (auto-selects based on --use_multimodal if not specified)')
-    parser.add_argument('--eval_mode', type=str, choices=['mcq', 'generative'], default='mcq',
-                       help='Evaluation mode: mcq or generative')
+    parser.add_argument('--eval_mode', type=str, choices=['mcq', 'generative', 'both'], default='mcq',
+                       help='Evaluation mode: mcq, generative, or both')
     parser.add_argument('--use_multimodal', action='store_true',
                        help='Use multimodal chat history instead of regular chat history')
     parser.add_argument('--max_items', type=int, default=None,
@@ -455,19 +469,32 @@ if __name__ == "__main__":
                        help='Directory to save evaluation results (default: results/)')
     parser.add_argument('--size', type=str, default='32k',
                        help='Chat history size to use (one of 32k, 128k). Uses chat_history_{size}_link column from benchmark CSV')
+    parser.add_argument('--run_judges', action='store_true',
+                       help='Run judge evaluation on existing results CSV. Requires --results_csv_path')
+    parser.add_argument('--results_csv_path', type=str, default=None,
+                       help='Path to existing results CSV file for judge evaluation')
     
     args = parser.parse_args()
     
     # Initialize evaluator
     evaluator = PersonaBenchmarkEvaluator(args.config, args.model_name, args.result_path)
     
-    # Run evaluation
-    output_file = evaluator.run_evaluation(
-        args.benchmark_file,
-        args.eval_mode,
-        args.use_multimodal,
-        args.max_items,
-        args.size
-    )
-    
-    print(f"\nEvaluation completed. Results saved to: {output_file}")
+    # Run judge evaluation if requested
+    if args.run_judges:
+        if not args.results_csv_path:
+            print("Error: --results_csv_path is required when using --run_judges")
+            exit(1)
+        
+        output_file = evaluator.run_judge_evaluation(args.results_csv_path)
+        print(f"\nJudge evaluation completed. Results updated in: {output_file}")
+    else:
+        # Run normal inference evaluation
+        output_file = evaluator.run_evaluation(
+            args.benchmark_file,
+            args.eval_mode,
+            args.use_multimodal,
+            args.max_items,
+            args.size
+        )
+        
+        print(f"\nEvaluation completed. Results saved to: {output_file}")

@@ -880,13 +880,13 @@ def main():
     # for split, csv_path in (("train", args.text_train_csv), ("val", args.text_val_csv)):
         # for window in ("32k", "128k"):
     # process_split(csv_path, dtype="text", split=split, window="32k")
-    process_split(args.text_val_csv, dtype="text", split="val", window="32k")
+    # process_split(args.text_val_csv, dtype="text", split="val", window="32k")
 
     # # MULTIMODAL: train/val × 32k/128k
-    # print("\n=== Processing MULTIMODAL splits ===")
-    # for split, csv_path in (("train", args.multimodal_train_csv), ("val", args.multimodal_val_csv)):
-    #     for window in ("32k", "128k"):
-    #         process_split(csv_path, dtype="multimodal", split=split, window=window)
+    print("\n=== Processing MULTIMODAL splits ===")
+    for split, csv_path in (("train", args.multimodal_train_csv), ("val", args.multimodal_val_csv)):
+        # for window in ("32k", "128k"):
+        process_split(csv_path, dtype="multimodal", split=split, window='32k')
 
     # Copy to HDFS if specified (copy the entire output directory with all outputs)
     if args.hdfs_dir is not None:

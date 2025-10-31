@@ -47,9 +47,16 @@ export HF_HOME=/.cache
 
 # python3 -c "print('Qwen2.5-7B downloaded and moved to verl_custom/hub/ successfully')"
 
-python3 -c "import transformers; transformers.pipeline('text-generation', model='Qwen/Qwen3-4B-Instruct-2507')"
+# python3 -c "import transformers; transformers.pipeline('text-generation', model='Qwen/Qwen3-4B-Instruct-2507')"
+
+# # Move downloaded model files to the mounted path on verl_custom/hub/
+# mv /.cache/hub/models--Qwen--Qwen3-4B-Instruct-2507 verl_custom/hub/
+
+# python3 -c "print('Qwen3-4B-Instruct-2507 downloaded and moved to verl_custom/hub/ successfully')"
+
+python3 -c "import transformers; transformers.pipeline('image-text-to-text', model='Qwen/Qwen3-VL-4B-Instruct')"
 
 # Move downloaded model files to the mounted path on verl_custom/hub/
-mv /.cache/hub/models--Qwen--Qwen3-4B-Instruct-2507 verl_custom/hub/
+mv /.cache/hub/models--Qwen--Qwen3-VL-4B-Instruct verl_custom/hub/
 
-python3 -c "print('Qwen3-4B-Instruct-2507 downloaded and moved to verl_custom/hub/ successfully')"
+python3 -c "print('Qwen3-VL-4B-Instruct downloaded and moved to verl_custom/hub/ successfully')"

@@ -16,14 +16,13 @@ echo "Project root: ${PROJECT_ROOT}"
 # Default arguments
 DEFAULT_ARGS=(
     --model_name "${MODEL_NAME}"
-    --benchmark_file benchmark/multimodal/benchmark.csv
+    --benchmark_file benchmark/text/benchmark.csv
     --eval_mode mcq
-    --use_multimodal
-    --result_path "results/multimodal/${MODEL_NAME}"
+    --result_path "results/text/${MODEL_NAME}"
     --size 32k
 )
 
 # Run inference with default args plus any additional args passed to script
 python inference.py "${DEFAULT_ARGS[@]}" "$@"
 
-echo "Inference completed for ${MODEL_NAME} with multimodal mode"
+echo "Inference completed for ${MODEL_NAME} with text mode"
