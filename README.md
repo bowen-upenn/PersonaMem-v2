@@ -1,4 +1,4 @@
-## 🌟 ImplicitPersona: Continuous Learning of Implicit User Personas via Reinforcement Finetuning for LLM Personalization 🌟
+## PersonaMem-v2: Towards Personalized Intelligence by Learning Implicit User Personas via Reinforcement Learning
 
 ##### TODO Human Eval
 - Does the conversation sound natural and realistic?
