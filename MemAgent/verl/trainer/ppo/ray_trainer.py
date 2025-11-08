@@ -542,7 +542,14 @@ class RayPPOTrainer:
             )
         # consider the design of single controller with a large val dataset in multi-modal scenarios
         # may lead to oom issues
-        val_batch_size = self.config.data.val_batch_size or len(self.val_dataset)
+        val_batch_size = self.config.data.val_batch_size
+        if val_batch_size is None:
+            # If validation dataset size > 100, use train_batch_size instead of full dataset
+            if len(self.val_dataset) > 100:
+                val_batch_size = self.config.data.train_batch_size
+                print(f"Validation dataset size ({len(self.val_dataset)}) > 100, using train_batch_size ({val_batch_size}) for validation")
+            else:
+                val_batch_size = len(self.val_dataset)
         assert self.val_dataset.truncation == self.config.data.get(
             'truncation', 'error'
         ), f'dataset truncation {self.val_dataset.truncation} must be the same as config {self.config.data.get("truncation", "error")}'
@@ -641,7 +648,8 @@ class RayPPOTrainer:
         sample_outputs = []
         sample_scores = []
 
-        for test_data in self.val_dataloader:
+        print(f"Starting validation with {len(self.val_dataloader)} batches...")
+        for test_data in tqdm(self.val_dataloader, total=len(self.val_dataloader), desc="Validation"):
             test_batch = DataProto.from_single_dict(test_data)
 
             # repeat test batch
