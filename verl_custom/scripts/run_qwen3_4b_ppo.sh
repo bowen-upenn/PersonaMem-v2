@@ -4,8 +4,8 @@ set -x  # Enable debug mode
 
 python3 -m verl_custom.main_ppo \
     algorithm.adv_estimator=gae \
-    data.train_files=verl_custom/data/implicit_persona/train_text_32k.parquet \
-    data.val_files=verl_custom/data/implicit_persona/val_text_32k.parquet \
+    data.train_files=verl_custom/data/implicit_persona_rft/train_text_32k.parquet \
+    data.val_files=verl_custom/data/implicit_persona_rft/val_text_32k.parquet \
     data.train_batch_size=32 \
     data.max_prompt_length=35000 \
     data.max_response_length=2048 \
@@ -26,7 +26,7 @@ python3 -m verl_custom.main_ppo \
     actor_rollout_ref.actor.ulysses_sequence_parallel_size=8 \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=2 \
-    actor_rollout_ref.rollout.tensor_model_parallel_size=8 \
+    actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.n=16 \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.5 \

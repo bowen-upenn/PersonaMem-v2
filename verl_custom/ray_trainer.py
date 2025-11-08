@@ -600,7 +600,12 @@ class RayPPOTrainer:
 
         val_batch_size = self.config.data.val_batch_size  # Prefer config value if set
         if val_batch_size is None:
-            val_batch_size = len(self.val_dataset)
+            # If validation dataset size > 1000, use train_batch_size instead of full dataset
+            if len(self.val_dataset) > 1000:
+                val_batch_size = self.config.data.train_batch_size
+                print(f"Validation dataset size ({len(self.val_dataset)}) > 1000, using train_batch_size ({val_batch_size}) for validation")
+            else:
+                val_batch_size = len(self.val_dataset)
 
         # Embedding similarity validation dataloader
         self.val_dataloader = StatefulDataLoader(
@@ -615,7 +620,12 @@ class RayPPOTrainer:
         # MCQ validation dataloader
         val_mcq_batch_size = val_batch_size
         if val_mcq_batch_size is None:
-            val_mcq_batch_size = len(self.val_dataset_mcq)
+            # If MCQ validation dataset size > 1000, use train_batch_size instead of full dataset
+            if len(self.val_dataset_mcq) > 1000:
+                val_mcq_batch_size = self.config.data.train_batch_size
+                print(f"MCQ validation dataset size ({len(self.val_dataset_mcq)}) > 1000, using train_batch_size ({val_mcq_batch_size}) for MCQ validation")
+            else:
+                val_mcq_batch_size = len(self.val_dataset_mcq)
             
         self.val_dataloader_mcq = StatefulDataLoader(
             dataset=self.val_dataset_mcq,
@@ -771,8 +781,11 @@ class RayPPOTrainer:
             # Choose the appropriate dataloader
             dataloader = self.val_dataloader_mcq if use_mcq_dataloader else self.val_dataloader
             
-            print(f"Starting {description}...")
-            for test_data_id, test_data in tqdm(enumerate(dataloader), desc=description):
+            print(f"Starting {description} with {len(dataloader)} batches...")
+            for test_data_id, test_data in tqdm(enumerate(dataloader), total=len(dataloader), desc=description):
+                # if test_data_id > 3:
+                #     break
+                
                 test_batch = DataProto.from_single_dict(test_data)
 
                 # repeat test batch
@@ -836,8 +849,6 @@ class RayPPOTrainer:
                 # unpad
                 test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
 
-                print(f"{description} generation end")
-
                 # Store generated outputs
                 output_ids = test_output_gen_batch.batch["responses"]
                 output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
@@ -857,11 +868,9 @@ class RayPPOTrainer:
                 pass_scores.extend(scores)
 
                 pass_extra_infos["reward"].extend(scores)
-                print(f"len pass_extra_infos['reward']: {len(pass_extra_infos['reward'])}")
                 if "reward_extra_info" in result:
                     for key, lst in result["reward_extra_info"].items():
                         pass_extra_infos[key].extend(lst)
-                        print(f"Keys in pass_extra_infos: {key}, length: {len(lst)}")
 
                 # collect num_turns of each prompt
                 if "__num_turns__" in test_batch.non_tensor_batch:

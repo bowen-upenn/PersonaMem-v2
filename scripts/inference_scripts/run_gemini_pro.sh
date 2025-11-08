@@ -1,7 +1,4 @@
 #!/bin/bash
-# Inference script for Gemini 2.5 Pro model
-# Usage: ./run_gemini_pro.sh [additional_args]
-
 set -e
 
 MODEL_NAME="gemini-2.5-pro"
@@ -16,8 +13,8 @@ echo "Project root: ${PROJECT_ROOT}"
 # Default arguments
 DEFAULT_ARGS=(
     --model_name "${MODEL_NAME}"
-    --benchmark_file benchmark/multimodal/benchmark.csv
-    --eval_mode mcq
+    --benchmark_file data/benchmark/multimodal/benchmark.csv
+    --eval_mode both
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
     --size 32k

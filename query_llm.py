@@ -94,7 +94,10 @@ class QueryLLM:
         self.is_claude = False
         
         # Check for Azure OpenAI configuration first
-        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        if self.args['models']['llm_model'] in ['o3', 'o4-mini']:
+            azure_endpoint = "https://oar-oai-eastus2.openai.azure.com/"
+        else:
+            azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         azure_key = os.getenv("AZURE_OPENAI_KEY")
         if self.args['models']['llm_model'] == 'gpt-5-chat':
             azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")

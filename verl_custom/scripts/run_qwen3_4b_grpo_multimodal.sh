@@ -4,8 +4,8 @@ set -x  # Enable debug mode
 
 python3 -m verl_custom.main_ppo \
     algorithm.adv_estimator=grpo \
-    data.train_files=verl_custom/data/implicit_persona_rft/train_text_32k.parquet \
-    data.val_files=verl_custom/data/implicit_persona_rft/val_text_32k.parquet \
+    data.train_files=verl_custom/data/implicit_persona_rft/train_multimodal_32k.parquet \
+    data.val_files=verl_custom/data/implicit_persona_rft/val_multimodal_32k.parquet \
     data.train_batch_size=32 \
     data.max_prompt_length=35000 \
     data.max_response_length=2048 \

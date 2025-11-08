@@ -14,6 +14,11 @@ from typing import Dict, List, Any, Optional, Tuple
 import yaml
 from collections import defaultdict
 import time
+from tqdm import tqdm
+from datetime import datetime
+import re
+import random
+import tiktoken
 
 from query_llm import QueryLLM
 from inference_utils import (
@@ -23,9 +28,10 @@ from inference_utils import (
 
 
 class PersonaBenchmarkEvaluator:
-    def __init__(self, config_path: str = "config.yaml", model_name: str = None, result_path: str = "results/"):
+    def __init__(self, config_path: str = "config.yaml", model_name: str = None, result_path: str = "results/", verbose: bool = False):
         """Initialize the evaluator with configuration."""
         self.config = self._load_config(config_path)
+        self.verbose = verbose
         
         # Override model name if specified
         if model_name and model_name in self._map_model_name(model_name):
@@ -34,6 +40,9 @@ class PersonaBenchmarkEvaluator:
         self.query_llm = QueryLLM(self.config)
         self.results_dir = Path(result_path)
         self.results_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Cache for conversations: {file_path: conversations}
+        self.chat_history_cache = {}
         
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -55,30 +64,108 @@ class PersonaBenchmarkEvaluator:
         return model_mapping.get(model_name, model_name)
     
 
-    def load_chat_history(self, chat_history_path: str) -> List[Dict[str, str]]:
-        """Load chat history from JSON file."""
-        if not chat_history_path or not os.path.exists(chat_history_path):
-            return []
+    def load_chat_history(self, chat_history_path: str, size: str = '32k', use_cache: bool = True) -> List[Dict[str, str]]:
+        """Load chat history from JSON file. Cache key is the file path (which contains size info)."""
+        # Check cache if enabled - use file path as key (already contains size: .../32k/... or .../128k/...)
+        if use_cache and chat_history_path in self.chat_history_cache:
+            return self.chat_history_cache[chat_history_path]
         
         try:
             with open(chat_history_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 # Extract conversation history - handle different formats
                 if isinstance(data, list):
-                    return data
+                    conversations = data
                 elif isinstance(data, dict) and 'conversations' in data:
-                    return data['conversations']
+                    conversations = data['conversations']
                 elif isinstance(data, dict):
                     # Try to find conversation data in nested structure
+                    conversations = []
                     for key, value in data.items():
                         if isinstance(value, dict) and 'conversations' in value:
-                            return value['conversations']
+                            conversations = value['conversations']
+                            break
                         elif isinstance(value, list):
-                            return value
-                return []
+                            conversations = value
+                            break
+                else:
+                    conversations = []
+                
+                # Cache the loaded conversation with file path as key
+                # Only cache if key doesn't exist already
+                if chat_history_path not in self.chat_history_cache:
+                    # Check if cache is at max capacity (2 entries)
+                    if len(self.chat_history_cache) >= 2:
+                        # Clear cache before adding new entry
+                        self.chat_history_cache.clear()
+
+                    self.chat_history_cache[chat_history_path] = conversations
+                
+                return conversations
+                
         except Exception as e:
             print(f"Error loading chat history from {chat_history_path}: {e}")
             return []
+    
+    def _reduce_context_length(self, conversations: List[Dict[str, str]], tokens_to_remove: int = 2000) -> List[Dict[str, str]]:
+        """Reduce context length by removing code-related conversations."""
+        enc = tiktoken.encoding_for_model("gpt-4o")
+        
+        print(f"Reducing context by removing ~{tokens_to_remove} tokens...")
+        
+        # Pattern to detect code-related content
+        code_pattern = re.compile(r'\b(code|python|buggy)\b', re.IGNORECASE)
+
+        # Sample 1000 random conversations to find code-related content
+        sample_size = min(1000, len(conversations))
+        sample_indices = random.sample(range(len(conversations)), sample_size)
+        
+        code_indices = []
+        for idx in sample_indices:
+            content = str(conversations[idx].get('content', ''))
+            if code_pattern.search(content):
+                code_indices.append(idx)
+
+        # Remove conversation pairs and count tokens removed
+        random.shuffle(code_indices)
+        indices_to_remove = set()
+        tokens_removed = 0
+        
+        for idx in code_indices:
+            if idx in indices_to_remove or tokens_removed >= tokens_to_remove:
+                continue
+            
+            role = conversations[idx].get('role', '')
+            
+            # Identify pair indices
+            if role == 'user' and idx + 1 < len(conversations):
+                pair_indices = [idx, idx + 1]
+            elif role == 'assistant' and idx - 1 >= 0:
+                pair_indices = [idx - 1, idx]
+            else:
+                pair_indices = [idx]
+            
+            # Count tokens in this pair
+            pair_tokens = sum(
+                len(enc.encode(str(conversations[i].get('content', ''))))
+                for i in pair_indices
+            )
+            
+            # Add to removal set
+            indices_to_remove.update(pair_indices)
+            tokens_removed += pair_tokens
+        
+        # Create final list without removed indices
+        final_conversations = [
+            conv for i, conv in enumerate(conversations)
+            if i not in indices_to_remove
+        ]
+        
+        print(f"Removed {len(indices_to_remove)} messages (~{tokens_removed} tokens)")
+        # Update the cache
+        self.chat_history_cache[self._current_chat_history_path] = final_conversations
+
+        return final_conversations
     
 
     def create_mcq_options(self, correct_answer: str, incorrect_answers: List[str], 
@@ -151,7 +238,9 @@ class PersonaBenchmarkEvaluator:
             available_columns = list(row.keys())
             raise KeyError(f"Missing required column '{e}'. Available columns: {available_columns}")
         
-        chat_history = self.load_chat_history(chat_history_path)
+        # Store the current chat history path for cache updates during context reduction
+        self._current_chat_history_path = chat_history_path
+        chat_history = self.load_chat_history(chat_history_path, size)
         
         # Append user query to chat history
         full_chat_history = chat_history + [user_query_dict]
@@ -164,10 +253,8 @@ class PersonaBenchmarkEvaluator:
             'model_response_mcq': '',
             'predicted_answer_mcq': '',
             'is_correct_mcq': '',
-            'response_time_mcq': '',
             'model_response_openended': '',
-            'is_correct_openended': '',
-            'response_time_openended': ''
+            'is_correct_openended': ''
         }
         
         # Handle evaluation mode
@@ -185,12 +272,17 @@ class PersonaBenchmarkEvaluator:
                 seed=row_seed
             )
             
+            # Find the correct MCQ option letter
+            correct_mcq_option = "N/A"
+            for letter, answer in option_mapping.items():
+                if answer == row['correct_answer']:
+                    correct_mcq_option = letter
+                    break
+            
             # Add MCQ instruction as system message and send full conversation
             messages_to_send = full_chat_history + [{"role": "system", "content": mcq_instruction}]
             
-            start_time_mcq = time.time()
-            response_mcq = self.query_llm.query_llm(messages_to_send, use_history=True)
-            end_time_mcq = time.time()
+            response_mcq = self._query_with_retry(messages_to_send)
             
             # Extract final answer and check correctness
             final_answer = self.extract_final_answer(response_mcq)
@@ -199,19 +291,37 @@ class PersonaBenchmarkEvaluator:
             result['model_response_mcq'] = response_mcq
             result['predicted_answer_mcq'] = final_answer
             result['is_correct_mcq'] = str(is_correct)
-            result['response_time_mcq'] = str(end_time_mcq - start_time_mcq)
+            result['correct_mcq_option'] = correct_mcq_option
         
         if eval_mode in ["generative", "both"]:
             # For generative, just send the chat history as is
-            start_time_openended = time.time()
-            response_openended = self.query_llm.query_llm(full_chat_history, use_history=True)
-            end_time_openended = time.time()
+            response_openended = self._query_with_retry(full_chat_history)
             
             result['model_response_openended'] = response_openended
-            result['response_time_openended'] = str(end_time_openended - start_time_openended)
             # is_correct_openended left blank as requested
         
         return result
+    
+    def _query_with_retry(self, messages: List[Dict[str, str]]) -> str:
+        """Query LLM with automatic retry on context length error."""
+        try:
+            return self.query_llm.query_llm(messages, use_history=True)
+        except Exception as e:
+            error_str = str(e)
+            if "'code': 'context_length_exceeded'" not in error_str:
+                raise
+            
+            print(f"  Context length exceeded, reducing and retrying...")
+            
+            tokens_to_remove = 2000
+            match = re.search(r'resulted in (\d+) tokens', error_str)
+            if match:
+                tokens_to_remove = int(match.group(1)) - 128000 + 1000  # Add buffer
+            
+            # Reduce the messages directly
+            reduced_messages = self._reduce_context_length(messages, tokens_to_remove)
+            
+            return self.query_llm.query_llm(reduced_messages, use_history=True)
     
 
     def extract_final_answer(self, response: str) -> str:
@@ -258,6 +368,127 @@ class PersonaBenchmarkEvaluator:
         return predicted_text == correct_answer
     
 
+    def _create_summary_file(self, results_csv_path: str, total_processed: int, total_correct: int, overall_accuracy: float, sizes_evaluated: list):
+        """Create a summary file with accuracy statistics by category."""
+        # Read the results CSV to calculate category-wise accuracies
+        results_df_data = []
+        with open(results_csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                results_df_data.append(row)
+        
+        # Create summary file path
+        summary_file = Path(results_csv_path).parent / f"{Path(results_csv_path).stem}_summary.txt"
+        
+        # Categories to analyze
+        categories = [
+            'persona_id', 'topic_query', 'topic_preference', 'conversation_scenario', 
+            'pref_type', 'who', 'updated', 'sensitive_info', 
+            'distance_from_related_snippet_to_query_32k', 'distance_from_related_snippet_to_query_128k',
+            'num_persona_relevant_tokens_128k'
+        ]
+        
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            # Write overall statistics
+            f.write("="*60 + "\n")
+            f.write("EVALUATION SUMMARY\n")
+            f.write("="*60 + "\n")
+            f.write(f"Total processed: {total_processed}\n")
+            f.write(f"Sizes evaluated: {', '.join(sizes_evaluated)}\n")
+            f.write(f"Overall MCQ Accuracy (using {sizes_evaluated[0]}): {overall_accuracy:.3f} ({total_correct}/{total_processed})\n\n")
+            
+            # For each size, calculate overall accuracy
+            for size in sizes_evaluated:
+                size_correct = 0
+                size_total = 0
+                
+                for row in results_df_data:
+                    if row.get(f'is_correct_mcq_{size}') in ['True', 'False']:
+                        size_total += 1
+                        if row[f'is_correct_mcq_{size}'] == 'True':
+                            size_correct += 1
+                
+                if size_total > 0:
+                    size_accuracy = size_correct / size_total
+                    f.write(f"Overall MCQ Accuracy ({size}): {size_accuracy:.3f} ({size_correct}/{size_total})\n")
+            
+            f.write("\n")
+            
+            # Calculate and write category-wise accuracies for each size
+            for size in sizes_evaluated:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"CATEGORY BREAKDOWN FOR {size.upper()}\n")
+                f.write(f"{'='*60}\n")
+                
+                for category in categories:
+                    f.write(f"\nACCURACY BY {category.upper()} ({size}):\n")
+                    f.write("-" * 40 + "\n")
+                    
+                    # Check if this is a distance category that needs binning
+                    is_distance_category = 'distance_from_related_snippet_to_query' in category
+                    
+                    if is_distance_category:
+                        # Bin distance values into 1024-token intervals
+                        category_stats = defaultdict(lambda: {'correct': 0, 'total': 0})
+                        
+                        for row in results_df_data:
+                            if category in row and row.get(f'is_correct_mcq_{size}') in ['True', 'False']:
+                                try:
+                                    distance_value = int(row[category])
+                                    # Create bin: e.g., "0-1023", "1024-2047", etc.
+                                    bin_start = (distance_value // 1024) * 1024
+                                    bin_end = bin_start + 1023
+                                    bin_label = f"{bin_start}-{bin_end}"
+                                    
+                                    category_stats[bin_label]['total'] += 1
+                                    if row[f'is_correct_mcq_{size}'] == 'True':
+                                        category_stats[bin_label]['correct'] += 1
+                                except (ValueError, TypeError):
+                                    # Handle non-numeric values
+                                    category_value = row[category]
+                                    category_stats[category_value]['total'] += 1
+                                    if row[f'is_correct_mcq_{size}'] == 'True':
+                                        category_stats[category_value]['correct'] += 1
+                        
+                        # Sort bins by their starting value
+                        def sort_key(item):
+                            try:
+                                # Extract starting value from bin label like "0-1023"
+                                return int(item[0].split('-')[0])
+                            except:
+                                return float('inf')  # Put non-numeric values at the end
+                        
+                        sorted_categories = sorted(category_stats.items(), key=sort_key)
+                    else:
+                        # Regular category handling
+                        category_stats = defaultdict(lambda: {'correct': 0, 'total': 0})
+                        
+                        for row in results_df_data:
+                            if category in row and row.get(f'is_correct_mcq_{size}') in ['True', 'False']:
+                                category_value = row[category]
+                                category_stats[category_value]['total'] += 1
+                                if row[f'is_correct_mcq_{size}'] == 'True':
+                                    category_stats[category_value]['correct'] += 1
+                        
+                        # Sort by category value for consistent output
+                        sorted_categories = sorted(category_stats.items())
+                    
+                    for cat_value, stats in sorted_categories:
+                        if stats['total'] > 0:
+                            cat_accuracy = stats['correct'] / stats['total']
+                            f.write(f"{cat_value}: {cat_accuracy:.3f} ({stats['correct']}/{stats['total']})\n")
+                        else:
+                            f.write(f"{cat_value}: N/A (0/0)\n")
+                    
+                    # Write category summary
+                    total_in_category = sum(stats['total'] for stats in category_stats.values())
+                    total_correct_in_category = sum(stats['correct'] for stats in category_stats.values())
+                    if total_in_category > 0:
+                        category_overall_accuracy = total_correct_in_category / total_in_category
+                        f.write(f"\nCategory Overall ({size}): {category_overall_accuracy:.3f} ({total_correct_in_category}/{total_in_category})\n")
+        
+        print(f"Summary file created: {summary_file}")
+
     def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
                       use_multimodal: bool = False, max_items: int = None, size: str = '32k') -> str:
         """Run evaluation on the benchmark dataset."""
@@ -272,6 +503,7 @@ class PersonaBenchmarkEvaluator:
         print(f"Benchmark file: {benchmark_file}")
         print(f"Evaluation mode: {eval_mode}")
         print(f"Use multimodal: {use_multimodal}")
+        print(f"Size: {size}")
         
         # Load benchmark data
         rows = []
@@ -285,20 +517,28 @@ class PersonaBenchmarkEvaluator:
         
         print(f"Loaded {len(rows)} rows from benchmark")
         
-        # Create output CSV file
-        run_timestamp = int(time.time())
-        output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.csv"
+        # Determine which sizes to evaluate
+        if size == 'both':
+            sizes_to_evaluate = ['32k', '128k']
+            # Create output CSV file without size in filename
+            run_timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
+            output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{run_timestamp}.csv"
+        else:
+            sizes_to_evaluate = [size]
+            # Create output CSV file with size in filename
+            run_timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
+            output_file = self.results_dir / f"evaluation_results_{eval_mode}{'_multimodal' if use_multimodal else ''}_{size}_{run_timestamp}.csv"
         
-        # Add new columns to fieldnames
-        output_fieldnames = list(fieldnames) + [
-            'model_response_mcq', 
-            'predicted_answer_mcq', 
-            'is_correct_mcq', 
-            'response_time_mcq',
-            'model_response_openended', 
-            'is_correct_openended', 
-            'response_time_openended'
-        ]
+        # Add new columns to fieldnames based on sizes to evaluate
+        output_fieldnames = list(fieldnames)
+        for eval_size in sizes_to_evaluate:
+            output_fieldnames.extend([
+                f'model_response_mcq_{eval_size}', 
+                f'predicted_answer_mcq_{eval_size}', 
+                f'is_correct_mcq_{eval_size}',
+                f'model_response_openended_{eval_size}', 
+                f'is_correct_openended_{eval_size}'
+            ])
         
         # Process each row and write to CSV incrementally
         processed_count = 0
@@ -308,49 +548,84 @@ class PersonaBenchmarkEvaluator:
             writer = csv.DictWriter(f, fieldnames=output_fieldnames)
             writer.writeheader()
             
-            for i, row in enumerate(rows):
-                print(f"Processing row {i+1}/{len(rows)} (Persona {row['persona_id']})")
+            for i, row in enumerate(tqdm(rows, desc="Processing rows")):
+
+                # if i > 5:
+                #     continue  # For testing, limit to first 5 rows
                 
                 try:
-                    result = self.evaluate_row(row, eval_mode, use_multimodal, size)
+                    # Create output row with all original columns
+                    output_row = row.copy()
+                    
+                    # Initialize all possible output columns
+                    for eval_size in sizes_to_evaluate:
+                        output_row[f'model_response_mcq_{eval_size}'] = ''
+                        output_row[f'predicted_answer_mcq_{eval_size}'] = ''
+                        output_row[f'is_correct_mcq_{eval_size}'] = ''
+                        output_row[f'model_response_openended_{eval_size}'] = ''
+                        output_row[f'is_correct_openended_{eval_size}'] = ''
+                    
+                    # Evaluate for each size
+                    all_results = {}
+                    for eval_size in sizes_to_evaluate:
+                        result = self.evaluate_row(row, eval_mode, use_multimodal, eval_size)
+                        all_results[eval_size] = result
+                        
+                        # Store results with size suffix
+                        output_row[f'model_response_mcq_{eval_size}'] = result.get('model_response_mcq', '')
+                        output_row[f'predicted_answer_mcq_{eval_size}'] = result.get('predicted_answer_mcq', '')
+                        output_row[f'is_correct_mcq_{eval_size}'] = result.get('is_correct_mcq', '')
+                        output_row[f'model_response_openended_{eval_size}'] = result.get('model_response_openended', '')
+                        output_row[f'is_correct_openended_{eval_size}'] = result.get('is_correct_openended', '')
+                        
+                        # Count correct answers for MCQ (use first size for overall count)
+                        if eval_size == sizes_to_evaluate[0] and result.get('is_correct_mcq', '') == 'True':
+                            correct_count += 1
+                    
                     processed_count += 1
                     
-                    # Create output row with all original columns plus new ones
-                    output_row = row.copy()
-                    output_row['model_response_mcq'] = result.get('model_response_mcq', '')
-                    output_row['predicted_answer_mcq'] = result.get('predicted_answer_mcq', '')
-                    output_row['is_correct_mcq'] = result.get('is_correct_mcq', '')
-                    output_row['response_time_mcq'] = result.get('response_time_mcq', '')
-                    output_row['model_response_openended'] = result.get('model_response_openended', '')
-                    output_row['is_correct_openended'] = result.get('is_correct_openended', '')
-                    output_row['response_time_openended'] = result.get('response_time_openended', '')
-                    
-                    # Count correct answers for MCQ
-                    if result.get('is_correct_mcq', '') == 'True':
-                        correct_count += 1
+                    # Print verbose output if enabled
+                    if self.verbose:
+                        # ANSI color codes
+                        BLUE = '\033[94m'
+                        RESET = '\033[0m'
+                        
+                        print(f"  Verbose output for row {i+1}:")
+                        print(f"    {BLUE}user_query{RESET}: {row.get('user_query', 'N/A')}")
+                        print(f"    {BLUE}correct_answer{RESET}: {row.get('correct_answer', 'N/A')}")
+                        print(f"    {BLUE}preference{RESET}: {row.get('preference', 'N/A')}")
+                        
+                        for eval_size in sizes_to_evaluate:
+                            result = all_results[eval_size]
+                            correct_mcq_option = result.get('correct_mcq_option', 'N/A')
+                            print(f"    --- {eval_size.upper()} Results ---")
+                            print(f"    {BLUE}correct_mcq_option_{eval_size}{RESET}: {correct_mcq_option}")
+                            print(f"    {BLUE}model_response_mcq_{eval_size}{RESET}: {output_row[f'model_response_mcq_{eval_size}']}")
+                            print(f"    {BLUE}predicted_answer_mcq_{eval_size}{RESET}: {output_row[f'predicted_answer_mcq_{eval_size}']}")
+                            print(f"    {BLUE}is_correct_mcq_{eval_size}{RESET}: {output_row[f'is_correct_mcq_{eval_size}']}")
+                            print(f"    {BLUE}model_response_openended_{eval_size}{RESET}: {output_row[f'model_response_openended_{eval_size}']}")
+                            print(f"    {BLUE}is_correct_openended_{eval_size}{RESET}: {output_row[f'is_correct_openended_{eval_size}']}")
+                        print('-' * 50)
                     
                     writer.writerow(output_row)
                     f.flush()  # Ensure data is written immediately
-                    
-                    print(f"  Row {i+1} completed and saved")
                     
                 except Exception as e:
                     print(f"Error processing row {i+1}: {e}")
                     # Write error to CSV
                     output_row = row.copy()
-                    output_row['model_response_mcq'] = f"ERROR: {str(e)}"
-                    output_row['predicted_answer_mcq'] = ''
-                    output_row['is_correct_mcq'] = ''
-                    output_row['response_time_mcq'] = ''
-                    output_row['model_response_openended'] = ''
-                    output_row['is_correct_openended'] = ''
-                    output_row['response_time_openended'] = ''
+                    for eval_size in sizes_to_evaluate:
+                        output_row[f'model_response_mcq_{eval_size}'] = f"ERROR: {str(e)}"
+                        output_row[f'predicted_answer_mcq_{eval_size}'] = ''
+                        output_row[f'is_correct_mcq_{eval_size}'] = ''
+                        output_row[f'model_response_openended_{eval_size}'] = ''
+                        output_row[f'is_correct_openended_{eval_size}'] = ''
                     writer.writerow(output_row)
                     f.flush()
         
         print(f"\nResults saved to {output_file}")
         
-        # Print evaluation statistics
+        # Print evaluation statistics and create summary file
         if eval_mode in ["mcq", "both"] and processed_count > 0:
             accuracy = correct_count / processed_count
             print(f"\n{'='*50}")
@@ -358,6 +633,9 @@ class PersonaBenchmarkEvaluator:
             print(f"{'='*50}")
             print(f"Total processed: {processed_count}")
             print(f"Overall MCQ Accuracy: {accuracy:.3f} ({correct_count}/{processed_count})")
+            
+            # Create summary file
+            self._create_summary_file(output_file, processed_count, correct_count, accuracy, sizes_to_evaluate)
         
         return str(output_file)
     
@@ -393,8 +671,9 @@ class PersonaBenchmarkEvaluator:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             
-            for i, row in enumerate(rows):
-                print(f"Processing row {i+1}/{len(rows)} (Persona {row.get('persona_id', 'unknown')})")
+            for i, row in enumerate(tqdm(rows, desc="Processing judge evaluation")):
+                # if i > 5:
+                #     break  # For testing, limit to first 5 rows
                 
                 # Check if we have an openended response to evaluate
                 model_response_openended = row.get('model_response_openended', '').strip()
@@ -402,7 +681,6 @@ class PersonaBenchmarkEvaluator:
                 if model_response_openended and not model_response_openended.startswith('ERROR:'):
                     try:
                         # Evaluate with narrow judge
-                        print(f"  Evaluating with narrow judge...")
                         narrow_decision, narrow_responses = evaluate_narrow_judge(
                             row, model_response_openended, 
                             self.query_llm.query_llm, self.load_chat_history
@@ -411,7 +689,6 @@ class PersonaBenchmarkEvaluator:
                         row['judge_responses_narrow'] = narrow_responses
                         
                         # Evaluate with broad judge
-                        print(f"  Evaluating with broad judge...")
                         broad_decision, broad_responses = evaluate_broad_judge(
                             row, model_response_openended,
                             self.query_llm.query_llm
@@ -468,16 +745,18 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', type=str, default='results/',
                        help='Directory to save evaluation results (default: results/)')
     parser.add_argument('--size', type=str, default='32k',
-                       help='Chat history size to use (one of 32k, 128k). Uses chat_history_{size}_link column from benchmark CSV')
+                       help='Chat history size to use (one of 32k, 128k, both). Uses chat_history_{size}_link column from benchmark CSV')
     parser.add_argument('--run_judges', action='store_true',
                        help='Run judge evaluation on existing results CSV. Requires --results_csv_path')
     parser.add_argument('--results_csv_path', type=str, default=None,
                        help='Path to existing results CSV file for judge evaluation')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Enable verbose output to print detailed response information')
     
     args = parser.parse_args()
     
     # Initialize evaluator
-    evaluator = PersonaBenchmarkEvaluator(args.config, args.model_name, args.result_path)
+    evaluator = PersonaBenchmarkEvaluator(args.config, args.model_name, args.result_path, args.verbose)
     
     # Run judge evaluation if requested
     if args.run_judges:

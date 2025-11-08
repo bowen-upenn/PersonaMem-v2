@@ -1,7 +1,4 @@
 #!/bin/bash
-# Inference script for GPT-4.1 model
-# Usage: ./run_gpt41.sh [additional_args]
-
 set -e
 
 MODEL_NAME="gpt-4.1"
@@ -16,11 +13,11 @@ echo "Project root: ${PROJECT_ROOT}"
 # Default arguments
 DEFAULT_ARGS=(
     --model_name "${MODEL_NAME}"
-    --benchmark_file benchmark/multimodal/benchmark.csv
-    --eval_mode mcq
+    --benchmark_file data/benchmark/multimodal/benchmark.csv
+    --eval_mode both
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
-    --size 32k
+    --size both
 )
 
 # Run inference with default args plus any additional args passed to script

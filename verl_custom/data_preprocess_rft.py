@@ -563,7 +563,7 @@ def main():
     )
     parser.add_argument(
         "--text_val_csv",
-        default="data/benchmark/text/val.csv",
+        default="data/benchmark/text/benchmark.csv",
         help="Path to the TEXT val CSV file."
     )
     parser.add_argument(
@@ -746,7 +746,7 @@ def main():
 
         # For validation splits, create both MCQ and embedding similarity versions
         if split == "val":
-            sample_size = 100
+            sample_size = None
             
             # Process MCQ version (with MCQ prompts)
             print(f"Processing MCQ validation version for {dtype} {split} ({window})...")
@@ -761,7 +761,7 @@ def main():
                 filter_overlong=not args.no_filter_overlong,
                 is_mcq=True  # Add MCQ prompts
             )
-            out_path_mcq = os.path.join(local_dir, f"{split}_{dtype}_{window}_mcq.parquet")
+            out_path_mcq = os.path.join(local_dir, f"benchmark_{dtype}_{window}_mcq.parquet")
             print(f"Saving {dtype} {split} ({window}) MCQ dataset to {out_path_mcq}...")
             
             # Convert nested structures to JSON strings to avoid PyArrow nested data issues
@@ -785,7 +785,7 @@ def main():
                 filter_overlong=not args.no_filter_overlong,
                 is_mcq=False  # No MCQ prompts, just regular questions
             )
-            out_path_embed = os.path.join(local_dir, f"{split}_{dtype}_{window}.parquet")
+            out_path_embed = os.path.join(local_dir, f"benchmark_{dtype}_{window}.parquet")
             print(f"Saving {dtype} {split} ({window}) embedding similarity dataset to {out_path_embed}...")
             
             # Convert nested structures to JSON strings to avoid PyArrow nested data issues
@@ -880,13 +880,14 @@ def main():
     # for split, csv_path in (("train", args.text_train_csv), ("val", args.text_val_csv)):
         # for window in ("32k", "128k"):
     # process_split(csv_path, dtype="text", split=split, window="32k")
-    # process_split(args.text_val_csv, dtype="text", split="val", window="32k")
+    process_split(args.text_val_csv, dtype="text", split="val", window="32k")
+    process_split(args.text_val_csv, dtype="text", split="val", window="128k")
 
     # # MULTIMODAL: train/val × 32k/128k
-    print("\n=== Processing MULTIMODAL splits ===")
-    for split, csv_path in (("train", args.multimodal_train_csv), ("val", args.multimodal_val_csv)):
-        # for window in ("32k", "128k"):
-        process_split(csv_path, dtype="multimodal", split=split, window='32k')
+    # print("\n=== Processing MULTIMODAL splits ===")
+    # for split, csv_path in (("train", args.multimodal_train_csv), ("val", args.multimodal_val_csv)):
+    #     # for window in ("32k", "128k"):
+    #     process_split(csv_path, dtype="multimodal", split=split, window='32k')
 
     # Copy to HDFS if specified (copy the entire output directory with all outputs)
     if args.hdfs_dir is not None:
