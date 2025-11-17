@@ -219,6 +219,10 @@ class PersonaBenchmarkEvaluator:
                     "content": str(row['user_query']).strip('"').strip("'")
                 }
         
+        # Add instruction to recall user preferences at the end of the user query
+        if 'content' in user_query_dict and user_query_dict['content']:
+            user_query_dict['content'] += " Please recall my related preferences from our conversation history to give personalized responses."
+        
         # Load appropriate chat history based on size parameter
         try:
             # Construct column name based on size (e.g., 'chat_history_32k_link' or 'chat_history_128k_link')
@@ -651,13 +655,28 @@ class PersonaBenchmarkEvaluator:
             fieldnames = list(reader.fieldnames)
             rows = list(reader)
         
+        # Determine which sizes to evaluate based on existing columns
+        sizes_to_evaluate = []
+        if 'model_response_openended_32k' in fieldnames:
+            sizes_to_evaluate.append('32k')
+        if 'model_response_openended_128k' in fieldnames:
+            sizes_to_evaluate.append('128k')
+        
+        # If no size-specific columns, check for generic column (backward compatibility)
+        if not sizes_to_evaluate and 'model_response_openended' in fieldnames:
+            sizes_to_evaluate.append('generic')
+        
+        print(f"Detected sizes to evaluate: {sizes_to_evaluate}")
+        
         # Add new judge columns if not already present
-        new_columns = [
-            'is_correct_openended_narrow',
-            'judge_responses_narrow',
-            'is_correct_openended_broad',
-            'judge_responses_broad'
-        ]
+        new_columns = []
+        for size in sizes_to_evaluate:
+            new_columns.extend([
+                f'is_correct_openended_{size}_narrow',
+                f'judge_responses_{size}_narrow',
+                f'is_correct_openended_{size}_broad',
+                f'judge_responses_{size}_broad'
+            ])
         
         for col in new_columns:
             if col not in fieldnames:
@@ -675,41 +694,52 @@ class PersonaBenchmarkEvaluator:
                 # if i > 5:
                 #     break  # For testing, limit to first 5 rows
                 
-                # Check if we have an openended response to evaluate
-                model_response_openended = row.get('model_response_openended', '').strip()
-                
-                if model_response_openended and not model_response_openended.startswith('ERROR:'):
-                    try:
-                        # Evaluate with narrow judge
-                        narrow_decision, narrow_responses = evaluate_narrow_judge(
-                            row, model_response_openended, 
-                            self.query_llm.query_llm, self.load_chat_history
-                        )
-                        row['is_correct_openended_narrow'] = str(narrow_decision)
-                        row['judge_responses_narrow'] = narrow_responses
-                        
-                        # Evaluate with broad judge
-                        broad_decision, broad_responses = evaluate_broad_judge(
-                            row, model_response_openended,
-                            self.query_llm.query_llm
-                        )
-                        row['is_correct_openended_broad'] = str(broad_decision)
-                        row['judge_responses_broad'] = broad_responses
-                        
-                        print(f"  Narrow: {narrow_decision}, Broad: {broad_decision}")
-                        
-                    except Exception as e:
-                        print(f"  Error evaluating row {i+1}: {e}")
-                        row['is_correct_openended_narrow'] = ''
-                        row['judge_responses_narrow'] = f"ERROR: {str(e)}"
-                        row['is_correct_openended_broad'] = ''
-                        row['judge_responses_broad'] = f"ERROR: {str(e)}"
-                else:
-                    # No openended response to evaluate
-                    row['is_correct_openended_narrow'] = ''
-                    row['judge_responses_narrow'] = ''
-                    row['is_correct_openended_broad'] = ''
-                    row['judge_responses_broad'] = ''
+                # Evaluate for each size
+                for size in sizes_to_evaluate:
+                    response_col = f'model_response_openended_{size}'
+                    narrow_col = f'is_correct_openended_{size}_narrow'
+                    narrow_resp_col = f'judge_responses_{size}_narrow'
+                    broad_col = f'is_correct_openended_{size}_broad'
+                    broad_resp_col = f'judge_responses_{size}_broad'
+                    
+                    # Check if we have an openended response to evaluate
+                    model_response_openended = row.get(response_col, '').strip()
+                    
+                    if model_response_openended and not model_response_openended.startswith('ERROR:'):
+                        try:
+                            # Evaluate with narrow judge
+                            narrow_decision, narrow_responses = evaluate_narrow_judge(
+                                row, model_response_openended, 
+                                self.query_llm.query_llm, self.load_chat_history
+                            )
+                            row[narrow_col] = str(narrow_decision)
+                            row[narrow_resp_col] = narrow_responses
+                            
+                            # # Evaluate with broad judge
+                            # broad_decision, broad_responses = evaluate_broad_judge(
+                            #     row, model_response_openended,
+                            #     self.query_llm.query_llm
+                            # )
+                            # row[broad_col] = str(broad_decision)
+                            # row[broad_resp_col] = broad_responses
+                            
+                            # Get MCQ result for this size if available
+                            mcq_result = row.get(f'is_correct_mcq_{size}', 'N/A')
+                            # print(f"  Row {i+1} ({size}): MCQ={mcq_result}, Narrow={narrow_decision:.2f}, Broad={broad_decision:.2f}")
+                            print(f"  Row {i+1} ({size}): MCQ={mcq_result}, Narrow={narrow_decision:.2f}")
+                            
+                        except Exception as e:
+                            print(f"  Error evaluating row {i+1} ({size}): {e}")
+                            row[narrow_col] = ''
+                            row[narrow_resp_col] = f"ERROR: {str(e)}"
+                            row[broad_col] = ''
+                            row[broad_resp_col] = f"ERROR: {str(e)}"
+                    else:
+                        # No openended response to evaluate
+                        row[narrow_col] = ''
+                        row[narrow_resp_col] = ''
+                        row[broad_col] = ''
+                        row[broad_resp_col] = ''
                 
                 writer.writerow(row)
                 f.flush()

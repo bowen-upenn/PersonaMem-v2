@@ -9,45 +9,68 @@ import os
 from typing import Dict, List, Any, Tuple
 
 
-JUDGE_PROMPT_NARROW = """You are evaluating whether an AI assistant's response correctly addresses a user's personalized preferences based on their conversation history.
-
-Context from conversation:
-{related_conversation_snippet}
+JUDGE_PROMPT_NARROW_POSITIVE = """You are evaluating an AI assistant's personalization capabilities in open-ended conversations.
 
 User's query:
 {user_query}
 
 Ground truth user preference: {preference}
 
-Example correct answer: {correct_answer}
-
 Model's response to evaluate:
 {model_response}
 
-Task: Determine if the model's response correctly personalizes the answer according to the user's preference shown in the ground truth. The response doesn't need to be identical to the example answer, but it should demonstrate understanding and incorporation of the user's preference.
+Task: Evaluate how well the model personalizes its response according to the user's ground-truth preference. We expect the model to demonstrate awareness of this preference and provide a response that is specifically aligned with or relevant to it, rather than giving a generic answer that could apply to anyone.
 
-Important: If the model's response goes AGAINST or contradicts the ground truth preference, you MUST answer No.
+A well-personalized response should:
+- Acknowledge or incorporate the specific preference mentioned
+- Tailor recommendations, advice, or information to align with this preference
+- Show that the model remembers and respects the user's stated preference
 
-Provide your reasoning first, then give your final answer as \\boxed{{Yes}} or \\boxed{{No}}.
+A poorly personalized response:
+- Ignores the preference entirely and gives generic advice
+- Explicitly states it doesn't remember or track preferences
+- Provides suggestions that contradict the stated preference
+
+Give a score from 0.0 (completely irrelevant to or contradicts the preference) to 1.0 (explicitly and thoughtfully personalized to the preference).
+
+Provide your reasoning first, then give your final score as \\boxed{{score}} where score is a number between 0.0 and 1.0.
 Your response:"""
 
-JUDGE_PROMPT_BROAD = """You are evaluating whether an AI assistant's response correctly addresses a user's personalized preferences.
+JUDGE_PROMPT_NARROW_NEGATIVE = """You are evaluating an AI assistant's personalization capabilities in open-ended conversations.
 
 User's query:
 {user_query}
 
-User's complete preference profile:
-{all_preferences}
+Ground truth user preference: {preference}
 
 Model's response to evaluate:
 {model_response}
 
-Task: Determine if the model's response correctly relates to and incorporates at least one of the user's preferences from their profile to provide a personalized response.
+In this case, the user's ground-truth preference is a "do not personalize" or "avoid" instruction about a certain topic or attribute. The user does not want the assistant to tailor its response based on that specific preference, and instead expects a more general or neutral answer that does not rely on or mention that preference.
 
-Important: If the model's response goes AGAINST or contradicts ANY of the user's preferences in their profile, you MUST answer No.
+Task: Evaluate how well the model respects this preference. The model should avoid using or referencing the sensitive preference in a way that personalizes the response, while still providing a helpful and relevant answer.
 
-Provide your reasoning first, then give your final answer as \\boxed{{Yes}} or \\boxed{{No}}.
+Give a score from 0.0 (clearly personalizes using the forbidden preference or ignores the instruction) to 1.0 (fully respects the instruction to not personalize while remaining helpful).
+
+Provide your reasoning first, then give your final score as \\boxed{{score}} where score is a number between 0.0 and 1.0.
 Your response:"""
+
+# JUDGE_PROMPT_BROAD = """You are evaluating whether an AI assistant's response is aligned with the user's preference profile.
+
+# User's query:
+# {user_query}
+
+# User's complete preference profile
+# {all_preferences}
+
+# Model's response to evaluate:
+# {model_response}
+
+# Task: Check if the model's response follows or aligns with one or more preferences from the profile.
+# Give a score from 0.0 (violates any one of the preferences) to 1.0 (perfectly aligns with one or more preferences with no violations).
+
+# Provide your reasoning first, then give your final score as \\boxed{{score}} where score is a number between 0.0 and 1.0.
+# Your response:"""
 
 
 def load_persona_preferences(persona_file_path: str) -> Dict[str, Any]:
@@ -115,116 +138,146 @@ def format_all_preferences(preferences: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def extract_judge_decision(response: str) -> bool:
-    """Extract yes/no decision from judge response."""
+def extract_judge_decision(response: str) -> float:
+    """Extract numeric score from judge response."""
     if not response:
-        return False
+        return 0.0
     
     import re
     
     # Look for boxed format first (most reliable)
     boxed_patterns = [
-        r'\\boxed\{(yes|no)\}',
-        r'\$\\boxed\{(yes|no)\}\$',
-        r'\\boxed\s*\{(yes|no)\}',
+        r'\\boxed\{([0-9]*\.?[0-9]+)\}',
+        r'\$\\boxed\{([0-9]*\.?[0-9]+)\}\$',
+        r'\\boxed\s*\{([0-9]*\.?[0-9]+)\}',
     ]
     
     for pattern in boxed_patterns:
+        match = re.search(pattern, response)
+        if match:
+            try:
+                score = float(match.group(1))
+                # Clamp score between 0.0 and 1.0
+                return max(0.0, min(1.0, score))
+            except ValueError:
+                continue
+    
+    # Fallback: look for standalone decimal number that looks like a score
+    score_patterns = [
+        r'score[:\s]+([0-9]*\.?[0-9]+)',
+        r'rating[:\s]+([0-9]*\.?[0-9]+)',
+        r'([0-9]*\.[0-9]+)\s*/\s*1\.?0?',
+    ]
+    
+    for pattern in score_patterns:
         match = re.search(pattern, response, re.IGNORECASE)
         if match:
-            answer = match.group(1).lower()
-            return answer == 'yes'
+            try:
+                score = float(match.group(1))
+                if 0.0 <= score <= 1.0:
+                    return score
+            except ValueError:
+                continue
     
-    # Fallback: look for yes/no at the beginning of the response
-    response_lower = response.lower().strip()
-    if response_lower.startswith('yes'):
-        return True
-    elif response_lower.startswith('no'):
-        return False
-    
-    # Second fallback: check for yes/no in first sentence
-    first_sentence = response.split('.')[0].lower()
-    if 'yes' in first_sentence and 'no' not in first_sentence:
-        return True
-    elif 'no' in first_sentence and 'yes' not in first_sentence:
-        return False
-    
-    # Default to False if unclear
-    print(f"    Warning: Could not extract clear yes/no from judge response: {response[:100]}...")
-    return False
+    # Default to 0.0 if unclear
+    print(f"    Warning: Could not extract clear score from judge response: {response[:100]}...")
+    return 0.0
 
 
-def majority_vote(decisions: List[bool]) -> bool:
-    """Take majority vote from judge decisions."""
-    return sum(decisions) > len(decisions) / 2
+def average_score(scores: List[float]) -> float:
+    """Calculate average score from judge scores."""
+    if not scores:
+        return 0.0
+    return sum(scores) / len(scores)
 
 
 def evaluate_narrow_judge(row: Dict[str, Any], model_response: str, 
-                         query_llm_func, load_chat_history_func) -> Tuple[bool, str]:
-    """Evaluate with narrow judge (3 LLMs, majority vote)."""
-    # Get related conversation snippet - use a portion of chat history
-    chat_history_path = row.get('chat_history_32k_link', row.get('chat_history_link', ''))
-    related_snippet = ""
-    if chat_history_path and os.path.exists(chat_history_path):
-        chat_history = load_chat_history_func(chat_history_path)
-        # Take last 5 messages as context
-        recent_messages = chat_history[-5:] if len(chat_history) > 5 else chat_history
-        related_snippet = "\n".join([f"{msg.get('role', 'unknown')}: {msg.get('content', '')}" 
-                                    for msg in recent_messages])
+                         query_llm_func, load_chat_history_func) -> Tuple[float, str]:
+    """Evaluate with narrow judge (3 LLMs, average score)."""
+    # Extract content from user_query if it's a dict
+    user_query = row.get('user_query', '')
+    if isinstance(user_query, str):
+        try:
+            import ast
+            user_query_dict = ast.literal_eval(user_query)
+            if isinstance(user_query_dict, dict) and 'content' in user_query_dict:
+                user_query = user_query_dict['content']
+        except:
+            pass  # Keep as string if parsing fails
     
-    prompt = JUDGE_PROMPT_NARROW.format(
-        related_conversation_snippet=related_snippet,
-        user_query=row.get('user_query', ''),
-        preference=row.get('preference', ''),
-        correct_answer=row.get('correct_answer', ''),
+    # Determine if this is a negative preference (avoidance)
+    preference = row.get('preference', '')
+    is_negative = preference.lower().startswith('do not')
+    
+    # Select appropriate prompt template
+    prompt_template = JUDGE_PROMPT_NARROW_NEGATIVE if is_negative else JUDGE_PROMPT_NARROW_POSITIVE
+    
+    prompt = prompt_template.format(
+        user_query=user_query,
+        preference=preference,
         model_response=model_response
     )
     
     # Query 3 judges
     judge_responses = []
-    decisions = []
+    scores = []
     
-    for i in range(3):
-        print(f"    Querying narrow judge {i+1}/3...")
-        messages = [{"role": "user", "content": prompt}]
-        response = query_llm_func(messages, use_history=False)
-        judge_responses.append(f"Judge {i+1}: {response}")
-        decision = extract_judge_decision(response)
-        decisions.append(decision)
+    for i in range(1):
+        # print(f"    Querying narrow judge {i+1}/3...")
+        # Pass prompt as a simple string instead of message list to avoid multimodal API issues
+        response = query_llm_func(prompt, use_history=False)
+        score = extract_judge_decision(response)
+        judge_responses.append(f"Judge {i+1} (score: {score:.2f}): {response}")
+        scores.append(score)
+        # print('=== PROMPT ===')
+        # print(prompt)
+        # print('\n=== RESPONSE ===')
+        # print(response)
     
-    final_decision = majority_vote(decisions)
+    final_score = average_score(scores)
     combined_response = "\n\n".join(judge_responses)
     
-    return final_decision, combined_response
+    return final_score, combined_response
 
 
 def evaluate_broad_judge(row: Dict[str, Any], model_response: str, 
-                        query_llm_func) -> Tuple[bool, str]:
-    """Evaluate with broad judge (3 LLMs, majority vote)."""
+                        query_llm_func) -> Tuple[float, str]:
+    """Evaluate with broad judge (3 LLMs, average score)."""
     # Load all preferences from persona file
     persona_file = row.get('raw_persona_file', '')
     all_preferences = load_persona_preferences(persona_file)
     preferences_text = format_all_preferences(all_preferences)
     
+    # Extract content from user_query if it's a dict
+    user_query = row.get('user_query', '')
+    if isinstance(user_query, str):
+        try:
+            import ast
+            user_query_dict = ast.literal_eval(user_query)
+            if isinstance(user_query_dict, dict) and 'content' in user_query_dict:
+                user_query = user_query_dict['content']
+        except:
+            pass  # Keep as string if parsing fails
+    
     prompt = JUDGE_PROMPT_BROAD.format(
-        user_query=row.get('user_query', ''),
+        user_query=user_query,
         all_preferences=preferences_text,
         model_response=model_response
     )
     
     # Query 3 judges
     judge_responses = []
-    decisions = []
+    scores = []
     
     for i in range(3):
-        print(f"    Querying broad judge {i+1}/3...")
-        messages = [{"role": "user", "content": prompt}]
-        response = query_llm_func(messages, use_history=False)
-        judge_responses.append(f"Judge {i+1}: {response}")
-        decision = extract_judge_decision(response)
-        decisions.append(decision)
+        # print(f"    Querying broad judge {i+1}/3...")
+        # Pass prompt as a simple string instead of message list to avoid multimodal API issues
+        response = query_llm_func(prompt, use_history=False)
+        score = extract_judge_decision(response)
+        judge_responses.append(f"Judge {i+1} (score: {score:.2f}): {response}")
+        scores.append(score)
     
-    final_decision = majority_vote(decisions)
+    final_score = average_score(scores)
     combined_response = "\n\n".join(judge_responses)
     
-    return final_decision, combined_response
+    return final_score, combined_response
