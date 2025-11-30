@@ -104,6 +104,7 @@ class CustomNaiveRewardManager:
             groundtruth_preference = groundtruth.get("groundtruth_preference", "")
             correct_answer = groundtruth.get("correct_answer", "")
             pref_type = groundtruth.get("pref_type", "")
+            is_mcq = groundtruth.get("is_mcq", False)
 
             data_source = data_item.non_tensor_batch[self.reward_fn_key]
             item_extra_info = data_item.non_tensor_batch.get("extra_info", {})
@@ -147,22 +148,24 @@ class CustomNaiveRewardManager:
             should_print = current_index in data_source_selected_indices[data_source]
             data_source_current_index[data_source] += 1
 
-            # if should_print:
-            #     # Extract the clean solution for display
-            #     solution_clean = extract_solution(response_str)
+            if should_print:
+                # Extract the clean solution for display
+                solution_clean = extract_solution(response_str)
 
-            #     print(f'\033[92m[question]:\033[0m {question}')
-            #     print(f'\033[92m[target_answer]:\033[0m {correct_answer}')
-            #     print(f'\033[92m[preference]:\033[0m {groundtruth_preference}')
-            #     print(f'\033[92m[model_final_response]:\033[0m {solution_clean}')
-            #     print(f'\033[92m[eval_method]:\033[0m {self.eval_method}')
-            #     print(f'\033[92m[pref_type]:\033[0m {pref_type}')
-            #     if isinstance(reward, dict):
-            #         for key, value in reward.items():
-            #             print(f'\033[92m[{key}]:\033[0m {value}')
-            #     else:
-            #         print(f'\033[92m[reward_score]:\033[0m {reward}')
-            #     print('\n' + '-' * 80 + '\n')
+                print(f'\033[92m[question]:\033[0m {question}')
+                print(f'\033[92m[target_answer]:\033[0m {correct_answer}')
+                print(f'\033[92m[preference]:\033[0m {groundtruth_preference}')
+                print(f'\033[92m[model_final_response]:\033[0m {solution_clean}')
+                print(f'\033[92m[eval_method]:\033[0m {self.eval_method}')
+                print(f'\033[92m[pref_type]:\033[0m {pref_type}')
+                print(f'\033[92m[data_source]:\033[0m {data_source}')
+                print(f'\033[92m[is_mcq]:\033[0m {is_mcq}')
+                if isinstance(reward, dict):
+                    for key, value in reward.items():
+                        print(f'\033[92m[{key}]:\033[0m {value}')
+                else:
+                    print(f'\033[92m[reward_score]:\033[0m {reward}')
+                print('\n' + '-' * 80 + '\n')
 
         if return_dict:
             return {

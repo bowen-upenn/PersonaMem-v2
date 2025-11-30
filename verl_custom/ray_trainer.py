@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pprint import pprint
 from typing import Optional, Type
+import os
 
 import numpy as np
 from verl_custom.reward_score import extract_solution, compute_answer_similarity
@@ -576,9 +577,17 @@ class RayPPOTrainer:
                     mcq_file = val_file_clean + '_mcq'
                 val_mcq_files.append(mcq_file)
             
-            val_dataset_mcq = create_rl_dataset(
-                val_mcq_files, self.config.data, self.tokenizer, self.processor
-            )
+            # Check if all MCQ files exist before trying to load
+            all_mcq_files_exist = all(os.path.exists(os.path.abspath(f) if not os.path.isabs(f) else f) for f in val_mcq_files)
+            
+            if all_mcq_files_exist:
+                print(f"Loading MCQ validation dataset from: {val_mcq_files}")
+                val_dataset_mcq = create_rl_dataset(
+                    val_mcq_files, self.config.data, self.tokenizer, self.processor
+                )
+            else:
+                print(f"MCQ files not found: {val_mcq_files}. Skipping MCQ validation")
+                val_dataset_mcq = None
         
         self.train_dataset, self.val_dataset, self.val_dataset_mcq = train_dataset, val_dataset, val_dataset_mcq
 
@@ -598,14 +607,14 @@ class RayPPOTrainer:
             sampler=train_sampler,
         )
 
-        val_batch_size = self.config.data.val_batch_size  # Prefer config value if set
-        if val_batch_size is None:
-            # If validation dataset size > 1000, use train_batch_size instead of full dataset
-            if len(self.val_dataset) > 1000:
-                val_batch_size = self.config.data.train_batch_size
-                print(f"Validation dataset size ({len(self.val_dataset)}) > 1000, using train_batch_size ({val_batch_size}) for validation")
-            else:
-                val_batch_size = len(self.val_dataset)
+        # Determine validation batch size based on dataset size
+        # If validation dataset size > 100, use train_batch_size for better performance
+        if len(self.val_dataset) > 100:
+            val_batch_size = self.config.data.train_batch_size * 2
+            print(f"Validation dataset size ({len(self.val_dataset)}) > 100, using train_batch_size ({val_batch_size}) for validation")
+        else:
+            # For small validation sets, use full dataset unless explicitly configured
+            val_batch_size = self.config.data.val_batch_size if self.config.data.val_batch_size is not None else len(self.val_dataset)
 
         # Embedding similarity validation dataloader
         self.val_dataloader = StatefulDataLoader(
@@ -617,33 +626,36 @@ class RayPPOTrainer:
             collate_fn=collate_fn,
         )
         
-        # MCQ validation dataloader
-        val_mcq_batch_size = val_batch_size
-        if val_mcq_batch_size is None:
-            # If MCQ validation dataset size > 1000, use train_batch_size instead of full dataset
-            if len(self.val_dataset_mcq) > 1000:
-                val_mcq_batch_size = self.config.data.train_batch_size
-                print(f"MCQ validation dataset size ({len(self.val_dataset_mcq)}) > 1000, using train_batch_size ({val_mcq_batch_size}) for MCQ validation")
+        # MCQ validation dataloader - only create if dataset exists
+        if self.val_dataset_mcq is not None:
+            # Apply same logic for MCQ validation batch size
+            if len(self.val_dataset_mcq) > 100:
+                val_mcq_batch_size = self.config.data.train_batch_size * 2
+                print(f"MCQ validation dataset size ({len(self.val_dataset_mcq)}) > 100, using train_batch_size ({val_mcq_batch_size}) for MCQ validation")
             else:
-                val_mcq_batch_size = len(self.val_dataset_mcq)
-            
-        self.val_dataloader_mcq = StatefulDataLoader(
-            dataset=self.val_dataset_mcq,
-            batch_size=val_mcq_batch_size,
-            num_workers=self.config.data.get("dataloader_num_workers", 8),
-            shuffle=self.config.data.get("validation_shuffle", True),
-            drop_last=False,
-            collate_fn=collate_fn,
-        )
+                val_mcq_batch_size = self.config.data.val_batch_size if self.config.data.val_batch_size is not None else len(self.val_dataset_mcq)
+                
+            self.val_dataloader_mcq = StatefulDataLoader(
+                dataset=self.val_dataset_mcq,
+                batch_size=val_mcq_batch_size,
+                num_workers=self.config.data.get("dataloader_num_workers", 8),
+                shuffle=self.config.data.get("validation_shuffle", True),
+                drop_last=False,
+                collate_fn=collate_fn,
+            )
+        else:
+            self.val_dataloader_mcq = None
+            print("No MCQ validation dataset available, skipping MCQ dataloader creation")
 
         assert len(self.train_dataloader) >= 1, "Train dataloader is empty!"
         assert len(self.val_dataloader) >= 1, "Validation dataloader is empty!"
-        assert len(self.val_dataloader_mcq) >= 1, "MCQ validation dataloader is empty!"
 
         print(
             f"Size of train dataloader: {len(self.train_dataloader)}, Size of val dataloader: "
-            f"{len(self.val_dataloader)}, Size of MCQ val dataloader: {len(self.val_dataloader_mcq)}"
+            f"{len(self.val_dataloader)}"
         )
+        if self.val_dataloader_mcq is not None:
+            print(f"Size of MCQ val dataloader: {len(self.val_dataloader_mcq)}")
 
         total_training_steps = len(self.train_dataloader) * self.config.trainer.total_epochs
 
@@ -780,10 +792,13 @@ class RayPPOTrainer:
             
             # Choose the appropriate dataloader
             dataloader = self.val_dataloader_mcq if use_mcq_dataloader else self.val_dataloader
+            if dataloader is None:
+                print(f"Skipping {description} as the corresponding dataloader is not available.")
+                return [], [], [], [], defaultdict(list), []
             
             print(f"Starting {description} with {len(dataloader)} batches...")
             for test_data_id, test_data in tqdm(enumerate(dataloader), total=len(dataloader), desc=description):
-                # if test_data_id > 3:
+                # if test_data_id > 5:
                 #     break
                 
                 test_batch = DataProto.from_single_dict(test_data)
@@ -858,11 +873,12 @@ class RayPPOTrainer:
                 test_batch.meta_info["validate"] = True
 
                 # evaluate using reward_function
-                val_reward_fn_extra_info = {'mcq': True}
                 if mcq_mode:
+                    val_reward_fn_extra_info = {'mcq': True}
                     result = self.val_reward_fn(test_batch, return_dict=True, extra_info=val_reward_fn_extra_info)
                 else:
-                    result = self.val_reward_fn(test_batch, return_dict=True)
+                    val_reward_fn_extra_info = {'eval_benchmark': True}
+                    result = self.val_reward_fn(test_batch, return_dict=True, extra_info=val_reward_fn_extra_info)
                 reward_tensor = result["reward_tensor"]
                 scores = reward_tensor.sum(-1).cpu().tolist()
                 pass_scores.extend(scores)
@@ -879,19 +895,12 @@ class RayPPOTrainer:
                 pass_data_sources.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
 
             return pass_inputs, pass_outputs, pass_scores, pass_turns, pass_extra_infos, pass_data_sources
-        
-        # Run regular validation (uses regular validation dataloader without MCQ prompts)
+
+        # Always run regular validation first using LLM as judges for open ended responses
         regular_inputs, regular_outputs, regular_scores, regular_turns, regular_extra_infos, regular_data_sources = run_validation_pass(
             "Regular validation", 
             mcq_mode=False,
             use_mcq_dataloader=False
-        )
-        
-        # Run MCQ validation (uses MCQ dataloader with MCQ prompts)
-        mcq_inputs, mcq_outputs, mcq_scores, mcq_turns, mcq_extra_infos, mcq_data_sources = run_validation_pass(
-            "MCQ validation", 
-            mcq_mode=True,
-            use_mcq_dataloader=True
         )
         
         # Use regular validation results for logging (consistent with training rewards)
@@ -905,6 +914,14 @@ class RayPPOTrainer:
             reward_extra_infos_dict[key].extend(values)
         
         data_source_lst.extend(regular_data_sources)
+        
+        # Run MCQ validation only if separate MCQ dataset exists
+        if self.val_dataset_mcq is not None:
+            mcq_inputs, mcq_outputs, mcq_scores, mcq_turns, mcq_extra_infos, mcq_data_sources = run_validation_pass(
+                "MCQ validation (separate MCQ dataset)", 
+                mcq_mode=True,
+                use_mcq_dataloader=True
+            )
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
         
@@ -926,27 +943,30 @@ class RayPPOTrainer:
         else:
             print("Regular Validation Reward: No valid scores found")
         
-        # Calculate MCQ accuracy (from MCQ validation)
-        mcq_accuracy = []
-        print("Len of mcq_scores:", len(mcq_scores))
-        for i in range(len(mcq_scores)):
-            if mcq_scores[i] < 0:
-                mcq_accuracy.append(0.0)
-            elif mcq_scores[i] > 1:
-                mcq_accuracy.append(1.0)
-            else:
-                mcq_accuracy.append(mcq_scores[i])
-        
-        # Print statistics for MCQ accuracy
-        if mcq_accuracy:
-            print(f"MCQ Accuracy: mean={np.mean(mcq_accuracy):.4f}, "
-                  f"min={np.min(mcq_accuracy):.4f}, max={np.max(mcq_accuracy)}")
-        else:
-            print("MCQ Accuracy: No valid scores found")
-
         # Add regular reward scores to reward_extra_infos_dict for metric processing
-        # Note: Only add metrics that have the same length as sample_scores (regular validation)
         reward_extra_infos_dict["regular_reward"] = regular_reward_scores
+        
+        # Calculate MCQ accuracy only if MCQ validation was run
+        if self.val_dataset_mcq is not None:
+            mcq_accuracy = []
+            print("Len of mcq_scores:", len(mcq_scores))
+            for i in range(len(mcq_scores)):
+                if mcq_scores[i] < 0:
+                    mcq_accuracy.append(0.0)
+                elif mcq_scores[i] > 1:
+                    mcq_accuracy.append(1.0)
+                else:
+                    mcq_accuracy.append(mcq_scores[i])
+            
+            # Print statistics for MCQ accuracy
+            if mcq_accuracy:
+                print(f"MCQ Accuracy: mean={np.mean(mcq_accuracy):.4f}, "
+                      f"min={np.min(mcq_accuracy):.4f}, max={np.max(mcq_accuracy)}")
+            else:
+                print("MCQ Accuracy: No valid scores found")
+        else:
+            mcq_accuracy = []
+            print("No MCQ validation dataset available, skipping MCQ accuracy calculation")
         
         # Store MCQ accuracy separately since it may have different length
         # We'll add it to metrics processing later with proper handling

@@ -1,37 +1,31 @@
 #!/bin/bash
 
-# Script to upload parquet dataset files to Hugging Face
-# Usage: ./upload_data_to_hf.sh [repository_name]
-# Example: ./upload_data_to_hf.sh bowen-upenn/ImplicitPersona_Parquet
+# Script to upload CSV dataset files to Hugging Face
+# Usage: ./upload_csv_to_hf.sh [repository_name]
+# Example: ./upload_csv_to_hf.sh bowen-upenn/ImplicitPersona
 
 set -e  # Exit on any error
 
 # Configuration
-DEFAULT_REPO_NAME="bowen-upenn/ImplicitPersona_Parquet"
+DEFAULT_REPO_NAME="bowen-upenn/ImplicitPersona"
 
 # Get repository name from command line argument or use default
 REPO_NAME=${1:-$DEFAULT_REPO_NAME}
 
 echo "========================================="
-echo "Hugging Face Dataset Upload Script"
+echo "Hugging Face Dataset Upload Script (CSV)"
 echo "========================================="
 echo "Repository name: $REPO_NAME"
 echo ""
 
 # Define source files and their target paths in the repository
-# declare -A FILE_MAP=(
-#     ["verl_custom/data/implicit_persona_sft/train.parquet"]="implicit_persona_sft/train.parquet"
-#     ["verl_custom/data/implicit_persona_sft/val.parquet"]="implicit_persona_sft/val.parquet"
-#     ["verl_custom/data/implicit_persona_rft/train_text_32k.parquet"]="implicit_persona_rft/train_text_32k.parquet"
-#     ["verl_custom/data/implicit_persona_rft/val_text_32k_mcq.parquet"]="implicit_persona_rft/val_text_32k_mcq.parquet"
-#     ["verl_custom/data/implicit_persona_rft/val_text_32k.parquet"]="implicit_persona_rft/val_text_32k.parquet"
-#     ["verl_custom/data/implicit_persona_benchmark/benchmark_text_32k_mcq.parquet"]="implicit_persona_benchmark/benchmark_text_32k_mcq.parquet"
-#     ["verl_custom/data/implicit_persona_benchmark/benchmark_text_32k.parquet"]="implicit_persona_benchmark/benchmark_text_32k.parquet"
-#     ["MemAgent/data/implicit_persona/train_text_32k.parquet"]="implicit_persona_memagent/train_text_32k.parquet"
-#     ["MemAgent/data/implicit_persona/val_text_32k.parquet"]="implicit_persona_memagent/val_text_32k.parquet"
-# )
 declare -A FILE_MAP=(
-    ["MemAgent/data/implicit_persona/benchmark_text_32k.parquet"]="implicit_persona_memagent/benchmark_text_32k.parquet"
+    ["data/benchmark/multimodal/train.csv"]="benchmark/multimodal/train.csv"
+    ["data/benchmark/text/train.csv"]="benchmark/text/train.csv"
+    ["data/benchmark/multimodal/benchmark.csv"]="benchmark/multimodal/benchmark.csv"
+    ["data/benchmark/text/benchmark.csv"]="benchmark/text/benchmark.csv"
+    ["data/benchmark/multimodal/val.csv"]="benchmark/multimodal/val.csv"
+    ["data/benchmark/text/val.csv"]="benchmark/text/val.csv"
 )
 
 # Check if all files exist
@@ -134,7 +128,7 @@ def upload_dataset(temp_dir, repo_name):
             folder_path=temp_dir,
             repo_id=repo_name,
             repo_type="dataset",
-            commit_message="Upload ImplicitPersona parquet dataset files"
+            commit_message="Upload ImplicitPersona CSV benchmark files"
         )
         
         print(f"✅ Dataset uploaded successfully!")
@@ -179,23 +173,15 @@ if [ $UPLOAD_STATUS -eq 0 ]; then
     echo "Repository: https://huggingface.co/datasets/$REPO_NAME"
     echo ""
     echo "Dataset structure:"
-    echo "  implicit_persona_sft/"
-    echo "    ├── train.parquet"
-    echo "    └── val.parquet"
-    echo "  implicit_persona_rft/"
-    echo "    ├── train_text_32k.parquet"
-    echo "    ├── val_text_32k_mcq.parquet"
-    echo "    └── val_text_32k.parquet"
-    echo "  implicit_persona_benchmark/"
-    echo "    ├── benchmark_text_32k_mcq.parquet"
-    echo "    └── benchmark_text_32k.parquet"
-    echo "  implicit_persona_memagent/"
-    echo "    ├── train_text_32k.parquet"
-    echo "    └── val_text_32k.parquet"
+    echo "  benchmark/"
+    echo "    ├── multimodal/"
+    echo "    │   └── train.csv"
+    echo "    └── text/"
+    echo "        └── train.csv"
     echo ""
     echo "To use your dataset:"
     echo "from datasets import load_dataset"
-    echo "dataset = load_dataset('$REPO_NAME', data_files='implicit_persona_sft/train.parquet')"
+    echo "dataset = load_dataset('$REPO_NAME', data_files='benchmark/multimodal/train.csv')"
 else
     echo ""
     echo "========================================="

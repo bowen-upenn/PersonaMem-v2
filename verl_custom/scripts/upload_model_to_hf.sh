@@ -7,10 +7,12 @@
 set -e  # Exit on any error
 
 # Configuration
-MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251001_150607/merged"
-DEFAULT_REPO_NAME="bowen-upenn/Qwen3-4B-Personailization-GRPO"
+# MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251001_150607/merged"
+# DEFAULT_REPO_NAME="bowen-upenn/Qwen3-4B-Personailization-GRPO"
 # MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_8b_grpo_20250928_213541/merged"
 # DEFAULT_REPO_NAME="bowen-upenn/Qwen3-4B-Personalization"
+MODEL_PATH="verl_custom/ckpt_sft/global_step_400"
+DEFAULT_REPO_NAME="bowen-upenn/Qwen3-4B-PersonaMem-SFT"
 
 # Get repository name from command line argument or use default
 REPO_NAME=${1:-$DEFAULT_REPO_NAME}

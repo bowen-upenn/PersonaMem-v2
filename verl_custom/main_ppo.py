@@ -202,10 +202,16 @@ class TaskRunner:
         # Create two validation datasets: one for embedding similarity, one for MCQ
         val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor)
         
-        # Create MCQ validation dataset using the MCQ parquet files
+        # Create MCQ validation dataset using the MCQ parquet files if they exist
         val_mcq_files = config.data.val_files.replace('.parquet', '_mcq.parquet')
-        print(f"val files: {config.data.val_files}, {val_mcq_files}")
-        val_dataset_mcq = create_rl_dataset(val_mcq_files, config.data, tokenizer, processor)
+        val_dataset_mcq = None
+        # Convert to absolute path for checking
+        abs_val_mcq_files = os.path.abspath(val_mcq_files) if not os.path.isabs(val_mcq_files) else val_mcq_files
+        if os.path.exists(abs_val_mcq_files):
+            print(f"Loading MCQ validation dataset from: {val_mcq_files}")
+            val_dataset_mcq = create_rl_dataset(val_mcq_files, config.data, tokenizer, processor)
+        else:
+            print(f"No MCQ file found at {abs_val_mcq_files}, skipping MCQ validation (dataset already in MCQ format)")
         
         train_sampler = create_rl_sampler(config.data, train_dataset)
 

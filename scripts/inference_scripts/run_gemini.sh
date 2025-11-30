@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-MODEL_NAME="claude-3-5-sonnet-20241022"
+MODEL_NAME="gemini-3-pro"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -17,11 +17,10 @@ DEFAULT_ARGS=(
     --eval_mode both
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
-    --size 32k
+    --size both
 )
 
 # Run inference with default args plus any additional args passed to script
 python inference.py "${DEFAULT_ARGS[@]}" "$@"
 
 echo "Inference completed for ${MODEL_NAME} with multimodal mode"
-

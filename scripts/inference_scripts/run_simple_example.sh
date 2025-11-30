@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-MODEL_NAME="gemini-2.5-pro"
+MODEL_NAME="gpt-5-chat"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -14,7 +14,7 @@ echo "Project root: ${PROJECT_ROOT}"
 DEFAULT_ARGS=(
     --model_name "${MODEL_NAME}"
     --benchmark_file data/benchmark/multimodal/benchmark.csv
-    --eval_mode both
+    --eval_mode mcq
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
     --size 32k
@@ -24,4 +24,3 @@ DEFAULT_ARGS=(
 python inference.py "${DEFAULT_ARGS[@]}" "$@"
 
 echo "Inference completed for ${MODEL_NAME} with multimodal mode"
-

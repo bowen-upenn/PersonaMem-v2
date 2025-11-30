@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-MODEL_NAME="gpt-5-mini"
+MODEL_NAME="claude-4-5-sonnet-20241022"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -18,7 +18,6 @@ DEFAULT_ARGS=(
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
     --size both
-    --parallel 2
 )
 
 # Run inference with default args plus any additional args passed to script

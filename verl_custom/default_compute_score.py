@@ -42,9 +42,14 @@ def default_compute_score(
     Raises:
         NotImplementedError: If the reward function is not implemented for the given data source.
     """
-    if data_source == "implicit_persona":
+    if data_source in ["implicit_persona", "prefeval", "longmemeval"]:
         from . import reward_score
 
+        # Add data_source to extra_info for proper dataset-specific scoring
+        if extra_info is None:
+            extra_info = {}
+        extra_info['data_source'] = data_source
+        
         res = reward_score.compute_score(solution_str, ground_truth, method=eval_method, extra_info=extra_info)
     elif data_source == "openai/gsm8k":
         from . import gsm8k

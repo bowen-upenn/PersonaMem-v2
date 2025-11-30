@@ -266,14 +266,14 @@ Give your final score from 0.0 to 1.0 in this format: \\boxed{{score}}"""
         return 0.0
 
 
-def judge_preference_alignment_with_variants(model_response: str, groundtruth_preference: str, persona: Dict[str, Any]) -> float:
+def judge_preference_alignment(model_response: str, groundtruth_preference: str, persona: Dict[str, Any]) -> float:
     """
-    Use LLM as a judge with randomly selected prompt variants to check preference alignment.
+    Use LLM as a judge with a focused prompt to check preference alignment.
     
     Args:
         model_response (str): The model's response
         groundtruth_preference (str): The ground truth user preference
-        persona (Dict[str, Any]): The persona information
+        persona (Dict[str, Any]): The persona information (should contain 'preference' and optionally 'user_query')
         
     Returns:
         float: Score between 0.0 and 1.0 indicating preference alignment
@@ -281,66 +281,78 @@ def judge_preference_alignment_with_variants(model_response: str, groundtruth_pr
     if not model_response or not groundtruth_preference:
         return 0.0
  
-    # 5 different prompt variations (language only)
-    prompt_variations = [
-        # Original
-        f"""Model's Response: {model_response}
-
-Does the response answer the user query by mentioning: "{groundtruth_preference}"?
-
-The model needs to give personalized responses that is aligned with the current user preference above.""",
-        
-        # Variant 1: Direct alignment check
-        f"""Model's Response: {model_response}
-
-Expected Preference: "{groundtruth_preference}"
-
-Does the response demonstrate alignment with the expected preference above?""",
-        
-        # Variant 2: Personalization focus
-        f"""Response to Evaluate: {model_response}
-
-User Preference: "{groundtruth_preference}"
-
-How well does this response reflect personalization based on the user preference?""",
-        
-        # Variant 3: Consistency check
-        f"""Generated Response: {model_response}
-
-Target Preference: "{groundtruth_preference}"
-
-Assess the consistency between the response and the target preference.""",
-        
-        # Variant 4: Quality matching
-        f"""Model Output: {model_response}
-
-Expected User Preference: "{groundtruth_preference}"
-
-Rate the quality of preference matching in this response."""
-    ]
-
-    # Common scoring guidelines
-    scoring_section = """
-Scoring guidelines:
-- 1.0 if correctly mentioned
-- Between 0.0 and 1.0 if partially aligned
-- 0.0 if ignored or contradicts
-
-Provide your score from 0.0 to 1.0: \\boxed{{score}}"""
-
+    # Extract user query from persona if available, otherwise use a placeholder
+    user_query = persona.get('user_query', '')
     
-    # Randomly select a prompt variation and combine with scoring
-    selected_variation = random.choice(prompt_variations)
-    selected_prompt = selected_variation + scoring_section
+    # Determine if this is a negative preference (avoidance) - same logic as inference_utils.py
+    is_negative = groundtruth_preference.lower().startswith('do not')
+    
+    # Focused prompt template for narrow positive personalization evaluation
+    JUDGE_PROMPT_NARROW_POSITIVE = """You are evaluating an AI assistant's personalization capabilities in open-ended conversations.
+
+User's query:
+{user_query}
+
+Ground truth user preference: {preference}
+
+Model's response to evaluate:
+{model_response}
+
+Task: Evaluate how well the model personalizes its response according to the user's ground-truth preference. We expect the model to demonstrate awareness of this preference and provide a response that is specifically aligned with or relevant to it, rather than giving a generic answer that could apply to anyone.
+
+A well-personalized response should:
+- Acknowledge or incorporate the specific preference mentioned
+- Tailor recommendations, advice, or information to align with this preference
+- Show that the model remembers and respects the user's stated preference
+
+A poorly personalized response:
+- Ignores the preference entirely and gives generic advice
+- Explicitly states it doesn't remember or track preferences
+- Provides suggestions that contradict the stated preference
+
+Give a score from 0.0 (completely irrelevant to or contradicts the preference) to 1.0 (explicitly and thoughtfully personalized to the preference).
+
+Give your final score as \\boxed{{score}} where score is a number between 0.0 and 1.0.
+Your response:"""
+    
+    # Prompt template for narrow negative personalization evaluation (avoidance preferences)
+    JUDGE_PROMPT_NARROW_NEGATIVE = """You are evaluating an AI assistant's personalization capabilities in open-ended conversations.
+
+User's query:
+{user_query}
+
+Ground truth user preference: {preference}
+
+Model's response to evaluate:
+{model_response}
+
+In this case, the user's ground-truth preference is a "do not personalize" or "avoid" instruction about a certain topic or attribute. The user does not want the assistant to tailor its response based on that specific preference, and instead expects a more general or neutral answer that does not rely on or mention that preference.
+
+Task: Evaluate how well the model respects this preference. The model should avoid using or referencing the sensitive preference in a way that personalizes the response, while still providing a helpful and relevant answer.
+
+Give a score from 0.0 (clearly personalizes using the forbidden preference or ignores the instruction) to 1.0 (fully respects the instruction to not personalize while remaining helpful).
+
+Give your final score as \\boxed{{score}} where score is a number between 0.0 and 1.0.
+Your response:"""
+    
+    # Select appropriate prompt template based on preference type
+    prompt_template = JUDGE_PROMPT_NARROW_NEGATIVE if is_negative else JUDGE_PROMPT_NARROW_POSITIVE
+    
+    # Format the prompt with actual values
+    judge_prompt = prompt_template.format(
+        user_query=user_query,
+        preference=groundtruth_preference,
+        model_response=model_response
+    )
     
     judge_model = get_judge_model()
     
     try:
         judge_response = judge_model.query_llm(
             action="preference_judgment",
-            prompt=selected_prompt,
+            prompt=judge_prompt,
         )
-        
+
         # Extract numerical score from response
         boxed_match = re.search(r'\\boxed\{(\d+\.?\d*)\}', judge_response.strip())
         if boxed_match:
@@ -355,15 +367,87 @@ Provide your score from 0.0 to 1.0: \\boxed{{score}}"""
         return 0.0
 
 
-def judge_preference_alignment_parallel(model_response: str, groundtruth_preference: str, persona: Dict[str, Any], n_trials: int = 5) -> float:
+def judge_external_benchmark(model_response: str, groundtruth: str, benchmark_type: str, persona: Dict[str, Any] = None) -> float:
     """
-    Use LLM as a judge to check preference alignment with multiple parallel calls using random prompt variants.
+    Simple LLM judge for external benchmarks (PrefEval and LongMemEval).
+    
+    Args:
+        model_response (str): The model's response
+        groundtruth (str): The ground truth preference/answer
+        benchmark_type (str): Either 'prefeval' or 'longmemeval'
+        persona (Dict[str, Any]): Unused, kept for API compatibility
+        
+    Returns:
+        float: Score between 0.0 and 1.0
+    """
+    if not model_response or not groundtruth:
+        return 0.0
+    
+    judge_model = get_judge_model()
+    
+    # Different prompts for different benchmarks
+    if benchmark_type == 'prefeval':
+        judge_prompt = f"""Model's Response: {model_response}
+
+Ground Truth User Preference: {groundtruth}
+
+Is the model's response aligned with the ground truth user preference above?
+
+Scoring guidelines:
+- 1.0 if fully aligned with the preference
+- Between 0.0 and 1.0 if partially aligned
+- 0.0 if completely misaligned or contradicts the preference
+
+Think step by step and provide your score from 0.0 to 1.0 in the format: \\boxed{{score}}. Replace score with your numerical score."""
+    
+    elif benchmark_type == 'longmemeval':
+        judge_prompt = f"""Model's Response: {model_response}
+
+Ground Truth Answer: {groundtruth}
+
+Has the model correctly answered the query? The response should cover the ground truth answer, though it may contain additional reasoning or thinking, and doesn't need to be word-for-word identical.
+
+Scoring guidelines:
+- 1.0 if the answer is fully correct and covers the ground truth
+- Between 0.0 and 1.0 if the answer is partially correct
+- 0.0 if the answer is completely incorrect or missing
+
+Think step by step and provide your score from 0.0 to 1.0 in the format: \\boxed{{score}}. Replace score with your numerical score."""
+    
+    else:
+        return 0.0
+    
+    try:
+        judge_response = judge_model.query_llm(
+            action=f"{benchmark_type}_judgment",
+            prompt=judge_prompt,
+        )
+        # print(f"{benchmark_type} judge response: {judge_response}")
+        
+        # Extract boxed numerical score
+        boxed_match = re.search(r'\\boxed\{(\d+\.?\d*)\}', judge_response.strip())
+        if boxed_match:
+            score = float(boxed_match.group(1))
+            return max(0.0, min(1.0, score))
+        
+        # Fallback: return 0.0 if no valid score found
+        return 0.0
+            
+    except Exception as e:
+        print(f"Error in {benchmark_type} judge evaluation: {e}")
+        return 0.0
+
+
+def judge_preference_alignment_parallel(model_response: str, groundtruth_preference: str, persona: Dict[str, Any], n_trials: int = 1, judge_fn=None) -> float:
+    """
+    Use LLM as a judge to check preference alignment with multiple parallel calls.
     
     Args:
         model_response (str): The model's response
         groundtruth_preference (str): The ground truth user preference
-        persona (Dict[str, Any]): The persona information
+        persona (Dict[str, Any]): The persona information (or benchmark_type for external benchmarks)
         n_trials (int): Number of parallel trials to run (default: 5)
+        judge_fn: Optional judge function to use (default: judge_preference_alignment)
         
     Returns:
         float: Average score between 0.0 and 1.0 indicating preference alignment
@@ -374,28 +458,34 @@ def judge_preference_alignment_parallel(model_response: str, groundtruth_prefere
     if n_trials <= 0:
         n_trials = 1
     
-    def single_judge_call():
-        """Single call using random prompt variant"""
-        return judge_preference_alignment_with_variants(model_response, groundtruth_preference, persona)
-
-    # Use ThreadPoolExecutor to run multiple parallel calls
+    # Use provided judge function or default to variants
+    if judge_fn is None:
+        judge_fn = judge_preference_alignment
+    
+    # For single trial, skip thread pool overhead
+    if n_trials == 1:
+        try:
+            score = judge_fn(model_response, groundtruth_preference, persona)
+            return max(0.0, min(1.0, score))
+        except Exception as e:
+            print(f"Error in judge call: {e}")
+            return 0.0
+    
+    # Use ThreadPoolExecutor for multiple parallel calls
+    scores = []
     with ThreadPoolExecutor(max_workers=n_trials) as executor:
-        # Submit tasks
-        futures = [executor.submit(single_judge_call) for _ in range(n_trials)]
+        futures = [executor.submit(judge_fn, model_response, groundtruth_preference, persona) for _ in range(n_trials)]
         
-        # Collect results
-        scores = []
         for i, future in enumerate(futures):
             try:
-                score = future.result(timeout=60)  # 60 second timeout per call
+                score = future.result(timeout=60)
                 scores.append(score)
             except Exception as e:
                 print(f"Error in parallel judge call {i}: {e}")
-                scores.append(0.0)  # Default to 0.0 on error
+                scores.append(0.0)
     
     # Calculate average score
     if scores:
-        # print(f"Parallel judge scores: {scores}")
         avg_score = statistics.mean(scores)
         return max(0.0, min(1.0, avg_score))
     else:
@@ -432,9 +522,11 @@ def compute_mcq_score(solution_str: str, ground_truth: Dict[str, Any]) -> float:
     
     # Extract boxed answer from model response
     # Look for patterns like \boxed{a}, \boxed{A}, \boxed{(a)}, \boxed{(A)}
+    # Note: Using raw strings with single backslash to match the literal \boxed in text
     boxed_patterns = [
         r'\\boxed\{([a-dA-D])\}',        # \boxed{a} or \boxed{A}
         r'\\boxed\{\(([a-dA-D])\)\}',    # \boxed{(a)} or \boxed{(A)}
+        r'boxed\{([a-dA-D])\}',          # boxed{a} without backslash (fallback)
     ]
     
     extracted_letter = None
@@ -485,107 +577,152 @@ def compute_score(solution_str, ground_truth, method="embed", score=0.0, extra_i
         ground_truth (Dict[str, Any]): Dictionary containing 'groundtruth_preference' and 'correct_answer'
         method (str): Scoring method - "embed", "judge", or "hybrid"
         score (float): Legacy parameter, not used in new implementation
-        extra_info (Dict[str, Any]): Additional information containing 'pref_type'
-        mcq (bool): If True, use MCQ-specific scoring logic
+        extra_info (Dict[str, Any]): Additional information containing 'data_source' and 'pref_type'
         
     Returns:
         float: Reward score between 0.0 and 1.0
     """
     if not solution_str:
         return 0.0
-
-    # Enforce format reward: check if both <think> and </think> tokens exist
-    if '<think>' not in solution_str or '</think>' not in solution_str:
-        return 0.0
-
-    # Additional check: ensure there's content after the last </think>
-    last_think_end = solution_str.rfind('</think>')
-    if last_think_end == -1:
-        return 0.0
     
-    # Extract content after the last </think> and check if it's not empty
-    content_after_think = solution_str[last_think_end + len('</think>'):].strip()
-    if not content_after_think:
-        return 0.0
-
-    # MCQ-specific scoring logic
-    if ground_truth.get('is_mcq', False):
-        return compute_mcq_score(solution_str, ground_truth)
-    if extra_info is not None and 'mcq' in extra_info:
-        return compute_mcq_score(solution_str, ground_truth)
-
-    # Extract ground truth information
-    groundtruth_preference = ground_truth.get('groundtruth_preference', '')
-    correct_answer = ground_truth.get('correct_answer', '')
-    all_answers = ground_truth.get('all_answers', [])
-    pref_type = ground_truth.get('pref_type', '')
-
-    if not groundtruth_preference and not correct_answer:
-        return 0.0
-
-    # Extract the final answer from the solution string
-    solution_clean = extract_solution(solution_str)
+    # Get data source from extra_info
+    data_source = extra_info.get('data_source', 'implicit_persona') if extra_info else 'implicit_persona'
     
-    # Apply preference type specific filters - simple yes/no check
-    if pref_type == 'sensitive_information':
-        # For sensitive information, check that the model doesn't leak sensitive details
-        filter_score = judge_sensitive_information_filter(solution_clean, groundtruth_preference)
-        if filter_score < 0.5:  # Filter failed
-            return 0.0
-        if method == "judge":   # No need to run additional llm as a judge
-            return filter_score
-    elif pref_type == 'ask_to_forget':
-        # For ask-to-forget, check that the model doesn't mention the information to be forgotten
-        filter_score = judge_ask_to_forget_filter(solution_clean, groundtruth_preference)
-        if filter_score < 0.5:  # Filter failed
-            return 0.0
-        if method == "judge":
-            return filter_score
+    # Check if this is benchmark evaluation mode (validation)
+    eval_benchmark = extra_info.get('eval_benchmark', False) if extra_info else False
     
-    if method == "embed":
-        # Option 1: Sentence similarity with correct answer (minus incorrect answers)
-        if correct_answer:
-            similarity_score = compute_answer_similarity(solution_clean, correct_answer, all_answers)
-            return similarity_score
-        else:
-            return 0.0
-            
-    elif method == "judge":
-        # Option 2: LLM judge for preference alignment
-        if groundtruth_preference:
-            # We need persona information for the judge, but it's not directly available here
-            # For now, use a simplified version
-            persona_info = {"preference": groundtruth_preference}
-            judge_score = judge_preference_alignment_parallel(solution_clean, groundtruth_preference, persona_info)
-            return judge_score
-        else:
-            return 0.0
-            
-    elif method == "hybrid":
-        # Hybrid approach: combine both methods
-        total_score = 0.0
-        weight_count = 0
-        similarity_weight = 0.5
+    # MCQ-specific scoring logic - check this first before format enforcement
+    is_mcq = ground_truth.get('is_mcq', False) or (extra_info is not None and 'mcq' in extra_info)
+    
+    # For PrefEval and LongMemEval: different evaluation logic
+    # Also apply this logic to our own data when eval_benchmark=True
+    if data_source in ['prefeval', 'longmemeval'] or (eval_benchmark and not is_mcq):
+        # No format enforcement for external benchmarks or validation mode
+        # Extract final response after </think> if it exists, but no penalty if missing
+        solution_clean = extract_solution(solution_str) if '</think>' in solution_str else solution_str.strip()
         
-        # Similarity component
-        if correct_answer:
-            similarity_score = compute_answer_similarity(solution_clean, correct_answer, all_answers)
-            total_score += similarity_weight * similarity_score
-            weight_count += similarity_weight
+        # Extract ground truth - for these datasets, groundtruth_preference contains the answer/preference
+        groundtruth = ground_truth.get('groundtruth_preference', '')
         
-        # Judge component
-        if groundtruth_preference:
-            persona_info = {"preference": groundtruth_preference}
-            judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
-            total_score += (1-similarity_weight) * judge_score
-            weight_count += (1-similarity_weight)
-        
-        # Normalize by actual weights used
-        if weight_count > 0:
-            return total_score / weight_count
-        else:
+        if not groundtruth:
             return 0.0
+        
+        # For our own data in validation mode, use judge_preference_alignment_with_variants
+        # For external benchmarks, use judge_external_benchmark
+        if eval_benchmark and data_source not in ['prefeval', 'longmemeval']:
+            # Our own data in validation mode - use standard judge without filtering
+            persona_info = {"preference": groundtruth}
+            judge_score = judge_preference_alignment_parallel(
+                solution_clean,
+                groundtruth,
+                persona=persona_info,
+                n_trials=1,
+                judge_fn=judge_preference_alignment
+            )
+        else:
+            # External benchmarks - use external benchmark judge
+            judge_score = judge_preference_alignment_parallel(
+                solution_clean, 
+                groundtruth, 
+                persona=data_source,  # Pass benchmark type as persona
+                n_trials=1,
+                judge_fn=judge_external_benchmark
+            )
+        return judge_score
     
     else:
-        raise ValueError(f"Unknown scoring method: {method}")
+        # For ImplicitPersona: original evaluation logic with format enforcement
+        
+        if is_mcq:
+            # For MCQ, we don't enforce <think> tags - the \boxed{letter} format is sufficient
+            return compute_mcq_score(solution_str, ground_truth)
+        
+        # For non-MCQ ImplicitPersona: enforce format with <think> and </think> tokens
+        if '<think>' not in solution_str or '</think>' not in solution_str:
+            return 0.0
+
+        # Additional check: ensure there's content after the last </think>
+        last_think_end = solution_str.rfind('</think>')
+        if last_think_end == -1:
+            return 0.0
+        
+        # Extract content after the last </think> and check if it's not empty
+        content_after_think = solution_str[last_think_end + len('</think>'):].strip()
+        if not content_after_think:
+            return 0.0
+
+        # Extract ground truth information
+        groundtruth_preference = ground_truth.get('groundtruth_preference', '')
+        correct_answer = ground_truth.get('correct_answer', '')
+        all_answers = ground_truth.get('all_answers', [])
+        pref_type = ground_truth.get('pref_type', '')
+
+        if not groundtruth_preference and not correct_answer:
+            return 0.0
+
+        # Extract the final answer from the solution string
+        solution_clean = extract_solution(solution_str)
+        
+        # Apply preference type specific filters - simple yes/no check
+        if pref_type == 'sensitive_information':
+            # For sensitive information, check that the model doesn't leak sensitive details
+            filter_score = judge_sensitive_information_filter(solution_clean, groundtruth_preference)
+            if filter_score < 0.5:  # Filter failed
+                return 0.0
+            if method == "judge":   # No need to run additional llm as a judge
+                return filter_score
+        elif pref_type == 'ask_to_forget':
+            # For ask-to-forget, check that the model doesn't mention the information to be forgotten
+            filter_score = judge_ask_to_forget_filter(solution_clean, groundtruth_preference)
+            if filter_score < 0.5:  # Filter failed
+                return 0.0
+            if method == "judge":
+                return filter_score
+        
+        if method == "embed":
+            # Option 1: Sentence similarity with correct answer (minus incorrect answers)
+            if correct_answer:
+                similarity_score = compute_answer_similarity(solution_clean, correct_answer, all_answers)
+                return similarity_score
+            else:
+                return 0.0
+                
+        elif method == "judge":
+            # Option 2: LLM judge for preference alignment
+            if groundtruth_preference:
+                # We need persona information for the judge, but it's not directly available here
+                # For now, use a simplified version
+                persona_info = {"preference": groundtruth_preference}
+                judge_score = judge_preference_alignment_parallel(solution_clean, groundtruth_preference, persona_info)
+                return judge_score
+            else:
+                return 0.0
+                
+        elif method == "hybrid":
+            # Hybrid approach: combine both methods
+            total_score = 0.0
+            weight_count = 0
+            similarity_weight = 0.5
+            
+            # Similarity component
+            if correct_answer:
+                similarity_score = compute_answer_similarity(solution_clean, correct_answer, all_answers)
+                total_score += similarity_weight * similarity_score
+                weight_count += similarity_weight
+            
+            # Judge component
+            if groundtruth_preference:
+                persona_info = {"preference": groundtruth_preference}
+                judge_score = judge_preference_alignment(solution_clean, groundtruth_preference, persona_info)
+                total_score += (1-similarity_weight) * judge_score
+                weight_count += (1-similarity_weight)
+            
+            # Normalize by actual weights used
+            if weight_count > 0:
+                return total_score / weight_count
+            else:
+                return 0.0
+        
+        else:
+            raise ValueError(f"Unknown scoring method: {method}")
 

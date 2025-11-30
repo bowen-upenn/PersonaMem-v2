@@ -18,6 +18,7 @@ DEFAULT_ARGS=(
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
     --size both
+    --max_items 1000
 )
 
 # Run inference with default args plus any additional args passed to script

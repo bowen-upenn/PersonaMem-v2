@@ -185,31 +185,7 @@ class MemoryDataset(RDataset):
          # Note: original_context_length is optional and may not be present in all datasets
         return ["context_ids", "context_length"], ["prompt_ids"]
 
-# TEMPLATE = """You are presented with a conversation history between the current user and the chatbot. Your task is to carefully analyze this conversation history and extract information about the user's persona and preferences that are revealed or indicated explicitly or implicitly through their interactions, responses, and dialogue patterns.
-
-# Focus on identifying personas and preferences of the current user, focusing on those implicitly indicated in the user-chatbot conversation histories.
-# Update the memory by retaining all relevant, still up-to-date details from the previous memory while adding any new, useful persona and preference information discovered in the current conversation section. 
-
-# The memory should be clean, standalone, and in English, so please
-# Do NOT include any other texts in your response.
-# Do NOT record any multiple choice options or test questions.
-
-# <user_query> 
-# {prompt}
-# </user_query>
-
-# <previous_memory>
-# {memory}
-# </previous_memory>
-
-# <conversation_section>
-# {chunk}
-# </conversation_section>
-
-# Updated memory:
-# """
-
-TEMPLATE = """You are presented with a conversation history between the current user and the chatbot. Your task is to carefully analyze this conversation history and write a short memory for this user.
+TEMPLATE = """You are presented with a conversation history between the current user and the chatbot. Your task is to carefully analyze this conversation history and extract information about the user's persona and preferences that are revealed or indicated explicitly or implicitly through their interactions, responses, and dialogue patterns.
 
 Focus on identifying personas and preferences of the current user, focusing on those implicitly indicated in the user-chatbot conversation histories.
 Update the memory by retaining all relevant, still up-to-date details from the previous memory while adding any new, useful persona and preference information discovered in the current conversation section. 
@@ -217,6 +193,10 @@ Update the memory by retaining all relevant, still up-to-date details from the p
 The memory should be clean, standalone, and in English, so please
 Do NOT include any other texts in your response.
 Do NOT record any multiple choice options or test questions.
+
+<user_query> 
+{prompt}
+</user_query>
 
 <previous_memory>
 {memory}
@@ -228,6 +208,26 @@ Do NOT record any multiple choice options or test questions.
 
 Updated memory:
 """
+
+# TEMPLATE = """You are presented with a conversation history between the current user and the chatbot. Your task is to carefully analyze this conversation history and write a short memory for this user.
+
+# Focus on identifying personas and preferences of the current user, focusing on those implicitly indicated in the user-chatbot conversation histories.
+# Update the memory by retaining all relevant, still up-to-date details from the previous memory while adding any new, useful persona and preference information discovered in the current conversation section. 
+
+# The memory should be clean, standalone, and in English, so please
+# Do NOT include any other texts in your response.
+# Do NOT record any multiple choice options or test questions.
+
+# <previous_memory>
+# {memory}
+# </previous_memory>
+
+# <conversation_section>
+# {chunk}
+# </conversation_section>
+
+# Updated memory:
+# """
 
 TEMPLATE_FINAL_BOXED = """You are presented with a user query and previous memory about the user's persona and preferences. Please answer the user query based on the previous memory and provide a personalized response. Put your final answer in \\boxed{{}}.
 

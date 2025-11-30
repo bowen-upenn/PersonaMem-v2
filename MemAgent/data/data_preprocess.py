@@ -593,6 +593,11 @@ def main():
         help="Path to the TEXT val CSV file."
     )
     parser.add_argument(
+        "--text_benchmark_csv",
+        default="../data/benchmark/text/benchmark.csv",
+        help="Path to the TEXT benchmark CSV file (full dataset, no sampling)."
+    )
+    parser.add_argument(
         "--multimodal_train_csv",
         default="../data/benchmark/multimodal/train.csv",
         help="Path to the MULTIMODAL train CSV file."
@@ -769,7 +774,7 @@ def main():
             print(f"Skipping {dtype} {split} ({window}): CSV not found at {csv_path}")
             return
 
-        # For validation splits, limit to 100 samples
+        # For validation splits, limit to 100 samples; benchmark gets full dataset
         if split == "val":
             sample_size = 100
         else:
@@ -808,12 +813,12 @@ def main():
             print(f"  Ability: {sample_row.get('ability', 'N/A')}")
             print(f"  Sample prompt length: {len(str(sample_row.get('prompt', '')))} characters")
 
-    # TEXT: train/val × 32k/128k
+    # TEXT: train/val/benchmark × 32k
     print("\n=== Processing TEXT splits ===")
-    for split, csv_path in (("train", args.text_train_csv), ("val", args.text_val_csv)):
-        # for window in ("32k", "128k"):
-        #     process_split(csv_path, dtype="text", split=split, window=window)
-        process_split(csv_path, dtype="text", split=split, window="32k")
+    # for split, csv_path in (("train", args.text_train_csv), ("val", args.text_val_csv), ("benchmark", args.text_benchmark_csv)):
+    #     # for window in ("32k", "128k"):
+    #     #     process_split(csv_path, dtype="text", split=split, window=window)
+    process_split(args.text_benchmark_csv, dtype="text", split="benchmark", window="32k")
 
     # # MULTIMODAL: train/val × 32k/128k
     # print("\n=== Processing MULTIMODAL splits ===")

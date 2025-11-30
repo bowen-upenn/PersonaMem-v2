@@ -49,7 +49,11 @@ def convert_to_verl_format(item: Dict[str, Any], idx: int) -> Dict[str, Any]:
     messages = []
     messages.append({
         "role": "system",
-        "content": "You are a helpful assistant that provides personalized responses based on the user's conversation history."
+        "content": (
+            "You are a helpful assistant that provides personalized responses based on the user's conversation history. "
+            "User preferences may be contradictory to the general context, so you always need to reason about the current user's preferences, especially those mentioned implicitly, "
+            "from the conversations carefully to give more personalized responses."
+        )
     })
     
     # Add conversation history
@@ -101,7 +105,7 @@ def main():
     )
     parser.add_argument(
         "--output_dir",
-        default="data/longmemeval",
+        default="verl_custom/data/longmemeval",
         help="Directory to save output parquet file"
     )
     parser.add_argument(

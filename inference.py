@@ -19,6 +19,8 @@ from datetime import datetime
 import re
 import random
 import tiktoken
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 from query_llm import QueryLLM
 from inference_utils import (
@@ -43,6 +45,9 @@ class PersonaBenchmarkEvaluator:
         
         # Cache for conversations: {file_path: conversations}
         self.chat_history_cache = {}
+        
+        # Lock for thread-safe file writing
+        self.file_lock = Lock()
         
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -493,8 +498,74 @@ class PersonaBenchmarkEvaluator:
         
         print(f"Summary file created: {summary_file}")
 
+    def _process_single_row(self, row: Dict[str, Any], row_index: int, eval_mode: str, 
+                           use_multimodal: bool, sizes_to_evaluate: List[str], 
+                           fieldnames: List[str]) -> Dict[str, Any]:
+        """Process a single row and return the output row with results."""
+        try:
+            # Create output row with all original columns
+            output_row = row.copy()
+            
+            # Initialize all possible output columns
+            for eval_size in sizes_to_evaluate:
+                output_row[f'model_response_mcq_{eval_size}'] = ''
+                output_row[f'predicted_answer_mcq_{eval_size}'] = ''
+                output_row[f'is_correct_mcq_{eval_size}'] = ''
+                output_row[f'model_response_openended_{eval_size}'] = ''
+                output_row[f'is_correct_openended_{eval_size}'] = ''
+            
+            # Evaluate for each size
+            all_results = {}
+            for eval_size in sizes_to_evaluate:
+                result = self.evaluate_row(row, eval_mode, use_multimodal, eval_size)
+                all_results[eval_size] = result
+                
+                # Store results with size suffix
+                output_row[f'model_response_mcq_{eval_size}'] = result.get('model_response_mcq', '')
+                output_row[f'predicted_answer_mcq_{eval_size}'] = result.get('predicted_answer_mcq', '')
+                output_row[f'is_correct_mcq_{eval_size}'] = result.get('is_correct_mcq', '')
+                output_row[f'model_response_openended_{eval_size}'] = result.get('model_response_openended', '')
+                output_row[f'is_correct_openended_{eval_size}'] = result.get('is_correct_openended', '')
+            
+            # Print verbose output if enabled
+            if self.verbose:
+                # ANSI color codes
+                BLUE = '\033[94m'
+                RESET = '\033[0m'
+                
+                print(f"  Verbose output for row {row_index + 1}:")
+                print(f"    {BLUE}user_query{RESET}: {row.get('user_query', 'N/A')}")
+                print(f"    {BLUE}correct_answer{RESET}: {row.get('correct_answer', 'N/A')}")
+                print(f"    {BLUE}preference{RESET}: {row.get('preference', 'N/A')}")
+                
+                for eval_size in sizes_to_evaluate:
+                    result = all_results[eval_size]
+                    correct_mcq_option = result.get('correct_mcq_option', 'N/A')
+                    print(f"    --- {eval_size.upper()} Results ---")
+                    print(f"    {BLUE}correct_mcq_option_{eval_size}{RESET}: {correct_mcq_option}")
+                    print(f"    {BLUE}model_response_mcq_{eval_size}{RESET}: {output_row[f'model_response_mcq_{eval_size}']}")
+                    print(f"    {BLUE}predicted_answer_mcq_{eval_size}{RESET}: {output_row[f'predicted_answer_mcq_{eval_size}']}")
+                    print(f"    {BLUE}is_correct_mcq_{eval_size}{RESET}: {output_row[f'is_correct_mcq_{eval_size}']}")
+                    print(f"    {BLUE}model_response_openended_{eval_size}{RESET}: {output_row[f'model_response_openended_{eval_size}']}")
+                    print(f"    {BLUE}is_correct_openended_{eval_size}{RESET}: {output_row[f'is_correct_openended_{eval_size}']}")
+                print('-' * 50)
+            
+            return {'success': True, 'output_row': output_row, 'all_results': all_results, 'row_index': row_index}
+            
+        except Exception as e:
+            print(f"Error processing row {row_index + 1}: {e}")
+            # Write error to output row
+            output_row = row.copy()
+            for eval_size in sizes_to_evaluate:
+                output_row[f'model_response_mcq_{eval_size}'] = f"ERROR: {str(e)}"
+                output_row[f'predicted_answer_mcq_{eval_size}'] = ''
+                output_row[f'is_correct_mcq_{eval_size}'] = ''
+                output_row[f'model_response_openended_{eval_size}'] = ''
+                output_row[f'is_correct_openended_{eval_size}'] = ''
+            return {'success': False, 'output_row': output_row, 'all_results': {}, 'row_index': row_index}
+
     def run_evaluation(self, benchmark_file: str = None, eval_mode: str = "mcq", 
-                      use_multimodal: bool = False, max_items: int = None, size: str = '32k') -> str:
+                      use_multimodal: bool = False, max_items: int = None, size: str = '32k', parallel: int = 1) -> str:
         """Run evaluation on the benchmark dataset."""
         # Auto-select benchmark file if not specified
         if benchmark_file is None:
@@ -508,6 +579,7 @@ class PersonaBenchmarkEvaluator:
         print(f"Evaluation mode: {eval_mode}")
         print(f"Use multimodal: {use_multimodal}")
         print(f"Size: {size}")
+        print(f"Parallel threads: {parallel}")
         
         # Load benchmark data
         rows = []
@@ -552,82 +624,61 @@ class PersonaBenchmarkEvaluator:
             writer = csv.DictWriter(f, fieldnames=output_fieldnames)
             writer.writeheader()
             
-            for i, row in enumerate(tqdm(rows, desc="Processing rows")):
-
-                # if i > 5:
-                #     continue  # For testing, limit to first 5 rows
+            if parallel > 1:
+                # Parallel processing mode
+                print(f"Using parallel processing with {parallel} threads")
                 
-                try:
-                    # Create output row with all original columns
-                    output_row = row.copy()
+                with ThreadPoolExecutor(max_workers=parallel) as executor:
+                    # Submit all tasks
+                    future_to_row = {
+                        executor.submit(
+                            self._process_single_row, 
+                            row, i, eval_mode, use_multimodal, sizes_to_evaluate, output_fieldnames
+                        ): i for i, row in enumerate(rows)
+                    }
                     
-                    # Initialize all possible output columns
-                    for eval_size in sizes_to_evaluate:
-                        output_row[f'model_response_mcq_{eval_size}'] = ''
-                        output_row[f'predicted_answer_mcq_{eval_size}'] = ''
-                        output_row[f'is_correct_mcq_{eval_size}'] = ''
-                        output_row[f'model_response_openended_{eval_size}'] = ''
-                        output_row[f'is_correct_openended_{eval_size}'] = ''
+                    # Process completed tasks with progress bar
+                    for future in tqdm(as_completed(future_to_row), total=len(rows), desc="Processing rows"):
+                        try:
+                            result_data = future.result()
+                            
+                            # Count correct answers for MCQ (use first size for overall count)
+                            if result_data['success'] and result_data['all_results']:
+                                first_size = sizes_to_evaluate[0]
+                                if first_size in result_data['all_results']:
+                                    if result_data['all_results'][first_size].get('is_correct_mcq', '') == 'True':
+                                        correct_count += 1
+                            
+                            processed_count += 1
+                            
+                            # Thread-safe CSV writing
+                            with self.file_lock:
+                                writer.writerow(result_data['output_row'])
+                                f.flush()
+                                
+                        except Exception as e:
+                            print(f"Error in parallel processing: {e}")
+            else:
+                # Sequential processing mode (original behavior)
+                for i, row in enumerate(tqdm(rows, desc="Processing rows")):
+                    # if i > 5:
+                    #     continue  # For testing, limit to first 5 rows
                     
-                    # Evaluate for each size
-                    all_results = {}
-                    for eval_size in sizes_to_evaluate:
-                        result = self.evaluate_row(row, eval_mode, use_multimodal, eval_size)
-                        all_results[eval_size] = result
-                        
-                        # Store results with size suffix
-                        output_row[f'model_response_mcq_{eval_size}'] = result.get('model_response_mcq', '')
-                        output_row[f'predicted_answer_mcq_{eval_size}'] = result.get('predicted_answer_mcq', '')
-                        output_row[f'is_correct_mcq_{eval_size}'] = result.get('is_correct_mcq', '')
-                        output_row[f'model_response_openended_{eval_size}'] = result.get('model_response_openended', '')
-                        output_row[f'is_correct_openended_{eval_size}'] = result.get('is_correct_openended', '')
-                        
-                        # Count correct answers for MCQ (use first size for overall count)
-                        if eval_size == sizes_to_evaluate[0] and result.get('is_correct_mcq', '') == 'True':
-                            correct_count += 1
+                    result_data = self._process_single_row(
+                        row, i, eval_mode, use_multimodal, sizes_to_evaluate, output_fieldnames
+                    )
+                    
+                    # Count correct answers for MCQ (use first size for overall count)
+                    if result_data['success'] and result_data['all_results']:
+                        first_size = sizes_to_evaluate[0]
+                        if first_size in result_data['all_results']:
+                            if result_data['all_results'][first_size].get('is_correct_mcq', '') == 'True':
+                                correct_count += 1
                     
                     processed_count += 1
                     
-                    # Print verbose output if enabled
-                    if self.verbose:
-                        # ANSI color codes
-                        BLUE = '\033[94m'
-                        RESET = '\033[0m'
-                        
-                        print(f"  Verbose output for row {i+1}:")
-                        print(f"    {BLUE}user_query{RESET}: {row.get('user_query', 'N/A')}")
-                        print(f"    {BLUE}correct_answer{RESET}: {row.get('correct_answer', 'N/A')}")
-                        print(f"    {BLUE}preference{RESET}: {row.get('preference', 'N/A')}")
-                        
-                        for eval_size in sizes_to_evaluate:
-                            result = all_results[eval_size]
-                            correct_mcq_option = result.get('correct_mcq_option', 'N/A')
-                            print(f"    --- {eval_size.upper()} Results ---")
-                            print(f"    {BLUE}correct_mcq_option_{eval_size}{RESET}: {correct_mcq_option}")
-                            print(f"    {BLUE}model_response_mcq_{eval_size}{RESET}: {output_row[f'model_response_mcq_{eval_size}']}")
-                            print(f"    {BLUE}predicted_answer_mcq_{eval_size}{RESET}: {output_row[f'predicted_answer_mcq_{eval_size}']}")
-                            print(f"    {BLUE}is_correct_mcq_{eval_size}{RESET}: {output_row[f'is_correct_mcq_{eval_size}']}")
-                            print(f"    {BLUE}model_response_openended_{eval_size}{RESET}: {output_row[f'model_response_openended_{eval_size}']}")
-                            print(f"    {BLUE}is_correct_openended_{eval_size}{RESET}: {output_row[f'is_correct_openended_{eval_size}']}")
-                        print('-' * 50)
-                    
-                    writer.writerow(output_row)
-                    f.flush()  # Ensure data is written immediately
-                    
-                except Exception as e:
-                    print(f"Error processing row {i+1}: {e}")
-                    # Write error to CSV
-                    output_row = row.copy()
-                    for eval_size in sizes_to_evaluate:
-                        output_row[f'model_response_mcq_{eval_size}'] = f"ERROR: {str(e)}"
-                        output_row[f'predicted_answer_mcq_{eval_size}'] = ''
-                        output_row[f'is_correct_mcq_{eval_size}'] = ''
-                        output_row[f'model_response_openended_{eval_size}'] = ''
-                        output_row[f'is_correct_openended_{eval_size}'] = ''
-                    writer.writerow(output_row)
-                    f.flush()
-        
-        print(f"\nResults saved to {output_file}")
+                    writer.writerow(result_data['output_row'])
+                    f.flush()  # Ensure data is written immediately        print(f"\nResults saved to {output_file}")
         
         # Print evaluation statistics and create summary file
         if eval_mode in ["mcq", "both"] and processed_count > 0:
@@ -644,7 +695,7 @@ class PersonaBenchmarkEvaluator:
         return str(output_file)
     
 
-    def run_judge_evaluation(self, results_csv_path: str) -> str:
+    def run_judge_evaluation(self, results_csv_path: str, max_items: int = None) -> str:
         """Run judge evaluation on existing results CSV and update it in place."""
         print(f"Starting judge evaluation on {results_csv_path}...")
         
@@ -654,6 +705,10 @@ class PersonaBenchmarkEvaluator:
             reader = csv.DictReader(f)
             fieldnames = list(reader.fieldnames)
             rows = list(reader)
+            
+        if max_items:
+            print(f"Limiting evaluation to first {max_items} items")
+            rows = rows[:max_items]
         
         # Determine which sizes to evaluate based on existing columns
         sizes_to_evaluate = []
@@ -685,6 +740,9 @@ class PersonaBenchmarkEvaluator:
         # Create temporary output file
         temp_output = results_csv_path + '.tmp'
         
+        # Initialize stats
+        stats = defaultdict(lambda: {'narrow_correct': 0, 'narrow_total': 0})
+        
         # Process each row with judges
         with open(temp_output, 'w', encoding='utf-8', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -714,6 +772,19 @@ class PersonaBenchmarkEvaluator:
                             )
                             row[narrow_col] = str(narrow_decision)
                             row[narrow_resp_col] = narrow_responses
+                            
+                            # Update stats
+                            try:
+                                if str(narrow_decision).lower() == 'true':
+                                    val = 1.0
+                                elif str(narrow_decision).lower() == 'false':
+                                    val = 0.0
+                                else:
+                                    val = float(narrow_decision)
+                                stats[size]['narrow_correct'] += val
+                                stats[size]['narrow_total'] += 1
+                            except (ValueError, TypeError):
+                                pass
                             
                             # # Evaluate with broad judge
                             # broad_decision, broad_responses = evaluate_broad_judge(
@@ -748,6 +819,23 @@ class PersonaBenchmarkEvaluator:
         os.replace(temp_output, results_csv_path)
         
         print(f"\nJudge evaluation completed. Updated results saved to {results_csv_path}")
+        
+        # Print aggregated results
+        print("\n" + "="*50)
+        print("JUDGE EVALUATION AGGREGATED RESULTS")
+        print("="*50)
+        
+        for size in sizes_to_evaluate:
+            print(f"\nResults for {size.upper()}:")
+            
+            # Narrow judge stats
+            n_total = stats[size]['narrow_total']
+            if n_total > 0:
+                n_avg = stats[size]['narrow_correct'] / n_total
+                print(f"  Narrow Judge Accuracy/Score: {n_avg:.3f} ({stats[size]['narrow_correct']:.1f}/{n_total})")
+            else:
+                print(f"  Narrow Judge: N/A (0 processed)")
+
         return results_csv_path
     
 
@@ -782,6 +870,8 @@ if __name__ == "__main__":
                        help='Path to existing results CSV file for judge evaluation')
     parser.add_argument('--verbose', action='store_true',
                        help='Enable verbose output to print detailed response information')
+    parser.add_argument('--parallel', type=int, default=1,
+                       help='Number of parallel threads for processing (default: 1)')
     
     args = parser.parse_args()
     
@@ -794,7 +884,7 @@ if __name__ == "__main__":
             print("Error: --results_csv_path is required when using --run_judges")
             exit(1)
         
-        output_file = evaluator.run_judge_evaluation(args.results_csv_path)
+        output_file = evaluator.run_judge_evaluation(args.results_csv_path, args.max_items)
         print(f"\nJudge evaluation completed. Results updated in: {output_file}")
     else:
         # Run normal inference evaluation
@@ -803,7 +893,8 @@ if __name__ == "__main__":
             args.eval_mode,
             args.use_multimodal,
             args.max_items,
-            args.size
+            args.size,
+            args.parallel
         )
         
         print(f"\nEvaluation completed. Results saved to: {output_file}")
