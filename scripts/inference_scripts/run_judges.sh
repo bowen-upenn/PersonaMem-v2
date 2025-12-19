@@ -7,8 +7,11 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 # Default CSV file path
-DEFAULT_CSV_PATH="results/multimodal/gpt-5-mini/evaluation_results_both_multimodal_11182025_021532.csv"
-
+# DEFAULT_CSV_PATH="results/multimodal/gpt-5-mini/evaluation_results_both_multimodal_11182025_021532.csv"
+# DEFAULT_CSV_PATH="results/multimodal/gpt-5-nano/evaluation_results_both_multimodal_11112025_045924.csv"
+# DEFAULT_CSV_PATH="results/multimodal/o4-mini/evaluation_results_both_multimodal_32k_11292025_194259.csv"
+# DEFAULT_CSV_PATH="results/multimodal/gpt-4.1/evaluation_results_both_multimodal_11162025_230216.csv"
+DEFAULT_CSV_PATH="results/multimodal/gpt-4.1-mini/evaluation_results_both_multimodal_11112025_052627.csv"
 # Get CSV file path from command line argument or use default
 CSV_PATH="${1:-$DEFAULT_CSV_PATH}"
 

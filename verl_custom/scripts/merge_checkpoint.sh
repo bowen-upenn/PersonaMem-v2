@@ -4,9 +4,10 @@ set -e
 # Configuration
 # CHECKPOINT_DIR="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251001_150607/global_step_200/actor"
 # CHECKPOINT_DIR="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251112_203834/global_step_375/actor"
-CHECKPOINT_DIR="checkpoints/implicit_persona_verl_ablation_openonly/verl_qwen3_4b_grpo_20251129_171107/global_step_100/actor"
+# CHECKPOINT_DIR="checkpoints/implicit_persona_verl_ablation_openonly/verl_qwen3_4b_grpo_20251129_171107/global_step_100/actor"
+CHECKPOINT_DIR="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251129_165940/global_step_175/actor"
 HF_MODEL_PATH="verl_custom/hub/models--Qwen--Qwen3-4B-Instruct-2507/snapshots/cdbee75f17c01a7cc42f958dc650907174af0554"
-TARGET_DIR="checkpoints/implicit_persona_verl_ablation_openonly/verl_qwen3_4b_grpo_20251129_171107/merged"
+TARGET_DIR="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251129_165940/merged"
 
 echo "==========================================="
 echo "Merging FSDP checkpoint to HuggingFace format"

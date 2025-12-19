@@ -45,3 +45,4 @@ python3 -m verl_custom.main_ppo \
     trainer.test_freq=5 \
     trainer.total_epochs=1 $@ \
     ++actor_rollout_ref.actor.fsdp_config.model_dtype=bfloat16 \
+    ++critic.model.fsdp_config.model_dtype=bfloat16 \

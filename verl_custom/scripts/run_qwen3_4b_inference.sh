@@ -19,6 +19,7 @@ case $MODEL_TYPE in
     # grpo) MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251001_150607/merged" ;;
     grpo) MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251112_203834/merged" ;;
     grpo_ablation_openonly) MODEL_PATH="checkpoints/implicit_persona_verl_ablation_openonly/verl_qwen3_4b_grpo_20251129_171107/merged" ;;
+    grpo_ablation_mcqonly) MODEL_PATH="checkpoints/implicit_persona_verl/verl_qwen3_4b_grpo_20251129_165940/merged" ;;
     *) echo "Error: Invalid --model '$MODEL_TYPE'. Use: base, sft, or grpo"; exit 1 ;;
 esac
 
