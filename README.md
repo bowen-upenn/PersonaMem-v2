@@ -82,6 +82,8 @@ bash verl_custom/scripts/download_model.sh
 
 ### Train a model using vanilla GRPO over long context with the verl framework:
 
+Our modified training code is kept under [verl_custom/](verl_custom/) separately from the original [verl](https://github.com/verl-project/verl) for clarity.
+
 Prepare the data with the format needed for training:
 
 ```bash
