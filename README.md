@@ -62,7 +62,7 @@ Download the data from [HuggingFace](https://huggingface.co/datasets/bowen-upenn
 
 ## Inference and Evaluation
 
-Configure your API keys in [.env](.env), then run:
+To run inference over the benchmark `data/benchmark/multimodal/benchmark.csv/` on frontier LLMs, run
 
 ```bash
 bash scripts/inference_scripts/run_gpt5_chat.sh
