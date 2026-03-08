@@ -8,7 +8,7 @@
 
 ![Overview](overview.png)
 
-Personalization is becoming the next milestone of artificial super-intelligence. AI cannot always satisfy every user, especially on tasks with subjective goals, but personalization offers a path toward pluralistic alignment. PersonaMem-v2 is the new state-of-the-art LLM-personalization dataset focusing on implicit personas in LLMs, where user–chatbot conversations implicitly indicate user preferences. For example, a user might unintentionally reveal a seasonal allergy in their email content while only asking a chatbot to refine the wording of that email. Our goal is to mimic realistic user personas and users' long-form conversation histories with chatbots, in order to study how well AI systems can memorize and infer these implicit signals and understand the users they are interacting with, and therefore provide personalized responses over time to enhance user experience.
+PersonaMem-v2 is a benchmark for studying **implicit user personas** in LLMs — where user preferences are revealed through conversation rather than stated explicitly. For example, a user editing an email might unknowingly hint at a seasonal allergy. We simulate realistic long-form chat histories to test how well AI systems can infer these signals and deliver truly personalized responses over time.
 
 ---
 
