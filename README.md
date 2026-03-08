@@ -1,11 +1,10 @@
-# PersonaMem-v2
+# This is the official repository of PersonaMem-v2: Towards Personalized Intelligence by Learning Implicit User Personas via Reinforcement Learning
 
-### Towards Personalized Intelligence by Learning Implicit User Personas via Reinforcement Learning
-
-This data has been downloaded over 12,000 times on Hugging Face. 
+Our dataset has been downloaded over **12,000 times** on Hugging Face. Thank you for your support!
 
 [![Paper](https://img.shields.io/badge/arXiv-2512.06688-b31b1b.svg)](https://arxiv.org/abs/2512.06688)
 [![Dataset](https://img.shields.io/badge/HuggingFace-PersonaMem--v2-ffd21e.svg)](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2)
+[![PersonaMem v1](https://img.shields.io/badge/GitHub-PersonaMem--v1-181717.svg?logo=github)](https://github.com/bowen-upenn/PersonaMem)
 
 ---
 
@@ -144,3 +143,5 @@ Key parameters in the script:
 - `--parallel`: enable parallel processing
 
 Run `PYTHONPATH=. python data_generation/main.py --help` for all options.
+
+See [data_generation/](data_generation/) for more configuration details.
