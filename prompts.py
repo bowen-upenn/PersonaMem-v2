@@ -1,44 +1,5 @@
 import random
 
-GENDER_WEIGHTS = {
-    "woman": 42,
-    "man": 42,
-    "nonbinary": 3.5,
-    "genderqueer": 1.5,
-    "agender": 1.0,
-    "genderfluid": 0.5,
-    "transgender woman": 4.5,
-    "transgender man": 3.5,
-    "intersex": 0.5
-}
-
-SEXUAL_ORIENTATION_WEIGHTS = {
-    "heterosexual / straight": 86.0,
-    "gay or lesbian": 10.0,
-    "bisexual": 2.0,
-    "pansexual": 1.5,
-    "asexual": 0.5,
-}
-
-RACE_WEIGHTS = {
-    "South Asian": 15.0,
-    "East Asian": 18.0,
-    "Southeast Asian": 10.0,
-    "Central Asian": 1.0,
-    "Middle Eastern / North African": 5.0,
-    "Jewish": 1.5,
-    "White / Northern European": 4.5,
-    "White / Western European": 6.0,
-    "White / Southern European": 4.0,
-    "White / Eastern European": 5.5,
-    "White / Australasia": 2.0,
-    "Sub-Saharan African": 10.0,
-    "Latino / Hispanic": 10.0,
-    "Indigenous Americas": 1.5,
-    "Native Hawaiian / Other Pacific Islander": 0.5,
-    "Mixed race / multiethnic": 5.5,
-}
-
 def expand_persona(persona_str):
     # Sample one gender and racial identity based on their weights
     random_gender = random.choices(list(GENDER_WEIGHTS.keys()), weights=GENDER_WEIGHTS.values())[0]
@@ -1186,3 +1147,43 @@ def generate_chain_of_thought_instruction():
     """
     return """
 Please provide a detailed plan and analysis before writing the code, and a detailed summary and analysis to the user after the code."""
+
+
+GENDER_WEIGHTS = {
+    "woman": 42,
+    "man": 42,
+    "nonbinary": 3.5,
+    "genderqueer": 1.5,
+    "agender": 1.0,
+    "genderfluid": 0.5,
+    "transgender woman": 4.5,
+    "transgender man": 3.5,
+    "intersex": 0.5
+}
+
+SEXUAL_ORIENTATION_WEIGHTS = {
+    "heterosexual / straight": 86.0,
+    "gay or lesbian": 10.0,
+    "bisexual": 2.0,
+    "pansexual": 1.5,
+    "asexual": 0.5,
+}
+
+RACE_WEIGHTS = {
+    "South Asian": 15.0,
+    "East Asian": 18.0,
+    "Southeast Asian": 10.0,
+    "Central Asian": 1.0,
+    "Middle Eastern / North African": 5.0,
+    "Jewish": 1.5,
+    "White / Northern European": 4.5,
+    "White / Western European": 6.0,
+    "White / Southern European": 4.0,
+    "White / Eastern European": 5.5,
+    "White / Australasia": 2.0,
+    "Sub-Saharan African": 10.0,
+    "Latino / Hispanic": 10.0,
+    "Indigenous Americas": 1.5,
+    "Native Hawaiian / Other Pacific Islander": 0.5,
+    "Mixed race / multiethnic": 5.5,
+}
