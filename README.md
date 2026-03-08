@@ -8,7 +8,7 @@
 
 ![Overview](overview.png)
 
-PersonaMem-v2 is a benchmark for studying **implicit user personas** in LLMs — where user preferences are revealed through conversation rather than stated explicitly. For example, a user editing an email might unknowingly hint at a seasonal allergy. We simulate realistic long-form chat histories to test how well AI systems can infer these signals and deliver truly personalized responses over time.
+PersonaMem-v2 is the state-of-the-art LLM personalization benchmark, covering comprehensive user personas and preferences across diverse scenarios. It especially focuses on realistic cases where user preferences are **implicitly revealed** through long-context conversations rather than stated explicitly — for example, a user editing an email might unknowingly hint at a seasonal allergy. We simulate realistic long-form chat histories to test how well AI systems can infer these signals and deliver truly personalized responses over time.
 
 ---
 
