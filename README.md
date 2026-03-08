@@ -24,9 +24,6 @@ docker build -t persona_mem .
 
 # Run with all GPUs
 docker run -it --gpus all -v /path/to/PersonaMem-v2:/workspace persona_mem /bin/bash
-
-# CPU only (for API-based inference and data generation without verl/MemAgent)
-docker run -it -v /path/to/PersonaMem-v2:/workspace persona_mem /bin/bash
 ```
 
 ### API Keys
