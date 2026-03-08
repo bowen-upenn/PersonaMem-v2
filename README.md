@@ -4,7 +4,9 @@ Our dataset has been downloaded over **12,000 times** on Hugging Face. Thank you
 
 [![Paper](https://img.shields.io/badge/arXiv-2512.06688-b31b1b.svg)](https://arxiv.org/abs/2512.06688)
 [![Dataset](https://img.shields.io/badge/HuggingFace-PersonaMem--v2-ffd21e.svg)](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2)
-[![PersonaMem v1](https://img.shields.io/badge/GitHub-PersonaMem--v1-181717.svg?logo=github)](https://github.com/bowen-upenn/PersonaMem)
+[![PersonaMem v1](https://img.shields.io/badge/GitHub-PersonaMem--v1-0075b6.svg?logo=github)](https://github.com/bowen-upenn/PersonaMem)
+
+Personalization is becoming the next milestone of artificial super-intelligence. AI cannot always satisfy every user, especially on tasks with subjective goals, but personalization offers a path toward pluralistic alignment. PersonaMem-v2 is the new state-of-the-art LLM-personalization dataset focusing on implicit personas in LLMs, where user–chatbot conversations implicitly indicate user preferences. For example, a user might unintentionally reveal a seasonal allergy in their email content while only asking a chatbot to refine the wording of that email. Our goal is to mimic realistic user personas and users' long-form conversation histories with chatbots, in order to study how well AI systems can memorize and infer these implicit signals and understand the users they are interacting with, and therefore provide personalized responses over time to enhance user experience.
 
 ---
 
