@@ -44,7 +44,7 @@ OPENAI_MODEL=gpt-5-chat
 OPENAI_MODEL_EMBED=text-embedding-3-large
 ```
 
-**Azure OpenAI**
+**Microsoft Azure**
 ```bash
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=your_azure_openai_key_here
