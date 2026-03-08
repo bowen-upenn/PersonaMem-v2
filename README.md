@@ -56,7 +56,7 @@ AZURE_OPENAI_API_VERSION_EMBED=your_embed_api_version
 
 ### Data
 
-Download the benchmark from [HuggingFace](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2) and place it at `data/benchmark/multimodal/benchmark.csv`.
+Download the data from [HuggingFace](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2) and place it at `data/`.
 
 ---
 
