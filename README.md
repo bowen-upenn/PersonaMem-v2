@@ -1,6 +1,6 @@
 # This is the official repository of [PersonaMem-v2: Towards Personalized Intelligence via Learning Implicit User Personas and Agentic Memory](https://arxiv.org/abs/2512.06688)
 
-Our dataset has been downloaded over **12,000 times** on Hugging Face. Thank you for your support!
+### 🎉 Our dataset has been downloaded over **12,000 times** on [Hugging Face](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2). Thank you for your support!
 
 [![Paper](https://img.shields.io/badge/arXiv-2512.06688-b31b1b.svg)](https://arxiv.org/abs/2512.06688)
 [![Dataset](https://img.shields.io/badge/HuggingFace-PersonaMem--v2-ffd21e.svg)](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2)
