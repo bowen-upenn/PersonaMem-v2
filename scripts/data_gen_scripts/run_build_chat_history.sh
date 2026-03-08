@@ -7,7 +7,7 @@ for version in 32k 128k; do
   echo "Building chat history for version: $version"
   echo "============================================"
 
-  python main.py \
+  PYTHONPATH=. python data_generation/main.py \
     --model gpt-5-chat \
     --step build_chat_history \
     --conv_output_dir data/raw_data/ \

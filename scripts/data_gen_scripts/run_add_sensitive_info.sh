@@ -13,7 +13,7 @@
 # - Adds the new conversation element to the existing conversations
 
 # Basic usage - process all personas
-python main.py \
+PYTHONPATH=. python data_generation/main.py \
   --model gpt-5-chat \
   --step add_sensitive_info \
   --conv_output_dir data/raw_data/ \

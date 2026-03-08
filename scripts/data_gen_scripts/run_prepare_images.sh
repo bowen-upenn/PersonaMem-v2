@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python image_matcher.py \
+PYTHONPATH=. python data_generation/image_matcher.py \
     --model gpt-5-chat \
     --recreate \
     --parallel \

@@ -12,7 +12,7 @@
 # - Generates new conversations from "others" perspective and corresponding QA pairs
 
 # Basic usage - process all personas
-python main.py \
+PYTHONPATH=. python data_generation/main.py \
   --model gpt-5-chat \
   --step add_pref_others \
   --conv_output_dir data/raw_data/ \

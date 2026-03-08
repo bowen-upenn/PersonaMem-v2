@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python main.py \
+PYTHONPATH=. python data_generation/main.py \
   --model gpt-5-chat \
   --step fill_category \
   --conv_output_dir data/raw_data/ \

@@ -795,22 +795,22 @@ def main():
     # Fixed default paths per your request
     parser.add_argument(
         "--text_train_csv",
-        default="data/benchmark/text/train.csv",
+        default="benchmark/text/train.csv",
         help="Path to the TEXT train CSV file."
     )
     parser.add_argument(
         "--text_val_csv",
-        default="data/benchmark/text/benchmark.csv",
+        default="benchmark/text/benchmark.csv",
         help="Path to the TEXT val CSV file."
     )
     parser.add_argument(
         "--multimodal_train_csv",
-        default="data/benchmark/multimodal/train.csv",
+        default="benchmark/multimodal/train.csv",
         help="Path to the MULTIMODAL train CSV file."
     )
     parser.add_argument(
         "--multimodal_val_csv",
-        default="data/benchmark/multimodal/val.csv",
+        default="benchmark/multimodal/val.csv",
         help="Path to the MULTIMODAL val CSV file."
     )
     parser.add_argument(
