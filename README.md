@@ -1,4 +1,4 @@
-# This is the official repository of PersonaMem-v2: Towards Personalized Intelligence by Learning Implicit User Personas via Reinforcement Learning
+# This is the official repository of [PersonaMem-v2: Towards Personalized Intelligence via Learning Implicit User Personas and Agentic Memory](https://arxiv.org/abs/2512.06688)
 
 Our dataset has been downloaded over **12,000 times** on Hugging Face. Thank you for your support!
 
