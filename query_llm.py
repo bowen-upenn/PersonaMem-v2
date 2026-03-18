@@ -1,6 +1,6 @@
 from openai import OpenAI, AzureOpenAI
 import timeout_decorator
-import utils
+from data_generation import utils
 import os
 import re
 from dotenv import load_dotenv
@@ -43,6 +43,10 @@ class QueryLLM:
         self.request_times = []
         self.rate_limit_per_min = rate_limit_per_min
         self.semaphore = asyncio.Semaphore(rate_limit_per_min)  # Max number of concurrent requests
+
+        # API caching state
+        self._current_cache_key = None       # Set by inference.py before each query
+        self._gemini_caches = {}             # {cache_key: (CachedContent, GenerativeModel)}
 
         load_dotenv(override=True)
         self._setup_client()
@@ -180,6 +184,63 @@ class QueryLLM:
         return gemini_history
 
 
+    def _get_or_create_gemini_cache(self, history_messages, cache_key):
+        """Create or reuse a Gemini CachedContent for the given history prefix.
+
+        Maintains a dict of caches so 32k and 128k contexts can coexist.
+        When a new persona is encountered, old caches for that slot are cleaned up.
+        Returns a GenerativeModel from cached content, or None if caching fails.
+        """
+        import datetime as dt
+
+        # Reuse existing cache if key matches
+        if cache_key in self._gemini_caches:
+            cached_content, cached_model = self._gemini_caches[cache_key]
+            if cached_content is not None:
+                return cached_model
+            return None  # Previously failed for this key
+
+        # Evict oldest caches if we hit the max size
+        max_cache_size = 4
+        while len(self._gemini_caches) >= max_cache_size:
+            oldest_key = next(iter(self._gemini_caches))
+            old_cache, _ = self._gemini_caches.pop(oldest_key)
+            if old_cache is not None:
+                try:
+                    old_cache.delete()
+                except Exception:
+                    pass
+
+        try:
+            from google.generativeai import caching
+            cache = caching.CachedContent.create(
+                model=self.model,
+                contents=history_messages,
+                ttl=dt.timedelta(hours=1),
+                display_name=f"persona_{cache_key}"
+            )
+            model = genai.GenerativeModel.from_cached_content(cache)
+            self._gemini_caches[cache_key] = (cache, model)
+            print(f"  Created Gemini cache for {cache_key}")
+            return model
+        except Exception as e:
+            print(f"  Gemini caching failed (falling back to uncached): {e}")
+            self._gemini_caches[cache_key] = (None, None)  # Mark as failed
+            return None
+
+
+    def cleanup_caches(self):
+        """Clean up any active API caches."""
+        for cache_key, (cached_content, _) in self._gemini_caches.items():
+            if cached_content is not None:
+                try:
+                    cached_content.delete()
+                except Exception:
+                    pass
+        self._gemini_caches.clear()
+        print("Cleaned up all Gemini cached content")
+
+
     def search_images(self, pref: str):
         """
         Search for images related to a preference using the ImageMatcher.
@@ -266,17 +327,31 @@ class QueryLLM:
         if self.is_gemini:
             # Convert OpenAI-style messages to Gemini format
             gemini_messages = self._openai_to_gemini_history(messages)
-            
+
             try:
-                # Create GenerativeModel instance and call generate_content
-                model = self.client.GenerativeModel(self.model)
-                response = model.generate_content(gemini_messages)
+                cache_key = self._current_cache_key
+
+                # Attempt cached generation: split into history prefix + final user turn
+                if cache_key and len(gemini_messages) > 1:
+                    history_prefix = gemini_messages[:-1]
+                    final_turn = gemini_messages[-1:]
+                    cached_model = self._get_or_create_gemini_cache(history_prefix, cache_key)
+                    if cached_model is not None:
+                        response = cached_model.generate_content(final_turn)
+                    else:
+                        # Fallback: send all messages without caching
+                        model = self.client.GenerativeModel(self.model)
+                        response = model.generate_content(gemini_messages)
+                else:
+                    model = self.client.GenerativeModel(self.model)
+                    response = model.generate_content(gemini_messages)
+
                 content = response.text
             except Exception as e:
                 print(utils.Colors.WARNING + f'Error getting Gemini response: {e}' + utils.Colors.ENDC)
                 content = None
         elif self.is_claude:
-            # Call Claude API
+            # Call Claude API with prompt caching
             try:
                 # Claude requires separating system messages from the conversation
                 # Convert all messages to user/assistant format (Claude doesn't accept 'system' role in messages)
@@ -284,31 +359,53 @@ class QueryLLM:
                 for msg in messages:
                     role = msg.get('role')
                     content_text = msg.get('content', '')
-                    
+
                     # Handle content that might be a list (for multimodal messages)
                     if isinstance(content_text, list):
                         text_parts = [item.get("text", "") for item in content_text if item.get("type") == "text"]
                         content_text = " ".join(text_parts)
-                    
+
                     # Convert system messages to user messages for Claude
                     if role == 'system':
                         role = 'user'
-                    
+
                     # Only keep user and assistant messages
                     if role in ['user', 'assistant'] and content_text:
                         claude_messages.append({
                             'role': role,
                             'content': content_text
                         })
-                
-                # Call Claude API with a simple system prompt
+
+                # Add cache breakpoint on the chat history prefix (second-to-last message)
+                # The last 1-2 messages are the new user query + MCQ instruction;
+                # everything before is the stable chat history that should be cached.
+                if len(claude_messages) >= 3:
+                    cache_idx = len(claude_messages) - 2
+                    msg = claude_messages[cache_idx]
+                    claude_messages[cache_idx] = {
+                        'role': msg['role'],
+                        'content': [
+                            {
+                                'type': 'text',
+                                'text': msg['content'],
+                                'cache_control': {'type': 'ephemeral'}
+                            }
+                        ]
+                    }
+
                 response = self.client.messages.create(
                     model=self.model,
                     max_tokens=4096,
-                    system="You are a helpful assistant.",
                     messages=claude_messages
                 )
-                
+
+                # Log cache usage stats
+                usage = response.usage
+                cache_read = getattr(usage, 'cache_read_input_tokens', 0) or 0
+                cache_write = getattr(usage, 'cache_creation_input_tokens', 0) or 0
+                if cache_read > 0 or cache_write > 0:
+                    print(f"  Claude cache: read={cache_read}, write={cache_write}, uncached={usage.input_tokens}")
+
                 content = response.content[0].text
             except Exception as e:
                 print(utils.Colors.WARNING + f'Error getting Claude response: {e}' + utils.Colors.ENDC)

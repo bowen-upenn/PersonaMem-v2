@@ -21,6 +21,6 @@ DEFAULT_ARGS=(
 )
 
 # Run inference with default args plus any additional args passed to script
-python inference.py "${DEFAULT_ARGS[@]}" "$@"
+python3 inference.py "${DEFAULT_ARGS[@]}" "$@"
 
 echo "Inference completed for ${MODEL_NAME} with multimodal mode"

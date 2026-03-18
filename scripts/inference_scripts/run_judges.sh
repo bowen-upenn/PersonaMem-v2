@@ -29,7 +29,7 @@ echo "Results CSV: ${CSV_PATH}"
 echo ""
 
 # Run judge evaluation
-python inference.py \
+python3 inference.py \
     --run_judges \
     --results_csv_path "${CSV_PATH}" \
     --verbose \

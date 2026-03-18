@@ -30,7 +30,7 @@ from inference_utils import (
 
 
 class PersonaBenchmarkEvaluator:
-    def __init__(self, config_path: str = "config.yaml", model_name: str = None, result_path: str = "results/", verbose: bool = False):
+    def __init__(self, config_path: str = "data_generation/config.yaml", model_name: str = None, result_path: str = "results/", verbose: bool = False):
         """Initialize the evaluator with configuration."""
         self.config = self._load_config(config_path)
         self.verbose = verbose
@@ -249,6 +249,8 @@ class PersonaBenchmarkEvaluator:
         
         # Store the current chat history path for cache updates during context reduction
         self._current_chat_history_path = chat_history_path
+        # Pass cache key to QueryLLM for API-level caching (Gemini CachedContent, Claude prefix caching)
+        self.query_llm._current_cache_key = chat_history_path
         chat_history = self.load_chat_history(chat_history_path, size)
         
         # Append user query to chat history
@@ -616,6 +618,17 @@ class PersonaBenchmarkEvaluator:
                 f'is_correct_openended_{eval_size}'
             ])
         
+        # Sort rows by chat_history link for cache locality (consecutive rows share same context)
+        sort_key = f'chat_history_{sizes_to_evaluate[0]}_link'
+        if rows and sort_key in rows[0]:
+            rows.sort(key=lambda r: r.get(sort_key, ''))
+            print(f"Sorted {len(rows)} rows by {sort_key} for cache locality")
+
+        # Warn if parallel > 1 with cacheable models (not thread-safe for caching)
+        model_name = self.config['models']['llm_model']
+        if parallel > 1 and re.search(r'gemini|claude', model_name, re.IGNORECASE):
+            print("WARNING: parallel > 1 causes duplicate cache creation. Use --parallel 1 for Gemini/Claude.")
+
         # Process each row and write to CSV incrementally
         processed_count = 0
         correct_count = 0
@@ -691,7 +704,10 @@ class PersonaBenchmarkEvaluator:
             
             # Create summary file
             self._create_summary_file(output_file, processed_count, correct_count, accuracy, sizes_to_evaluate)
-        
+
+        # Clean up any active API caches
+        self.query_llm.cleanup_caches()
+
         return str(output_file)
     
 
@@ -852,7 +868,7 @@ if __name__ == "__main__":
                        help='Use multimodal chat history instead of regular chat history')
     parser.add_argument('--max_items', type=int, default=None,
                        help='Maximum number of items to process (for testing)')
-    parser.add_argument('--config', type=str, default='config.yaml',
+    parser.add_argument('--config', type=str, default='data_generation/config.yaml',
                        help='Path to configuration file')
     # Supported models: gpt-4.1, gpt-4.1-mini, gpt-4o,  gpt-4o-mini, 
     # gpt-5-chat, gpt-5-mini, gpt-5-nano, o1, o1-mini, o3-mini, o4-mini

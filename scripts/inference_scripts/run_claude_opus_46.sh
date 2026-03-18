@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-MODEL_NAME="gemini-3-pro"
+MODEL_NAME="claude-opus-4-6-20250610"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
@@ -18,6 +18,8 @@ DEFAULT_ARGS=(
     --use_multimodal
     --result_path "results/multimodal/${MODEL_NAME}"
     --size both
+    --max_items 1000
+    --parallel 1
 )
 
 # Run inference with default args plus any additional args passed to script
