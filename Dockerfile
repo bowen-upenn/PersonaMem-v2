@@ -61,8 +61,9 @@ ENTRYPOINT []
 CMD ["/bin/bash"]
 
 # Build and run:
-# docker build -t persona_mem_v2 .
-# docker run -it --gpus all -v /pool/bwjiang/PersonaMem-v2:/app/PersonaMem-v2 persona_mem_v2 bash
+# docker build -t personamem_v2 .
+# docker run -it --gpus all -v /pool/bwjiang/personamem_v2:/workspace personamem_v2 /bin/bash
+# # docker run -it --gpus all -v /pool/bwjiang/ImplicitPersona:/workspace implicit_persona /bin/bash
 
 
 ################################################################################
