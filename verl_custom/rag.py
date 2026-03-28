@@ -258,6 +258,10 @@ RAG_INSTRUCTION = (
     "with this user. Use them to personalize your response."
 )
 
+FULL_CONTEXT_INSTRUCTION = (
+    "Below is the complete conversation history with this user for full context."
+)
+
 THINKING_INSTRUCTION = (
     " Always perform your reasoning inside <think> and </think> tags "
     "before your final answer."
@@ -342,13 +346,29 @@ def process_row_rag(
     chunk_overlap: int,
     top_k: int,
     is_mcq: bool = False,
+    path_prefix: str = "",
+    chat_history_col: str = "chat_history_32k_link",
 ) -> Optional[Dict[str, Any]]:
     """
     Process a single benchmark row: load chat history, apply RAG, build VERL record.
     """
     try:
         # 1. Load chat history
-        chat_history_path = row.get("chat_history_32k_link", "")
+        chat_history_path = row.get(chat_history_col, "")
+        if path_prefix and chat_history_path:
+            chat_history_path = path_prefix + chat_history_path
+        if not chat_history_path or not os.path.exists(chat_history_path):
+            # Fallback: find file with same persona_id but different timestamp
+            import re as _re
+            persona_match = _re.search(r'(persona\d+\.json)$', chat_history_path)
+            if persona_match:
+                parent_dir = os.path.dirname(chat_history_path)
+                persona_suffix = persona_match.group(1)
+                if os.path.isdir(parent_dir):
+                    for fname in os.listdir(parent_dir):
+                        if fname.endswith(persona_suffix):
+                            chat_history_path = os.path.join(parent_dir, fname)
+                            break
         if not chat_history_path or not os.path.exists(chat_history_path):
             print(f"Warning: Chat history not found for row {idx}: {chat_history_path}")
             return None
@@ -457,6 +477,8 @@ def process_row_rag(
                 "index": idx if pd.notna(idx) else 0,
                 "persona_id": row.get("persona_id"),
                 "question": question,
+                "chat_history_32k_link": row.get("chat_history_32k_link", ""),
+                "chat_history_128k_link": row.get("chat_history_128k_link", ""),
             },
         }
 
@@ -510,14 +532,27 @@ def main():
         default="data/rag_embedding_cache",
         help="Directory for cached embeddings",
     )
+    parser.add_argument(
+        "--path_prefix",
+        default="",
+        help="Prefix to prepend to chat history paths from CSV (e.g. 'data/' if files are one level deeper)",
+    )
+    parser.add_argument(
+        "--context_size",
+        choices=["32k", "128k"],
+        default="32k",
+        help="Which chat history context window to use: 32k or 128k (default: 32k)",
+    )
     args = parser.parse_args()
 
     # Setup
     print("=" * 60)
     print("RAG Baseline - Parquet Preprocessing")
     print("=" * 60)
+    chat_history_col = f"chat_history_{args.context_size}_link"
     print(f"Benchmark CSV: {args.benchmark_csv}")
     print(f"Output dir:    {args.output_dir}")
+    print(f"Context size:  {args.context_size} (column: {chat_history_col})")
     print(f"Chunk size:    {args.chunk_size}")
     print(f"Chunk overlap: {args.chunk_overlap}")
     print(f"Top-k:         {args.top_k}")
@@ -559,6 +594,8 @@ def main():
                 chunk_overlap=args.chunk_overlap,
                 top_k=args.top_k,
                 is_mcq=is_mcq,
+                path_prefix=args.path_prefix,
+                chat_history_col=chat_history_col,
             )
             if record is not None:
                 verl_records.append(record)
@@ -581,7 +618,7 @@ def main():
             lambda x: json.dumps(x, ensure_ascii=False)
         )
 
-        out_path = os.path.join(args.output_dir, f"benchmark_text_32k{suffix}.parquet")
+        out_path = os.path.join(args.output_dir, f"benchmark_text_{args.context_size}{suffix}.parquet")
         df.to_parquet(out_path, engine="pyarrow")
         print(f"Saved {len(df)} records to {out_path}")
 
