@@ -142,11 +142,18 @@ class PersonaMemory:
         return out
 
     def build_from_history(self, conversations: list, user_id: str) -> None:
-        """Ingest a chat history list (list of {role, content} dicts) into Mem0."""
+        """Ingest a chat history list (list of {role, content} dicts) into Mem0.
+
+        Chunks into batches of 20 messages — sending 250+ messages at once causes the
+        extraction LLM to return empty JSON (silent failure → 0 facts stored).
+        """
         flat = self._flatten_conversations(conversations)
         flat = self._system_as_user(flat)
-        if flat:
-            self.memory.add(flat, user_id=user_id)
+        if not flat:
+            return
+        chunk_size = 20
+        for i in range(0, len(flat), chunk_size):
+            self.memory.add(flat[i:i + chunk_size], user_id=user_id)
 
     def retrieve(self, query: str, user_id: str, top_k: int = 10) -> str:
         """Return a newline-joined string of top-k memories relevant to the query."""

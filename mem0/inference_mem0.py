@@ -229,6 +229,7 @@ class Mem0BenchmarkEvaluator:
             "model_response_mcq": "",
             "predicted_answer_mcq": "",
             "is_correct_mcq": "",
+            "retrieved_memories": retrieved,
             "model_response_openended": "",
             "is_correct_openended": "",
         }
@@ -263,6 +264,13 @@ class Mem0BenchmarkEvaluator:
         if eval_mode in ["generative", "both"]:
             response_openended = self.query_llm.query_llm(base_messages, use_history=True)
             result["model_response_openended"] = response_openended
+            try:
+                score, _ = evaluate_narrow_judge(
+                    row, response_openended, self.query_llm.query_llm, None
+                )
+                result["is_correct_openended"] = str(score)
+            except Exception as e:
+                result["is_correct_openended"] = f"ERROR: {e}"
 
         return result
 
@@ -317,6 +325,7 @@ class Mem0BenchmarkEvaluator:
                 output_row[f"model_response_mcq_{eval_size}"] = ""
                 output_row[f"predicted_answer_mcq_{eval_size}"] = ""
                 output_row[f"is_correct_mcq_{eval_size}"] = ""
+                output_row[f"retrieved_memories_{eval_size}"] = ""
                 output_row[f"model_response_openended_{eval_size}"] = ""
                 output_row[f"is_correct_openended_{eval_size}"] = ""
 
@@ -328,6 +337,7 @@ class Mem0BenchmarkEvaluator:
                 output_row[f"model_response_mcq_{eval_size}"] = result.get("model_response_mcq", "")
                 output_row[f"predicted_answer_mcq_{eval_size}"] = result.get("predicted_answer_mcq", "")
                 output_row[f"is_correct_mcq_{eval_size}"] = result.get("is_correct_mcq", "")
+                output_row[f"retrieved_memories_{eval_size}"] = result.get("retrieved_memories", "")
                 output_row[f"model_response_openended_{eval_size}"] = result.get("model_response_openended", "")
                 output_row[f"is_correct_openended_{eval_size}"] = result.get("is_correct_openended", "")
 
@@ -353,6 +363,7 @@ class Mem0BenchmarkEvaluator:
                 output_row[f"model_response_mcq_{eval_size}"] = f"ERROR: {str(e)}"
                 output_row[f"predicted_answer_mcq_{eval_size}"] = ""
                 output_row[f"is_correct_mcq_{eval_size}"] = ""
+                output_row[f"retrieved_memories_{eval_size}"] = ""
                 output_row[f"model_response_openended_{eval_size}"] = ""
                 output_row[f"is_correct_openended_{eval_size}"] = ""
             return {"success": False, "output_row": output_row, "all_results": {}, "row_index": row_index}
@@ -401,6 +412,7 @@ class Mem0BenchmarkEvaluator:
                 f"model_response_mcq_{eval_size}",
                 f"predicted_answer_mcq_{eval_size}",
                 f"is_correct_mcq_{eval_size}",
+                f"retrieved_memories_{eval_size}",
                 f"model_response_openended_{eval_size}",
                 f"is_correct_openended_{eval_size}",
             ])
