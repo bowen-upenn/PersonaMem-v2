@@ -196,7 +196,7 @@ def process_row(
                     "pref_type": pref_type,
                 }
                 try:
-                    score = evaluate_narrow_judge(judge_row, response_gen, judge_llm)
+                    score = evaluate_narrow_judge(judge_row, response_gen, judge_llm.query_llm, None)
                     result["judge_score"] = str(score)
                 except Exception as e:
                     result["judge_score"] = f"ERROR: {e}"

@@ -151,7 +151,7 @@ class PersonaMemory:
         flat = self._system_as_user(flat)
         if not flat:
             return
-        chunk_size = 20
+        chunk_size = 10
         for i in range(0, len(flat), chunk_size):
             self.memory.add(flat[i:i + chunk_size], user_id=user_id)
 
@@ -161,6 +161,14 @@ class PersonaMemory:
         if not results:
             return ""
         # mem0 returns list of dicts with 'memory' key
+        memories = results.get("results", results) if isinstance(results, dict) else results
+        return "\n".join(f"- {r['memory']}" for r in memories if r.get("memory"))
+
+    def get_all(self, user_id: str) -> str:
+        """Return ALL stored memories for a user_id (no semantic filtering)."""
+        results = self.memory.get_all(user_id=user_id)
+        if not results:
+            return ""
         memories = results.get("results", results) if isinstance(results, dict) else results
         return "\n".join(f"- {r['memory']}" for r in memories if r.get("memory"))
 

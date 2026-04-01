@@ -51,10 +51,14 @@ class Mem0BenchmarkEvaluator:
         mem0_top_k: int = 10,
         mem0_llm: str = None,
         mem0_embedding: str = None,
+        mem0_use_all: bool = False,
+        full_context: bool = False,
     ):
         self.config = self._load_config(config_path)
         self.verbose = verbose
         self.mem0_top_k = mem0_top_k
+        self.mem0_use_all = mem0_use_all
+        self.full_context = full_context
         self.mem0_llm = mem0_llm      # Azure deployment name for Mem0 extraction LLM
         self.mem0_embedding = mem0_embedding  # Azure deployment name for Mem0 embedder
 
@@ -140,38 +144,70 @@ class Mem0BenchmarkEvaluator:
         )
         return mcq_instruction, option_mapping
 
-    def _build_mem0_prompt(self, retrieved_memories: str, user_query_content: str) -> List[Dict]:
+    def _build_mem0_prompt(self, retrieved_memories: str, user_query_content: str,
+                           chat_history: List[Dict] = None) -> List[Dict]:
         """
-        Build a message list for the model using Mem0-retrieved memories instead of
-        the full raw chat history.
+        Build a message list for the model using Mem0-retrieved memories,
+        optionally augmented with the full conversation history.
         """
         if retrieved_memories:
             context_block = (
-                "The following memories have been retrieved from the user's conversation history "
-                "and are relevant to their current request:\n\n"
+                "The following memories have been extracted from the user's conversation history:\n\n"
                 + retrieved_memories
             )
         else:
             context_block = "No relevant memories were found in the user's conversation history."
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a personalized AI assistant. You have access to relevant memories "
-                    "extracted from the user's past conversations. Use these memories to provide "
-                    "personalized, context-aware responses."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"{context_block}\n\n"
-                    f"User's current request: {user_query_content}\n\n"
-                    "Please recall my related preferences from our conversation history to give personalized responses."
-                ),
-            },
-        ]
+        system_content = (
+            "You are a personalized AI assistant. You have access to relevant memories "
+            "extracted from the user's past conversations. Use these memories to provide "
+            "personalized, context-aware responses."
+        )
+
+        if self.full_context and chat_history:
+            # Include full conversation history after the memories
+            system_content += (
+                "\n\nIn addition to the extracted memories above, the user's full conversation "
+                "history is provided below for additional context."
+            )
+            # Build messages: system + memories block + conversation history + user query
+            conv_messages = []
+            for msg in chat_history:
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    text = " ".join(
+                        part.get("text", "") for part in content
+                        if isinstance(part, dict) and part.get("type") == "text"
+                    ).strip()
+                    if text:
+                        conv_messages.append({"role": msg["role"], "content": text})
+                elif isinstance(content, str) and content.strip():
+                    conv_messages.append(msg)
+
+            messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": context_block},
+            ] + conv_messages + [
+                {
+                    "role": "user",
+                    "content": (
+                        f"User's current request: {user_query_content}\n\n"
+                        "Please recall my related preferences from our conversation history to give personalized responses."
+                    ),
+                },
+            ]
+        else:
+            messages = [
+                {"role": "system", "content": system_content},
+                {
+                    "role": "user",
+                    "content": (
+                        f"{context_block}\n\n"
+                        f"User's current request: {user_query_content}\n\n"
+                        "Please recall my related preferences from our conversation history to give personalized responses."
+                    ),
+                },
+            ]
         return messages
 
     def evaluate_row(
@@ -211,7 +247,10 @@ class Mem0BenchmarkEvaluator:
         persona_id = str(row["persona_id"])
         try:
             persona_memory.build_from_history(chat_history, user_id=persona_id)
-            retrieved = persona_memory.retrieve(user_query_content, user_id=persona_id, top_k=self.mem0_top_k)
+            if self.mem0_use_all:
+                retrieved = persona_memory.get_all(user_id=persona_id)
+            else:
+                retrieved = persona_memory.retrieve(user_query_content, user_id=persona_id, top_k=self.mem0_top_k)
         finally:
             persona_memory.reset(persona_id)
 
@@ -220,8 +259,11 @@ class Mem0BenchmarkEvaluator:
             if retrieved:
                 print(f"  [Mem0] Memories:\n{retrieved[:500]}...")
 
-        # Build base messages from Mem0 memories
-        base_messages = self._build_mem0_prompt(retrieved, user_query_content)
+        # Build base messages from Mem0 memories (optionally with full context)
+        base_messages = self._build_mem0_prompt(
+            retrieved, user_query_content,
+            chat_history=chat_history if self.full_context else None
+        )
 
         row_seed = hash(f"{row['persona_id']}_{user_query_content}") % 2**32
 
@@ -280,14 +322,14 @@ class Mem0BenchmarkEvaluator:
         patterns = [
             r"\$\\boxed\{([A-Z])\}\$",
             r"\\boxed\{([A-Z])\}",
-            r"Final Answer:\s*([A-Z])",
-            r"final answer:\s*([A-Z])",
-            r"Answer:\s*([A-Z])",
-            r"answer:\s*([A-Z])",
+            r"Final Answer:\s*\*{0,2}([A-Z])\*{0,2}",
+            r"final answer:\s*\*{0,2}([A-Z])\*{0,2}",
+            r"Answer:\s*\*{0,2}([A-Z])\*{0,2}",
+            r"answer:\s*\*{0,2}([A-Z])\*{0,2}",
             r"final answer is\s*\$?\\boxed\{([A-Z])\}\$?",
-            r"final answer is\s*([A-Z])",
+            r"final answer is\s*\*{0,2}([A-Z])\*{0,2}",
             r"the answer is\s*\$?\\boxed\{([A-Z])\}\$?",
-            r"the answer is\s*([A-Z])",
+            r"the answer is\s*\*{0,2}([A-Z])\*{0,2}",
             r"\b([A-Z])\.\s*$",
         ]
         for pattern in patterns:
@@ -487,6 +529,8 @@ def main():
     parser.add_argument("--mem0_top_k", type=int, default=10, help="Number of Mem0 memories to retrieve per query")
     parser.add_argument("--mem0_llm", type=str, default=None, help="Azure deployment name for Mem0 extraction LLM")
     parser.add_argument("--mem0_embedding", type=str, default=None, help="Azure deployment name for Mem0 embedding model")
+    parser.add_argument("--mem0_use_all", action="store_true", help="Use ALL extracted memories instead of top-k retrieval")
+    parser.add_argument("--full_context", action="store_true", help="Append full conversation history alongside Mem0 memories")
     args = parser.parse_args()
 
     result_path = args.result_path or f"../results/mem0/{args.model_name}"
@@ -499,6 +543,8 @@ def main():
         mem0_top_k=args.mem0_top_k,
         mem0_llm=args.mem0_llm,
         mem0_embedding=args.mem0_embedding,
+        mem0_use_all=args.mem0_use_all,
+        full_context=args.full_context,
     )
 
     output_file = evaluator.run_evaluation(
